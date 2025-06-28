@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -euo pipefail
+set -x
 
 # Change to the root of the Cargo workspace.
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
@@ -15,7 +16,11 @@ fi
 CURRENT_BRANCH=$(git symbolic-ref --short -q HEAD)
 
 # Create a new branch for the release and make a commit with the new version.
-VERSION=$(printf '0.0.%d' "$(date +%y%m%d%H%M)")
+if [ $# -ge 1 ]; then
+  VERSION="$1"
+else
+  VERSION=$(printf '0.0.%d' "$(date +%y%m%d%H%M)")
+fi
 TAG="rust-v$VERSION"
 git checkout -b "$TAG"
 perl -i -pe "s/^version = \".*\"/version = \"$VERSION\"/" Cargo.toml

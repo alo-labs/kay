@@ -16,7 +16,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  TAG_REGEX: '^rust-v[0-9]+\.[0-9]+\.[0-9]+$'
+  TAG_REGEX: '^rust-v[0-9]+\.[0-9]+\.[0-9]+(-(?:alpha|beta)(\.[0-9]+)?)?$'
 
 jobs:
   tag-check:
