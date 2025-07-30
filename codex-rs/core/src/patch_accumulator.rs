@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 use std::fs;
-use std::io::Read;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
 
 use anyhow::Context;
 use anyhow::Result;
+use anyhow::bail;
 use tempfile::TempDir;
 use uuid::Uuid;
 
@@ -41,7 +41,7 @@ impl PatchAccumulator {
         self.ensure_repo_init()?;
         let repo_dir = self.repo_dir()?.to_path_buf();
 
-        let mut added_any = false;
+        let mut staged_new_baseline = false;
         for path in changes.keys() {
             if !self.file_mapping.contains_key(path) {
                 // Assign a stable internal filename for this external path.
@@ -57,25 +57,19 @@ impl PatchAccumulator {
                     let contents = fs::read(path)
                         .with_context(|| format!("failed to read original {}", path.display()))?;
                     let internal_path = repo_dir.join(&internal);
-                    if let Some(parent) = internal_path.parent() {
-                        if !parent.as_os_str().is_empty() {
-                            fs::create_dir_all(parent).ok();
-                        }
-                    }
                     fs::write(&internal_path, contents).with_context(|| {
                         format!("failed to write baseline file {}", internal_path.display())
                     })?;
                     run_git(&repo_dir, &["add", &internal])?;
-                    added_any = true;
+                    staged_new_baseline = true;
                 }
             }
         }
 
-        // Commit baseline additions if any.
-        if added_any {
-            run_git(&repo_dir, &["commit", "-m", "baseline"])?;
-            // Update baseline commit id to HEAD.
-            let id = run_git_capture(&repo_dir, &["rev-parse", "HEAD"])?;
+        // If new baseline files were staged, commit them and update the baseline commit id.
+        if staged_new_baseline {
+            run_git(&repo_dir, &["commit", "-m", "Baseline snapshot"])?;
+            let id = run_git(&repo_dir, &["rev-parse", "HEAD"])?;
             self.baseline_commit = Some(id.trim().to_string());
         }
 
@@ -85,115 +79,97 @@ impl PatchAccumulator {
     /// Record this change set and recompute the aggregated unified diff by
     /// applying all change sets to the repo working tree and diffing against the baseline commit.
     pub fn on_patch_end(&mut self, changes: HashMap<PathBuf, FileChange>) -> Result<()> {
-        self.changes.push(changes);
-
-        self.ensure_repo_init()?;
         let repo_dir = self.repo_dir()?.to_path_buf();
+        let baseline_commit = self
+            .baseline_commit
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("baseline commit missing"))?;
 
-        // Reset working tree to baseline commit state.
-        if let Some(commit) = &self.baseline_commit {
-            run_git(&repo_dir, &["reset", "--hard", commit])?;
-        }
+        // Apply only the incoming change set to the already-updated working tree.
+        for (ext_path, change) in &changes {
+            let internal = match self.file_mapping.get(ext_path) {
+                Some(i) => i.clone(),
+                None => {
+                    // Newly referenced path; create mapping (no baseline tracked -> add shows up as new file).
+                    let i = uuid_filename_for(ext_path);
+                    self.file_mapping.insert(ext_path.clone(), i.clone());
+                    self.internal_to_baseline_external
+                        .insert(i.clone(), ext_path.clone());
+                    self.internal_to_current_external
+                        .insert(i.clone(), ext_path.clone());
+                    i
+                }
+            };
+            match change {
+                FileChange::Add { content } => {
+                    // Create/overwrite internal file with provided content.
+                    let file_path = repo_dir.join(&internal);
+                    if let Some(parent) = file_path.parent() {
+                        if !parent.as_os_str().is_empty() {
+                            fs::create_dir_all(parent).ok();
+                        }
+                    }
+                    fs::write(&file_path, content)
+                        .with_context(|| format!("failed to write {}", file_path.display()))?;
+                    // Ensure current external path mapping is present
+                    self.internal_to_current_external
+                        .insert(internal.clone(), ext_path.clone());
+                    // Stage the new/modified file so it shows up in the diff against HEAD.
+                    run_git(&repo_dir, &["add", &internal])?;
+                }
+                FileChange::Delete => {
+                    let file_path = repo_dir.join(&internal);
+                    if file_path.exists() {
+                        let _ = fs::remove_file(&file_path);
+                    }
+                    // Keep current mapping entry as-is; diff will show deletion.
+                }
+                FileChange::Update {
+                    unified_diff,
+                    move_path,
+                } => {
+                    // Apply unified diff to the current contents of internal file.
+                    let file_path = repo_dir.join(&internal);
+                    let base = fs::read_to_string(&file_path).unwrap_or_default();
+                    let new_content =
+                        apply_unified_diff(&base, unified_diff).with_context(|| {
+                            format!("apply unified diff for {}", ext_path.display())
+                        })?;
+                    if let Some(parent) = file_path.parent() {
+                        if !parent.as_os_str().is_empty() {
+                            fs::create_dir_all(parent).ok();
+                        }
+                    }
+                    fs::write(&file_path, &new_content)
+                        .with_context(|| format!("failed to write {}", file_path.display()))?;
+                    // Stage the updated file so it shows up in the diff against HEAD.
+                    run_git(&repo_dir, &["add", &internal])?;
 
-        // Start with current external mapping reflective of baseline.
-        // Rebuild current mapping from baseline mapping first.
-        self.internal_to_current_external = self.internal_to_baseline_external.clone();
-
-        // Apply all change sets in order to working tree.
-        let mut current_contents: HashMap<String, String> = HashMap::new();
-        // Preload current content for any baseline-tracked files.
-        for (internal, _ext_path) in self.internal_to_current_external.clone() {
-            let file_path = repo_dir.join(&internal);
-            if file_path.exists() {
-                let mut s = String::new();
-                fs::File::open(&file_path)
-                    .and_then(|mut f| f.read_to_string(&mut s))
-                    .ok();
-                current_contents.insert(internal.clone(), s);
-            }
-        }
-
-        for change_set in &self.changes {
-            for (ext_path, change) in change_set {
-                let internal = match self.file_mapping.get(ext_path) {
-                    Some(i) => i.clone(),
-                    None => {
-                        // Newly referenced path; create mapping (no baseline tracked -> add shows up as new file).
-                        let i = uuid_filename_for(ext_path);
-                        self.file_mapping.insert(ext_path.clone(), i.clone());
-                        self.internal_to_baseline_external
-                            .insert(i.clone(), ext_path.clone());
+                    if let Some(dest_path) = move_path {
+                        // Update current external mapping for this internal id to the new external path.
                         self.internal_to_current_external
-                            .insert(i.clone(), ext_path.clone());
-                        i
-                    }
-                };
-                match change {
-                    FileChange::Add { content } => {
-                        // Create/overwrite internal file with provided content.
-                        let file_path = repo_dir.join(&internal);
-                        if let Some(parent) = file_path.parent() {
-                            if !parent.as_os_str().is_empty() {
-                                fs::create_dir_all(parent).ok();
-                            }
-                        }
-                        fs::write(&file_path, content)
-                            .with_context(|| format!("failed to write {}", file_path.display()))?;
-                        current_contents.insert(internal.clone(), content.clone());
-                        // Update current external path mapping (no move, but ensure it's present)
-                        self.internal_to_current_external
-                            .insert(internal.clone(), ext_path.clone());
-                    }
-                    FileChange::Delete => {
-                        let file_path = repo_dir.join(&internal);
-                        if file_path.exists() {
-                            let _ = fs::remove_file(&file_path);
-                        }
-                        current_contents.remove(&internal);
-                        // Keep current mapping entry as-is; diff will show deletion.
-                    }
-                    FileChange::Update {
-                        unified_diff,
-                        move_path,
-                    } => {
-                        // Apply unified diff to the current contents of internal file.
-                        let base = current_contents.get(&internal).cloned().unwrap_or_default();
-                        let new_content =
-                            apply_unified_diff(&base, unified_diff).with_context(|| {
-                                format!("apply unified diff for {}", ext_path.display())
-                            })?;
-                        let file_path = repo_dir.join(&internal);
-                        if let Some(parent) = file_path.parent() {
-                            if !parent.as_os_str().is_empty() {
-                                fs::create_dir_all(parent).ok();
-                            }
-                        }
-                        fs::write(&file_path, &new_content)
-                            .with_context(|| format!("failed to write {}", file_path.display()))?;
-                        current_contents.insert(internal.clone(), new_content);
-
-                        if let Some(dest_path) = move_path {
-                            // Update current external mapping for this internal id to the new external path.
-                            self.internal_to_current_external
-                                .insert(internal.clone(), dest_path.clone());
-                            // Also update forward file_mapping: external current -> internal name.
-                            self.file_mapping.remove(ext_path);
-                            self.file_mapping
-                                .insert(dest_path.clone(), internal.clone());
-                        }
+                            .insert(internal.clone(), dest_path.clone());
+                        // Also update forward file_mapping: external current -> internal name.
+                        self.file_mapping.remove(ext_path);
+                        self.file_mapping
+                            .insert(dest_path.clone(), internal.clone());
                     }
                 }
             }
         }
 
         // Generate unified diff with git and rewrite internal paths to external paths.
-        let raw = run_git_capture(&repo_dir, &["diff", "--no-color", "HEAD"])?;
+        let raw = run_git(&repo_dir, &["diff", "--no-color", baseline_commit])?;
         let rewritten = self.rewrite_diff_paths(&raw);
         self.unified_diff = if rewritten.trim().is_empty() {
             None
         } else {
             Some(rewritten)
         };
+
+        // Record this change set for history after applying.
+        self.changes.push(changes);
+
         Ok(())
     }
 
@@ -212,11 +188,14 @@ impl PatchAccumulator {
         // Initialize git repo.
         run_git(tmp.path(), &["init"])?;
         // Configure identity to allow commits.
-        let _ = run_git(tmp.path(), &["config", "user.email", "codex@example.com"]);
+        let _ = run_git(tmp.path(), &["config", "user.email", "codex@openai.com"]);
         let _ = run_git(tmp.path(), &["config", "user.name", "Codex"]);
         // Create an initial empty commit.
-        run_git(tmp.path(), &["commit", "--allow-empty", "-m", "init"])?;
-        let id = run_git_capture(tmp.path(), &["rev-parse", "HEAD"])?;
+        run_git(
+            tmp.path(),
+            &["commit", "--allow-empty", "-m", "Initial commit"],
+        )?;
+        let id = run_git(tmp.path(), &["rev-parse", "HEAD"])?;
         self.baseline_commit = Some(id.trim().to_string());
         self.temp_git_repo = Some(tmp);
         Ok(())
@@ -282,28 +261,14 @@ impl PatchAccumulator {
 fn uuid_filename_for(path: &Path) -> String {
     let id = Uuid::new_v4().to_string();
     match path.extension().and_then(|e| e.to_str()) {
-        Some(ext) if !ext.is_empty() => format!("{}.{}", id, ext),
+        Some(ext) if !ext.is_empty() => format!("{id}.{ext}"),
         _ => id,
     }
 }
 
-fn run_git(repo: &Path, args: &[&str]) -> Result<()> {
-    let status = Command::new("git")
-        .arg("-C")
-        .arg(repo)
-        .args(args)
-        .status()
-        .with_context(|| format!("failed to run git {args:?} in {}", repo.display()))?;
-    if !status.success() {
-        anyhow::bail!("git {args:?} failed with status {:?}", status);
-    }
-    Ok(())
-}
-
-fn run_git_capture(repo: &Path, args: &[&str]) -> Result<String> {
+fn run_git(repo: &Path, args: &[&str]) -> Result<String> {
     let output = Command::new("git")
-        .arg("-C")
-        .arg(repo)
+        .current_dir(repo)
         .args(args)
         .output()
         .with_context(|| format!("failed to run git {args:?} in {}", repo.display()))?;
