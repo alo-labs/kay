@@ -402,6 +402,7 @@ impl EventProcessor for EventProcessorWithHumanOutput {
                 stdout,
                 stderr,
                 success,
+                ..
             }) => {
                 let patch_begin = self.call_id_to_patch.remove(&call_id);
 

@@ -237,6 +237,7 @@ pub(crate) async fn apply_patch(
                 stdout: String::from_utf8_lossy(&stdout).to_string(),
                 stderr: String::from_utf8_lossy(&stderr).to_string(),
                 success: success_flag,
+                changes: convert_apply_patch_to_protocol(&action),
             }),
         })
         .await;
