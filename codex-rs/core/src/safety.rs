@@ -128,8 +128,11 @@ pub(crate) fn assess_safety_for_untrusted_command(
             if with_escalated_privileges {
                 SafetyCheck::AskUser
             } else {
-                SafetyCheck::AutoApprove {
-                    sandbox_type: get_platform_sandbox().unwrap_or(SandboxType::None),
+                match get_platform_sandbox() {
+                    Some(sandbox_type) => SafetyCheck::AutoApprove { sandbox_type },
+                    // Fall back to asking since the command is untrusted and
+                    // we do not have a sandbox available
+                    None => SafetyCheck::AskUser,
                 }
             }
         }
