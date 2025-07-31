@@ -247,7 +247,7 @@ pub(crate) async fn apply_patch(
         })
         .await;
 
-    let _ = patch_accumulator.on_patch_end(convert_apply_patch_to_protocol(&action));
+    let _ = patch_accumulator.update_unified_diff();
 
     if let Some(unified_diff) = &patch_accumulator.unified_diff {
         let _ = sess
