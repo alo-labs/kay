@@ -59,6 +59,7 @@ use crate::models::ReasoningItemReasoningSummary;
 use crate::models::ResponseInputItem;
 use crate::models::ResponseItem;
 use crate::models::ShellToolCallParams;
+use crate::patch_accumulator::PatchAccumulator;
 use crate::plan_tool::handle_update_plan;
 use crate::project_doc::get_user_instructions;
 use crate::protocol::AgentMessageDeltaEvent;
@@ -1074,10 +1075,11 @@ async fn run_turn(
         extra_tools,
         base_instructions_override: sess.base_instructions.clone(),
     };
+    let mut patch_accumulator = PatchAccumulator::new();
 
     let mut retries = 0;
     loop {
-        match try_run_turn(sess, &sub_id, &prompt).await {
+        match try_run_turn(sess, &sub_id, &prompt, &mut patch_accumulator).await {
             Ok(output) => return Ok(output),
             Err(CodexErr::Interrupted) => return Err(CodexErr::Interrupted),
             Err(CodexErr::EnvVar(var)) => return Err(CodexErr::EnvVar(var)),
@@ -1125,6 +1127,7 @@ async fn try_run_turn(
     sess: &Session,
     sub_id: &str,
     prompt: &Prompt,
+    patch_accumulator: &mut PatchAccumulator,
 ) -> CodexResult<Vec<ProcessedResponseItem>> {
     // call_ids that are part of this response.
     let completed_call_ids = prompt
@@ -1210,7 +1213,8 @@ async fn try_run_turn(
         match event {
             ResponseEvent::Created => {}
             ResponseEvent::OutputItemDone(item) => {
-                let response = handle_response_item(sess, sub_id, item.clone()).await?;
+                let response =
+                    handle_response_item(sess, patch_accumulator, sub_id, item.clone()).await?;
 
                 output.push(ProcessedResponseItem { item, response });
             }
@@ -1250,6 +1254,7 @@ async fn try_run_turn(
 
 async fn handle_response_item(
     sess: &Session,
+    patch_accumulator: &mut PatchAccumulator,
     sub_id: &str,
     item: ResponseItem,
 ) -> CodexResult<Option<ResponseInputItem>> {
@@ -1287,7 +1292,17 @@ async fn handle_response_item(
             ..
         } => {
             info!("FunctionCall: {arguments}");
-            Some(handle_function_call(sess, sub_id.to_string(), name, arguments, call_id).await)
+            Some(
+                handle_function_call(
+                    sess,
+                    patch_accumulator,
+                    sub_id.to_string(),
+                    name,
+                    arguments,
+                    call_id,
+                )
+                .await,
+            )
         }
         ResponseItem::LocalShellCall {
             id,
@@ -1322,6 +1337,7 @@ async fn handle_response_item(
                 handle_container_exec_with_params(
                     exec_params,
                     sess,
+                    patch_accumulator,
                     sub_id.to_string(),
                     effective_call_id,
                 )
@@ -1339,6 +1355,7 @@ async fn handle_response_item(
 
 async fn handle_function_call(
     sess: &Session,
+    patch_accumulator: &mut PatchAccumulator,
     sub_id: String,
     name: String,
     arguments: String,
@@ -1352,7 +1369,8 @@ async fn handle_function_call(
                     return *output;
                 }
             };
-            handle_container_exec_with_params(params, sess, sub_id, call_id).await
+            handle_container_exec_with_params(params, sess, patch_accumulator, sub_id, call_id)
+                .await
         }
         "update_plan" => handle_update_plan(sess, arguments, sub_id, call_id).await,
         _ => {
@@ -1426,6 +1444,7 @@ fn maybe_run_with_user_profile(params: ExecParams, sess: &Session) -> ExecParams
 async fn handle_container_exec_with_params(
     params: ExecParams,
     sess: &Session,
+    patch_accumulator: &mut PatchAccumulator,
     sub_id: String,
     call_id: String,
 ) -> ResponseInputItem {
@@ -1433,7 +1452,9 @@ async fn handle_container_exec_with_params(
     let apply_patch_action_for_exec =
         match maybe_parse_apply_patch_verified(&params.command, &params.cwd) {
             MaybeApplyPatchVerified::Body(changes) => {
-                match apply_patch::apply_patch(sess, &sub_id, &call_id, changes).await {
+                match apply_patch::apply_patch(sess, patch_accumulator, &sub_id, &call_id, changes)
+                    .await
+                {
                     InternalApplyPatchInvocation::Output(item) => return item,
                     InternalApplyPatchInvocation::DelegateToExec(action) => Some(action),
                 }

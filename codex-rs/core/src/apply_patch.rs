@@ -1,12 +1,14 @@
 use crate::codex::Session;
 use crate::models::FunctionCallOutputPayload;
 use crate::models::ResponseInputItem;
+use crate::patch_accumulator::PatchAccumulator;
 use crate::protocol::Event;
 use crate::protocol::EventMsg;
 use crate::protocol::FileChange;
 use crate::protocol::PatchApplyBeginEvent;
 use crate::protocol::PatchApplyEndEvent;
 use crate::protocol::ReviewDecision;
+use crate::protocol::TurnDiffEvent;
 use crate::safety::SafetyCheck;
 use crate::safety::assess_patch_safety;
 use anyhow::Context;
@@ -42,6 +44,7 @@ impl From<ResponseInputItem> for InternalApplyPatchInvocation {
 
 pub(crate) async fn apply_patch(
     sess: &Session,
+    patch_accumulator: &mut PatchAccumulator,
     sub_id: &str,
     call_id: &str,
     action: ApplyPatchAction,
@@ -148,6 +151,8 @@ pub(crate) async fn apply_patch(
         })
         .await;
 
+    let _ = patch_accumulator.on_patch_begin(&convert_apply_patch_to_protocol(&action));
+
     let mut stdout = Vec::new();
     let mut stderr = Vec::new();
     // Enforce writable roots. If a write is blocked, collect offending root
@@ -241,6 +246,20 @@ pub(crate) async fn apply_patch(
             }),
         })
         .await;
+
+    let _ = patch_accumulator.on_patch_end(convert_apply_patch_to_protocol(&action));
+
+    if let Some(unified_diff) = &patch_accumulator.unified_diff {
+        let _ = sess
+            .tx_event
+            .send(Event {
+                id: sub_id.to_owned(),
+                msg: EventMsg::TurnDiff(TurnDiffEvent {
+                    unified_diff: unified_diff.clone(),
+                }),
+            })
+            .await;
+    }
 
     let item = match result {
         Ok(_) => ResponseInputItem::FunctionCallOutput {

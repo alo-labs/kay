@@ -6,7 +6,6 @@ use std::process::Command;
 
 use anyhow::Context;
 use anyhow::Result;
-use anyhow::bail;
 use tempfile::TempDir;
 use uuid::Uuid;
 
@@ -24,8 +23,8 @@ pub struct PatchAccumulator {
     /// Internal filename -> external path as of baseline commit.
     internal_to_baseline_external: HashMap<String, PathBuf>,
     /// Internal filename -> external path as of current accumulated state (after applying all changes).
+    /// This is where renames are tracked.
     internal_to_current_external: HashMap<String, PathBuf>,
-    /// All change sets in the order they occurred.
     changes: Vec<HashMap<PathBuf, FileChange>>,
     /// Aggregated unified diff for all accumulated changes across files.
     pub unified_diff: Option<String>,
@@ -36,7 +35,7 @@ impl PatchAccumulator {
         Self::default()
     }
 
-    /// Ensure we have an initialized repository and a baseline snapshot of any new files.
+    /// Front-run apply patch calls to track the starting contents of any modified files.
     pub fn on_patch_begin(&mut self, changes: &HashMap<PathBuf, FileChange>) -> Result<()> {
         self.ensure_repo_init()?;
         let repo_dir = self.repo_dir()?.to_path_buf();
@@ -60,6 +59,7 @@ impl PatchAccumulator {
                     fs::write(&internal_path, contents).with_context(|| {
                         format!("failed to write baseline file {}", internal_path.display())
                     })?;
+                    // Stage the starting contents of the file to be included in the baseline snapshot.
                     run_git(&repo_dir, &["add", &internal])?;
                     staged_new_baseline = true;
                 }
@@ -67,6 +67,7 @@ impl PatchAccumulator {
         }
 
         // If new baseline files were staged, commit them and update the baseline commit id.
+        // Only the original file contents are staged so the baseline will always contain only the starting contents of each file.
         if staged_new_baseline {
             run_git(&repo_dir, &["commit", "-m", "Baseline snapshot"])?;
             let id = run_git(&repo_dir, &["rev-parse", "HEAD"])?;

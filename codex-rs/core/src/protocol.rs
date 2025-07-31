@@ -334,6 +334,8 @@ pub enum EventMsg {
     /// Notification that a patch application has finished.
     PatchApplyEnd(PatchApplyEndEvent),
 
+    TurnDiff(TurnDiffEvent),
+
     /// Response to GetHistoryEntryRequest.
     GetHistoryEntryResponse(GetHistoryEntryResponseEvent),
 
@@ -525,6 +527,11 @@ pub struct PatchApplyEndEvent {
     pub success: bool,
     /// The changes that were applied.
     pub changes: HashMap<PathBuf, FileChange>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct TurnDiffEvent {
+    pub unified_diff: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
