@@ -169,9 +169,9 @@ fn create_shell_tool_for_sandbox(sandbox_policy: SandboxPolicy) -> OpenAiTool {
         } => {
             format!(
                 r#"
-The exec_command tool is used to execute shell commands.
+The shell tool is used to execute shell commands.
 
-- When invoking the exec_command tool, your call will be running in a landlock sandbox, and some shell commands will require escalated privileges:
+- When invoking the shell tool, your call will be running in a landlock sandbox, and some shell commands will require escalated privileges:
   - Types of actions that require escalated privileges:
     - Reading files outside the current directory
     - Writing files outside the current directory, and protected folders like .git or .env{}
@@ -195,7 +195,7 @@ The exec_command tool is used to execute shell commands.
     };
 
     OpenAiTool::Function(ResponsesApiTool {
-        name: "exec_command",
+        name: "shell",
         description,
         strict: false,
         parameters: JsonSchema::Object {
