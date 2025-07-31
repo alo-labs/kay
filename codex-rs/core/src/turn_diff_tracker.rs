@@ -195,7 +195,7 @@ impl TurnDiffTracker {
             Some(aggregated)
         };
 
-        // Clean up the curent dir.
+        // Clean up the current dir.
         let _ = fs::remove_dir_all(&current_dir);
 
         Ok(self.unified_diff.clone())
