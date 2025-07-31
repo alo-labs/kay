@@ -5,11 +5,11 @@ use codex_core::Codex;
 use codex_core::CodexSpawnOk;
 use codex_core::ModelProviderInfo;
 use codex_core::built_in_model_providers;
-use codex_core::exec::CODEX_SANDBOX_NETWORK_DISABLED_ENV_VAR;
 use codex_core::protocol::EventMsg;
 use codex_core::protocol::InputItem;
 use codex_core::protocol::Op;
 use codex_core::protocol::SessionConfiguredEvent;
+use codex_core::spawn::CODEX_SANDBOX_NETWORK_DISABLED_ENV_VAR;
 use codex_login::AuthDotJson;
 use codex_login::AuthMode;
 use codex_login::CodexAuth;
@@ -327,14 +327,14 @@ fn auth_from_token(id_token: String) -> CodexAuth {
         AuthMode::ChatGPT,
         PathBuf::new(),
         Some(AuthDotJson {
-            tokens: TokenData {
+            openai_api_key: None,
+            tokens: Some(TokenData {
                 id_token,
                 access_token: "Access Token".to_string(),
                 refresh_token: "test".to_string(),
                 account_id: None,
-            },
-            last_refresh: Utc::now(),
-            openai_api_key: None,
+            }),
+            last_refresh: Some(Utc::now()),
         }),
     )
 }
