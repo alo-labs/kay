@@ -190,8 +190,26 @@ The shell tool is used to execute shell commands.
                 }
             )
         }
-        SandboxPolicy::DangerFullAccess => "Runs a shell command, and returns its output.".to_string(),
-        SandboxPolicy::ReadOnly => "Run a shell command, and return its output. This command will be run in a read-only sandbox, and will not have access to the network or the ability to write to the file system.".to_string(),
+        SandboxPolicy::DangerFullAccess => {
+            "Runs a shell command, and returns its output.".to_string()
+        }
+        SandboxPolicy::ReadOnly => {
+            r#"
+The shell tool is used to execute shell commands.
+
+- When invoking the shell tool, your call will be running in a landlock sandbox, and some shell commands will require escalated privileges:
+  - Types of actions that require escalated privileges:
+    - Reading files outside the current directory
+    - Writing files
+  - Examples of commands that require escalated privileges:
+    - git commit
+    - npm install or pnpm install
+    - cargo build
+    - cargo test
+- When invoking a command that will require escalated privileges:
+  - Provide the with_escalated_privileges parameter with the boolean value true
+  - Include a short, 1 sentence explanation for why we need to run with_escalated_privileges."#.to_string()
+        }
     };
 
     OpenAiTool::Function(ResponsesApiTool {
