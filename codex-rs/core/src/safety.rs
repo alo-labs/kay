@@ -11,7 +11,7 @@ use crate::is_safe_command::is_known_safe_command;
 use crate::protocol::AskForApproval;
 use crate::protocol::SandboxPolicy;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum SafetyCheck {
     AutoApprove { sandbox_type: SandboxType },
     AskUser,
@@ -283,5 +283,48 @@ mod tests {
             &[PathBuf::from("..")],
             &cwd,
         ))
+    }
+
+    #[test]
+    fn test_request_escalated_privileges() {
+        // Should not be a trusted command
+        let command = vec!["git commit".to_string()];
+        let approval_policy = AskForApproval::OnRequest;
+        let sandbox_policy = SandboxPolicy::ReadOnly;
+        let approved: HashSet<Vec<String>> = HashSet::new();
+        let request_escalated_privileges = true;
+
+        let safety_check = assess_command_safety(
+            &command,
+            approval_policy,
+            &sandbox_policy,
+            &approved,
+            request_escalated_privileges,
+        );
+
+        assert_eq!(safety_check, SafetyCheck::AskUser);
+    }
+
+    #[test]
+    fn test_request_escalated_privileges_no_sandbox_fallback() {
+        let command = vec!["git commit".to_string()];
+        let approval_policy = AskForApproval::OnRequest;
+        let sandbox_policy = SandboxPolicy::ReadOnly;
+        let approved: HashSet<Vec<String>> = HashSet::new();
+        let request_escalated_privileges = false;
+
+        let safety_check = assess_command_safety(
+            &command,
+            approval_policy,
+            &sandbox_policy,
+            &approved,
+            request_escalated_privileges,
+        );
+
+        let expected = match get_platform_sandbox() {
+            Some(sandbox_type) => SafetyCheck::AutoApprove { sandbox_type },
+            None => SafetyCheck::AskUser,
+        };
+        assert_eq!(safety_check, expected);
     }
 }

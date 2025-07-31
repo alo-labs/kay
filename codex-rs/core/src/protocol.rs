@@ -149,7 +149,9 @@ pub enum AskForApproval {
     /// the user to approve execution without a sandbox.
     OnFailure,
 
-    // Experimental: only request approval for commands when the model requests it.
+    // Experimental: Commands are run inside a sandbox, and the model can
+    // proactively request escalation of privileges. Failures are handled by
+    // the model.
     OnRequest,
 
     /// Never ask the user to approve commands. Failures are immediately returned
