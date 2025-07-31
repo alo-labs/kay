@@ -1,12 +1,8 @@
 use crate::codex::Session;
 use crate::models::FunctionCallOutputPayload;
 use crate::models::ResponseInputItem;
-use crate::patch_accumulator::PatchAccumulator;
-use crate::protocol::Event;
-use crate::protocol::EventMsg;
 use crate::protocol::FileChange;
 use crate::protocol::ReviewDecision;
-use crate::protocol::TurnDiffEvent;
 use crate::safety::SafetyCheck;
 use crate::safety::assess_patch_safety;
 use codex_apply_patch::ApplyPatchAction;
@@ -45,7 +41,6 @@ impl From<ResponseInputItem> for InternalApplyPatchInvocation {
 
 pub(crate) async fn apply_patch(
     sess: &Session,
-    patch_accumulator: &mut PatchAccumulator,
     sub_id: &str,
     call_id: &str,
     action: ApplyPatchAction,

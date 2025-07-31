@@ -34,7 +34,6 @@ pub use model_provider_info::built_in_model_providers;
 mod models;
 mod openai_model_info;
 mod openai_tools;
-pub mod patch_accumulator;
 pub mod plan_tool;
 mod project_doc;
 pub mod protocol;
@@ -43,6 +42,7 @@ mod safety;
 pub mod seatbelt;
 pub mod shell;
 pub mod spawn;
+pub mod turn_diff_tracker;
 mod user_notification;
 pub mod util;
 

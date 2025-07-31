@@ -20,7 +20,7 @@ use crate::protocol::FileChange;
 /// 4. To compute the aggregated unified diff, compare each baseline snapshot to the current file on disk using
 ///    `git diff --no-index` and rewrite paths to external paths.
 #[derive(Default)]
-pub struct PatchAccumulator {
+pub struct TurnDiffTracker {
     /// Temp directory holding baseline snapshots of files as first seen.
     baseline_files_dir: Option<TempDir>,
     /// Map external path -> internal filename (uuid + same extension).
@@ -34,7 +34,7 @@ pub struct PatchAccumulator {
     pub unified_diff: Option<String>,
 }
 
-impl PatchAccumulator {
+impl TurnDiffTracker {
     pub fn new() -> Self {
         Self::default()
     }
@@ -104,7 +104,7 @@ impl PatchAccumulator {
 
     /// Recompute the aggregated unified diff by comparing all baseline snapshots against
     /// current files on disk using `git diff --no-index` and rewriting paths to external paths.
-    pub fn update_unified_diff(&mut self) -> Result<()> {
+    pub fn update_and_get_unified_diff(&mut self) -> Result<Option<String>> {
         let baseline_dir = self.baseline_dir()?.to_path_buf();
         let current_dir = baseline_dir.join("current");
         if current_dir.exists() {
@@ -198,7 +198,7 @@ impl PatchAccumulator {
         // Clean up the curent dir.
         let _ = fs::remove_dir_all(&current_dir);
 
-        Ok(())
+        Ok(self.unified_diff.clone())
     }
 
     fn baseline_dir(&self) -> Result<&Path> {
@@ -352,10 +352,10 @@ mod tests {
 
     #[test]
     fn accumulates_add_and_update() {
+        let mut acc = TurnDiffTracker::new();
+
         let dir = tempdir().unwrap();
         let file = dir.path().join("a.txt");
-
-        let mut acc = PatchAccumulator::new();
 
         // First patch: add file (baseline should be /dev/null).
         let add_changes = HashMap::from([(
@@ -367,8 +367,9 @@ mod tests {
         acc.on_patch_begin(&add_changes).unwrap();
 
         // Simulate apply: create the file on disk.
+        // This must happen after on_patch_begin.
         fs::write(&file, "foo\n").unwrap();
-        acc.update_unified_diff().unwrap();
+        acc.update_and_get_unified_diff().unwrap();
         let first = acc.unified_diff.clone().unwrap();
         assert!(first.contains("+foo"));
         assert!(first.contains("/dev/null") || first.contains("new file"));
@@ -385,7 +386,7 @@ mod tests {
 
         // Simulate apply: append a new line.
         fs::write(&file, "foo\nbar\n").unwrap();
-        acc.update_unified_diff().unwrap();
+        acc.update_and_get_unified_diff().unwrap();
         let combined = acc.unified_diff.clone().unwrap();
         assert!(combined.contains("+bar"));
     }
@@ -396,13 +397,13 @@ mod tests {
         let file = dir.path().join("b.txt");
         fs::write(&file, "x\n").unwrap();
 
-        let mut acc = PatchAccumulator::new();
+        let mut acc = TurnDiffTracker::new();
         let del_changes = HashMap::from([(file.clone(), FileChange::Delete)]);
         acc.on_patch_begin(&del_changes).unwrap();
 
         // Simulate apply: delete the file from disk.
         fs::remove_file(&file).unwrap();
-        acc.update_unified_diff().unwrap();
+        acc.update_and_get_unified_diff().unwrap();
         let diff = acc.unified_diff.clone().unwrap();
         assert!(diff.contains("-x"));
     }
@@ -414,7 +415,7 @@ mod tests {
         let dest = dir.path().join("dst.txt");
         fs::write(&src, "line\n").unwrap();
 
-        let mut acc = PatchAccumulator::new();
+        let mut acc = TurnDiffTracker::new();
         let mv_changes = HashMap::from([(
             src.clone(),
             FileChange::Update {
@@ -428,7 +429,7 @@ mod tests {
         fs::rename(&src, &dest).unwrap();
         fs::write(&dest, "line2\n").unwrap();
 
-        acc.update_unified_diff().unwrap();
+        acc.update_and_get_unified_diff().unwrap();
         let out = acc.unified_diff.clone().unwrap();
         assert!(out.contains("-line"));
         assert!(out.contains("+line2"));
@@ -442,7 +443,7 @@ mod tests {
         fs::write(&a, "foo\n").unwrap();
         fs::write(&b, "z\n").unwrap();
 
-        let mut acc = PatchAccumulator::new();
+        let mut acc = TurnDiffTracker::new();
 
         // First: update existing a.txt (baseline snapshot is created for a).
         let update_a = HashMap::from([(
@@ -455,7 +456,7 @@ mod tests {
         acc.on_patch_begin(&update_a).unwrap();
         // Simulate apply: modify a.txt on disk.
         fs::write(&a, "foo\nbar\n").unwrap();
-        acc.update_unified_diff().unwrap();
+        acc.update_and_get_unified_diff().unwrap();
         let first = acc.unified_diff.clone().unwrap();
         assert!(first.contains("+bar"));
 
@@ -464,7 +465,7 @@ mod tests {
         acc.on_patch_begin(&del_b).unwrap();
         // Simulate apply: delete b.txt.
         fs::remove_file(&b).unwrap();
-        acc.update_unified_diff().unwrap();
+        acc.update_and_get_unified_diff().unwrap();
 
         let combined = acc.unified_diff.clone().unwrap();
         // The combined diff must still include the update to a.txt.

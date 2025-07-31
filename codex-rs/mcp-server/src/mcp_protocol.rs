@@ -247,7 +247,6 @@ pub enum ClientNotification {
 #[allow(clippy::expect_used)]
 #[allow(clippy::unwrap_used)]
 mod tests {
-    use std::collections::HashMap;
     use std::path::PathBuf;
 
     use super::*;
@@ -904,7 +903,6 @@ mod tests {
                 stdout: "ok".into(),
                 stderr: "".into(),
                 success: true,
-                changes: HashMap::new(),
             }),
         };
 
