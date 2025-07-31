@@ -11,7 +11,12 @@ use uuid::Uuid;
 
 use crate::protocol::FileChange;
 
-/// Accumulates multiple change sets and exposes the overall unified diff.
+/// Tracks sets of changes to files and exposes the overall unified diff.
+/// Internally, the way this works is:
+/// 1. Start by creating an empty git repo in a temp directory.
+/// 2. Front-run apply patch calls to add the initial state of any changed/created/deleted files to the temp repo.
+/// 3. Files are added to the temp repo in a flat structure named by a uuid and the same extension and a mapping is created to go back and forth.
+/// 4. A baseline snapshot sha is created and updated any time a new file is added to the repo to ensure that there is a starting state for the diff.
 #[derive(Default)]
 pub struct PatchAccumulator {
     /// Temporary git repository for building accumulated diffs.
@@ -40,7 +45,7 @@ impl PatchAccumulator {
         self.ensure_repo_init()?;
         let repo_dir = self.repo_dir()?.to_path_buf();
 
-        let mut staged_new_baseline = false;
+        let mut baseline_paths: Vec<String> = Vec::new();
         for path in changes.keys() {
             if !self.file_mapping.contains_key(path) {
                 // Assign a stable internal filename for this external path.
@@ -52,6 +57,7 @@ impl PatchAccumulator {
                     .insert(internal.clone(), path.clone());
 
                 // If the file exists on disk, copy its contents into the repo and stage it.
+                // If it doesn't exist, it's a new file and it will get added in on_patch_end.
                 if path.exists() {
                     let contents = fs::read(path)
                         .with_context(|| format!("failed to read original {}", path.display()))?;
@@ -61,15 +67,21 @@ impl PatchAccumulator {
                     })?;
                     // Stage the starting contents of the file to be included in the baseline snapshot.
                     run_git(&repo_dir, &["add", &internal])?;
-                    staged_new_baseline = true;
+                    baseline_paths.push(internal.clone());
                 }
             }
         }
 
         // If new baseline files were staged, commit them and update the baseline commit id.
         // Only the original file contents are staged so the baseline will always contain only the starting contents of each file.
-        if staged_new_baseline {
-            run_git(&repo_dir, &["commit", "-m", "Baseline snapshot"])?;
+        if !baseline_paths.is_empty() {
+            // Commit only the newly staged baseline files to avoid sweeping other staged changes into the baseline.
+            let mut args: Vec<&str> = vec!["commit", "-m", "Baseline snapshot", "--"];
+            let baseline_refs: Vec<String> = baseline_paths;
+            for p in &baseline_refs {
+                args.push(p.as_str());
+            }
+            run_git(&repo_dir, &args)?;
             let id = run_git(&repo_dir, &["rev-parse", "HEAD"])?;
             self.baseline_commit = Some(id.trim().to_string());
         }
@@ -88,7 +100,7 @@ impl PatchAccumulator {
 
         // Apply only the incoming change set to the already-updated working tree.
         for (ext_path, change) in &changes {
-            let internal = match self.file_mapping.get(ext_path) {
+            let uuid_filename = match self.file_mapping.get(ext_path) {
                 Some(i) => i.clone(),
                 None => {
                     // Newly referenced path; create mapping (no baseline tracked -> add shows up as new file).
@@ -104,7 +116,7 @@ impl PatchAccumulator {
             match change {
                 FileChange::Add { content } => {
                     // Create/overwrite internal file with provided content.
-                    let file_path = repo_dir.join(&internal);
+                    let file_path = repo_dir.join(&uuid_filename);
                     if let Some(parent) = file_path.parent() {
                         if !parent.as_os_str().is_empty() {
                             fs::create_dir_all(parent).ok();
@@ -114,12 +126,10 @@ impl PatchAccumulator {
                         .with_context(|| format!("failed to write {}", file_path.display()))?;
                     // Ensure current external path mapping is present
                     self.internal_to_current_external
-                        .insert(internal.clone(), ext_path.clone());
-                    // Stage the new/modified file so it shows up in the diff against HEAD.
-                    run_git(&repo_dir, &["add", &internal])?;
+                        .insert(uuid_filename.clone(), ext_path.clone());
                 }
                 FileChange::Delete => {
-                    let file_path = repo_dir.join(&internal);
+                    let file_path = repo_dir.join(&uuid_filename);
                     if file_path.exists() {
                         let _ = fs::remove_file(&file_path);
                     }
@@ -130,7 +140,7 @@ impl PatchAccumulator {
                     move_path,
                 } => {
                     // Apply unified diff to the current contents of internal file.
-                    let file_path = repo_dir.join(&internal);
+                    let file_path = repo_dir.join(&uuid_filename);
                     let base = fs::read_to_string(&file_path).unwrap_or_default();
                     let new_content =
                         apply_unified_diff(&base, unified_diff).with_context(|| {
@@ -143,24 +153,28 @@ impl PatchAccumulator {
                     }
                     fs::write(&file_path, &new_content)
                         .with_context(|| format!("failed to write {}", file_path.display()))?;
-                    // Stage the updated file so it shows up in the diff against HEAD.
-                    run_git(&repo_dir, &["add", &internal])?;
 
                     if let Some(dest_path) = move_path {
                         // Update current external mapping for this internal id to the new external path.
                         self.internal_to_current_external
-                            .insert(internal.clone(), dest_path.clone());
+                            .insert(uuid_filename.clone(), dest_path.clone());
                         // Also update forward file_mapping: external current -> internal name.
                         self.file_mapping.remove(ext_path);
                         self.file_mapping
-                            .insert(dest_path.clone(), internal.clone());
+                            .insert(dest_path.clone(), uuid_filename.clone());
                     }
                 }
             }
         }
 
         // Generate unified diff with git and rewrite internal paths to external paths.
-        let raw = run_git(&repo_dir, &["diff", "--no-color", baseline_commit])?;
+        // Stage all changes so new files and deletions are included in the diff against the baseline.
+        let _ = run_git(&repo_dir, &["add", "-A"])?;
+        // Diff baseline commit against the index to capture all staged changes.
+        let raw = run_git(
+            &repo_dir,
+            &["diff", "--no-color", "--cached", baseline_commit],
+        )?;
         let rewritten = self.rewrite_diff_paths(&raw);
         self.unified_diff = if rewritten.trim().is_empty() {
             None
@@ -368,7 +382,6 @@ fn apply_unified_diff(base: &str, unified_diff: &str) -> Result<String> {
 mod tests {
     #![allow(clippy::unwrap_used)]
     use super::*;
-    use similar::TextDiff;
     use tempfile::tempdir;
 
     #[test]
@@ -391,13 +404,15 @@ mod tests {
         assert!(first.contains("+foo"));
 
         // Second patch: update
-        let old = "foo\n";
-        let new = "foo\nbar\n";
-        let diff = TextDiff::from_lines(old, new).unified_diff().to_string();
         let update_changes = HashMap::from([(
             file.clone(),
             FileChange::Update {
-                unified_diff: diff,
+                unified_diff: r#"--- 
++++ 
+@@ -1,1 +1,2 @@
+ foo
++bar"#
+                    .to_owned(),
                 move_path: None,
             },
         )]);
@@ -428,15 +443,16 @@ mod tests {
         let dest = dir.path().join("dst.txt");
         fs::write(&src, "line\n").unwrap();
 
-        let old = "line\n";
-        let new = "line2\n";
-        let diff = TextDiff::from_lines(old, new).unified_diff().to_string();
-
         let mut acc = PatchAccumulator::new();
         let mv_changes = HashMap::from([(
             src.clone(),
             FileChange::Update {
-                unified_diff: diff,
+                unified_diff: r#"--- 
+++++ 
+@@ -1,1 +1,2 @@
+-line
++line2"#
+                    .to_owned(),
                 move_path: Some(dest.clone()),
             },
         )]);
@@ -445,5 +461,45 @@ mod tests {
         let out = acc.unified_diff.clone().unwrap();
         assert!(out.contains("-line"));
         assert!(out.contains("+line2"));
+    }
+
+    #[test]
+    fn update_persists_across_new_baseline_for_new_file() {
+        let dir = tempdir().unwrap();
+        let a = dir.path().join("a.txt");
+        let b = dir.path().join("b.txt");
+        fs::write(&a, "foo\n").unwrap();
+        fs::write(&b, "z\n").unwrap();
+
+        let mut acc = PatchAccumulator::new();
+
+        // First: update existing a.txt (stages the update in index)
+        let update_a = HashMap::from([(
+            a.clone(),
+            FileChange::Update {
+                unified_diff: r#"--- 
++++ 
+@@ -1,1 +1,2 @@
+ foo
++bar"#
+                    .to_owned(),
+                move_path: None,
+            },
+        )]);
+        acc.on_patch_begin(&update_a).unwrap();
+        acc.on_patch_end(update_a).unwrap();
+        let first = acc.unified_diff.clone().unwrap();
+        assert!(first.contains("+bar"));
+
+        // Next: introduce a brand-new path b.txt that exists on disk to trigger a new baseline commit.
+        let del_b = HashMap::from([(b.clone(), FileChange::Delete)]);
+        acc.on_patch_begin(&del_b).unwrap();
+        acc.on_patch_end(del_b).unwrap();
+
+        let combined = acc.unified_diff.clone().unwrap();
+        // The combined diff must still include the update to a.txt, even after committing a new baseline for b.txt.
+        assert!(combined.contains("+bar"));
+        // And also reflect the deletion of b.txt.
+        assert!(combined.contains("-z"));
     }
 }
