@@ -268,3 +268,50 @@ fn mcp_tool_to_openai_tool(
         "type": "function",
     })
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used)]
+
+    use super::*;
+
+    #[test]
+    fn test_create_tools_json_for_responses_api() {
+        let prompt = Prompt {
+            ..Default::default()
+        };
+        let model = "gpt-4o-mini";
+        let include_plan_tool = true;
+        let sandbox_policy = None;
+
+        let tools_json =
+            create_tools_json_for_responses_api(&prompt, model, include_plan_tool, sandbox_policy)
+                .unwrap();
+        assert_eq!(tools_json[0]["name"], "shell");
+        let properties = tools_json[0]["parameters"]["properties"]
+            .as_object()
+            .unwrap();
+        assert!(!properties.contains_key("with_escalated_privileges"));
+        assert!(!properties.contains_key("justification"));
+    }
+
+    #[test]
+    fn test_create_tools_json_for_responses_api_with_sandbox() {
+        let prompt = Prompt {
+            ..Default::default()
+        };
+        let model = "codex-mini-latest";
+        let include_plan_tool = true;
+        let sandbox_policy = Some(SandboxPolicy::ReadOnly);
+
+        let tools_json =
+            create_tools_json_for_responses_api(&prompt, model, include_plan_tool, sandbox_policy)
+                .unwrap();
+        assert_eq!(tools_json[0]["name"], "shell");
+        let properties = tools_json[0]["parameters"]["properties"]
+            .as_object()
+            .unwrap();
+        assert!(properties.contains_key("with_escalated_privileges"));
+        assert!(properties.contains_key("justification"));
+    }
+}
