@@ -206,7 +206,7 @@ pub(crate) struct Session {
     base_instructions: Option<String>,
     user_instructions: Option<String>,
     pub(crate) approval_policy: AskForApproval,
-    sandbox_policy: SandboxPolicy,
+    pub(crate) sandbox_policy: SandboxPolicy,
     shell_environment_policy: ShellEnvironmentPolicy,
     pub(crate) writable_roots: Mutex<Vec<PathBuf>>,
     disable_response_storage: bool,
@@ -1276,7 +1276,13 @@ async fn try_run_turn(
         })
     };
 
-    let mut stream = sess.client.clone().stream(&prompt).await?;
+    // only provide the sandbox policy if the approval policy is OnRequest
+    let sandbox_policy = if sess.approval_policy == AskForApproval::OnRequest {
+        Some(sess.sandbox_policy.clone())
+    } else {
+        None
+    };
+    let mut stream = sess.client.clone().stream(&prompt, sandbox_policy).await?;
 
     let mut output = Vec::new();
     loop {
@@ -1477,6 +1483,8 @@ async fn handle_response_item(
                 command: action.command,
                 workdir: action.working_directory,
                 timeout_ms: action.timeout_ms,
+                with_escalated_privileges: None,
+                justification: None,
             };
             let effective_call_id = match (call_id, id) {
                 (Some(call_id), _) => call_id,
@@ -1562,6 +1570,8 @@ fn to_exec_params(params: ShellToolCallParams, sess: &Session) -> ExecParams {
         cwd: sess.resolve_path(params.workdir.clone()),
         timeout_ms: params.timeout_ms,
         env: create_env(&sess.shell_environment_policy),
+        with_escalated_privileges: params.with_escalated_privileges,
+        justification: params.justification,
     }
 }
 
@@ -1661,13 +1671,19 @@ async fn handle_container_exec_with_params(
                 cwd: cwd.clone(),
                 timeout_ms: params.timeout_ms,
                 env: HashMap::new(),
+                with_escalated_privileges: None,
+                justification: None,
             };
             let safety = if *user_explicitly_approved_this_action {
                 SafetyCheck::AutoApprove {
                     sandbox_type: SandboxType::None,
                 }
             } else {
-                assess_safety_for_untrusted_command(sess.approval_policy, &sess.sandbox_policy)
+                assess_safety_for_untrusted_command(
+                    sess.approval_policy,
+                    &sess.sandbox_policy,
+                    params.with_escalated_privileges.unwrap_or(false),
+                )
             };
             (
                 params,
@@ -1683,6 +1699,7 @@ async fn handle_container_exec_with_params(
                     sess.approval_policy,
                     &sess.sandbox_policy,
                     &state.approved_commands,
+                    params.with_escalated_privileges.unwrap_or(false),
                 )
             };
             let command_for_display = params.command.clone();
@@ -1699,7 +1716,7 @@ async fn handle_container_exec_with_params(
                     call_id.clone(),
                     params.command.clone(),
                     params.cwd.clone(),
-                    None,
+                    params.justification.clone(),
                 )
                 .await;
             match rx_approve.await.unwrap_or_default() {

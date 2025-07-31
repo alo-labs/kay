@@ -31,7 +31,7 @@ pub fn assess_patch_safety(
     }
 
     match policy {
-        AskForApproval::OnFailure | AskForApproval::Never => {
+        AskForApproval::OnFailure | AskForApproval::Never | AskForApproval::OnRequest => {
             // Continue to see if this can be auto-approved.
         }
         // TODO(ragona): I'm not sure this is actually correct? I believe in this case
@@ -76,6 +76,7 @@ pub fn assess_command_safety(
     approval_policy: AskForApproval,
     sandbox_policy: &SandboxPolicy,
     approved: &HashSet<Vec<String>>,
+    request_escalated_privileges: bool,
 ) -> SafetyCheck {
     // A command is "trusted" because either:
     // - it belongs to a set of commands we consider "safe" by default, or
@@ -96,12 +97,17 @@ pub fn assess_command_safety(
         };
     }
 
-    assess_safety_for_untrusted_command(approval_policy, sandbox_policy)
+    assess_safety_for_untrusted_command(
+        approval_policy,
+        sandbox_policy,
+        request_escalated_privileges,
+    )
 }
 
 pub(crate) fn assess_safety_for_untrusted_command(
     approval_policy: AskForApproval,
     sandbox_policy: &SandboxPolicy,
+    with_escalated_privileges: bool,
 ) -> SafetyCheck {
     use AskForApproval::*;
     use SandboxPolicy::*;
@@ -113,9 +119,20 @@ pub(crate) fn assess_safety_for_untrusted_command(
             // commands.
             SafetyCheck::AskUser
         }
-        (OnFailure, DangerFullAccess) | (Never, DangerFullAccess) => SafetyCheck::AutoApprove {
+        (OnFailure, DangerFullAccess)
+        | (Never, DangerFullAccess)
+        | (OnRequest, DangerFullAccess) => SafetyCheck::AutoApprove {
             sandbox_type: SandboxType::None,
         },
+        (OnRequest, ReadOnly) | (OnRequest, WorkspaceWrite { .. }) => {
+            if with_escalated_privileges {
+                SafetyCheck::AskUser
+            } else {
+                SafetyCheck::AutoApprove {
+                    sandbox_type: get_platform_sandbox().unwrap_or(SandboxType::None),
+                }
+            }
+        }
         (Never, ReadOnly)
         | (Never, WorkspaceWrite { .. })
         | (OnFailure, ReadOnly)
