@@ -64,14 +64,11 @@ impl TurnDiffTracker {
             }
 
             // Track rename/move in current mapping if provided in an Update.
-            let move_path = match change {
-                FileChange::Update {
-                    move_path: Some(dest),
-                    ..
-                } => Some(dest),
-                _ => None,
-            };
-            if let Some(dest) = move_path {
+            if let FileChange::Update {
+                move_path: Some(dest),
+                ..
+            } = change
+            {
                 let uuid_filename = match self.external_to_temp_name.get(path) {
                     Some(i) => i.clone(),
                     None => {
@@ -92,28 +89,58 @@ impl TurnDiffTracker {
                 self.external_to_temp_name.remove(path);
                 self.external_to_temp_name
                     .insert(dest.clone(), uuid_filename);
-            }
+            };
         }
 
         Ok(())
     }
 
-    /// Recompute the aggregated unified diff by comparing all baseline snapshots against
-    /// current files on disk using the `similar` crate and rewriting paths to external paths.
-    pub fn update_and_get_unified_diff(&mut self) -> Result<Option<String>> {
+    fn get_path_for_internal(&self, internal: &str) -> Option<PathBuf> {
+        self.temp_name_to_current_external
+            .get(internal)
+            .or_else(|| self.temp_name_to_baseline_external.get(internal))
+            .cloned()
+    }
+
+    /// Recompute the aggregated unified diff by comparing all of the in-memory snapshots that were
+    /// collected before the first time they were touched by apply_patch during this turn with
+    /// the current repo state.
+    pub fn get_unified_diff(&mut self) -> Result<Option<String>> {
         let mut aggregated = String::new();
 
-        // Compute diffs per tracked internal file.
-        for (internal, baseline_external) in &self.temp_name_to_baseline_external {
-            let current_external = self
-                .temp_name_to_current_external
-                .get(internal)
-                .cloned()
-                .unwrap_or_else(|| baseline_external.clone());
+        // Compute diffs per tracked internal file in a stable order by external path.
+        let mut internals: Vec<String> = self
+            .temp_name_to_baseline_external
+            .keys()
+            .cloned()
+            .collect();
+        // Sort lexicographically by external path to match git behavior.
+        internals.sort_by_key(|a| {
+            let path = self.get_path_for_internal(a);
+            match path {
+                Some(p) => p
+                    .file_name()
+                    .and_then(|s| s.to_str())
+                    .map(|s| s.to_owned())
+                    .unwrap_or_default(),
+                None => String::new(),
+            }
+        });
+
+        for internal in internals {
+            // Baseline external must exist for any tracked internal.
+            let baseline_external = match self.temp_name_to_baseline_external.get(&internal) {
+                Some(p) => p.clone(),
+                None => continue,
+            };
+            let current_external = match self.get_path_for_internal(&internal) {
+                Some(p) => p,
+                None => continue,
+            };
 
             let left_content = self
                 .baseline_contents
-                .get(internal)
+                .get(&internal)
                 .cloned()
                 .unwrap_or(None);
 
@@ -190,7 +217,35 @@ fn uuid_filename_for(path: &Path) -> String {
 mod tests {
     #![allow(clippy::unwrap_used)]
     use super::*;
+    use pretty_assertions::assert_eq;
     use tempfile::tempdir;
+
+    fn normalize_diff_for_test(input: &str, root: &Path) -> String {
+        let root_str = root.display().to_string();
+        let replaced = input.replace(&root_str, "<TMP>");
+        // Split into blocks on lines starting with "diff --git ", sort blocks for determinism, and rejoin
+        let mut blocks: Vec<String> = Vec::new();
+        let mut current = String::new();
+        for line in replaced.lines() {
+            if line.starts_with("diff --git ") && !current.is_empty() {
+                blocks.push(current);
+                current = String::new();
+            }
+            if !current.is_empty() {
+                current.push('\n');
+            }
+            current.push_str(line);
+        }
+        if !current.is_empty() {
+            blocks.push(current);
+        }
+        blocks.sort();
+        let mut out = blocks.join("\n");
+        if !out.ends_with('\n') {
+            out.push('\n');
+        }
+        out
+    }
 
     #[test]
     fn accumulates_add_and_update() {
@@ -209,12 +264,17 @@ mod tests {
         acc.on_patch_begin(&add_changes).unwrap();
 
         // Simulate apply: create the file on disk.
-        // This must happen after on_patch_begin.
         fs::write(&file, "foo\n").unwrap();
-        acc.update_and_get_unified_diff().unwrap();
+        acc.get_unified_diff().unwrap();
         let first = acc.unified_diff.clone().unwrap();
-        assert!(first.contains("+foo"));
-        assert!(first.contains("/dev/null") || first.contains("new file"));
+        let first = normalize_diff_for_test(&first, dir.path());
+        let expected_first = r#"diff --git a/<TMP>/a.txt b/<TMP>/a.txt
+--- /dev/null
++++ b/<TMP>/a.txt
+@@ -0,0 +1 @@
++foo
+"#;
+        assert_eq!(first, expected_first);
 
         // Second patch: update the file on disk.
         let update_changes = HashMap::from([(
@@ -228,9 +288,17 @@ mod tests {
 
         // Simulate apply: append a new line.
         fs::write(&file, "foo\nbar\n").unwrap();
-        acc.update_and_get_unified_diff().unwrap();
+        acc.get_unified_diff().unwrap();
         let combined = acc.unified_diff.clone().unwrap();
-        assert!(combined.contains("+bar"));
+        let combined = normalize_diff_for_test(&combined, dir.path());
+        let expected_combined = r#"diff --git a/<TMP>/a.txt b/<TMP>/a.txt
+--- /dev/null
++++ b/<TMP>/a.txt
+@@ -0,0 +1,2 @@
++foo
++bar
+"#;
+        assert_eq!(combined, expected_combined);
     }
 
     #[test]
@@ -245,9 +313,16 @@ mod tests {
 
         // Simulate apply: delete the file from disk.
         fs::remove_file(&file).unwrap();
-        acc.update_and_get_unified_diff().unwrap();
+        acc.get_unified_diff().unwrap();
         let diff = acc.unified_diff.clone().unwrap();
-        assert!(diff.contains("-x"));
+        let diff = normalize_diff_for_test(&diff, dir.path());
+        let expected = r#"diff --git a/<TMP>/b.txt b/<TMP>/b.txt
+--- a/<TMP>/b.txt
++++ /dev/null
+@@ -1 +0,0 @@
+-x
+"#;
+        assert_eq!(diff, expected);
     }
 
     #[test]
@@ -271,10 +346,17 @@ mod tests {
         fs::rename(&src, &dest).unwrap();
         fs::write(&dest, "line2\n").unwrap();
 
-        acc.update_and_get_unified_diff().unwrap();
+        acc.get_unified_diff().unwrap();
         let out = acc.unified_diff.clone().unwrap();
-        assert!(out.contains("-line"));
-        assert!(out.contains("+line2"));
+        let out = normalize_diff_for_test(&out, dir.path());
+        let expected = r#"diff --git a/<TMP>/src.txt b/<TMP>/dst.txt
+--- a/<TMP>/src.txt
++++ b/<TMP>/dst.txt
+@@ -1 +1 @@
+-line
++line2
+"#;
+        assert_eq!(out, expected);
     }
 
     #[test]
@@ -298,21 +380,39 @@ mod tests {
         acc.on_patch_begin(&update_a).unwrap();
         // Simulate apply: modify a.txt on disk.
         fs::write(&a, "foo\nbar\n").unwrap();
-        acc.update_and_get_unified_diff().unwrap();
+        acc.get_unified_diff().unwrap();
         let first = acc.unified_diff.clone().unwrap();
-        assert!(first.contains("+bar"));
+        let first = normalize_diff_for_test(&first, dir.path());
+        let expected_first = r#"diff --git a/<TMP>/a.txt b/<TMP>/a.txt
+--- a/<TMP>/a.txt
++++ b/<TMP>/a.txt
+@@ -1 +1,2 @@
+ foo
++bar
+"#;
+        assert_eq!(first, expected_first);
 
         // Next: introduce a brand-new path b.txt into baseline snapshots via a delete change.
         let del_b = HashMap::from([(b.clone(), FileChange::Delete)]);
         acc.on_patch_begin(&del_b).unwrap();
         // Simulate apply: delete b.txt.
         fs::remove_file(&b).unwrap();
-        acc.update_and_get_unified_diff().unwrap();
+        acc.get_unified_diff().unwrap();
 
         let combined = acc.unified_diff.clone().unwrap();
-        // The combined diff must still include the update to a.txt.
-        assert!(combined.contains("+bar"));
-        // And also reflect the deletion of b.txt.
-        assert!(combined.contains("-z"));
+        let combined = normalize_diff_for_test(&combined, dir.path());
+        let expected = r#"diff --git a/<TMP>/a.txt b/<TMP>/a.txt
+--- a/<TMP>/a.txt
++++ b/<TMP>/a.txt
+@@ -1 +1,2 @@
+ foo
++bar
+diff --git a/<TMP>/b.txt b/<TMP>/b.txt
+--- a/<TMP>/b.txt
++++ /dev/null
+@@ -1 +0,0 @@
+-z
+"#;
+        assert_eq!(combined, expected);
     }
 }

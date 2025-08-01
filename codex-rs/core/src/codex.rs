@@ -443,7 +443,7 @@ impl Session {
         // If this is an apply_patch, after we emit the end patch, emit a second event
         // with the full turn diff if there is one.
         if is_apply_patch {
-            let unified_diff = turn_diff_tracker.update_and_get_unified_diff();
+            let unified_diff = turn_diff_tracker.get_unified_diff();
             if let Ok(Some(unified_diff)) = unified_diff {
                 let msg = EventMsg::TurnDiff(TurnDiffEvent { unified_diff });
                 let event = Event {
@@ -1306,7 +1306,7 @@ async fn try_run_turn(
                         .ok();
                 }
 
-                let unified_diff = turn_diff_tracker.update_and_get_unified_diff();
+                let unified_diff = turn_diff_tracker.get_unified_diff();
                 if let Ok(Some(unified_diff)) = unified_diff {
                     let msg = EventMsg::TurnDiff(TurnDiffEvent { unified_diff });
                     let event = Event {
