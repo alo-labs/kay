@@ -107,7 +107,7 @@ pub fn assess_command_safety(
 pub(crate) fn assess_safety_for_untrusted_command(
     approval_policy: AskForApproval,
     sandbox_policy: &SandboxPolicy,
-    with_escalated_privileges: bool,
+    with_escalated_permissions: bool,
 ) -> SafetyCheck {
     use AskForApproval::*;
     use SandboxPolicy::*;
@@ -125,7 +125,7 @@ pub(crate) fn assess_safety_for_untrusted_command(
             sandbox_type: SandboxType::None,
         },
         (OnRequest, ReadOnly) | (OnRequest, WorkspaceWrite { .. }) => {
-            if with_escalated_privileges {
+            if with_escalated_permissions {
                 SafetyCheck::AskUser
             } else {
                 match get_platform_sandbox() {

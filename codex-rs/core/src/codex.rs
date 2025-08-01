@@ -1483,7 +1483,7 @@ async fn handle_response_item(
                 command: action.command,
                 workdir: action.working_directory,
                 timeout_ms: action.timeout_ms,
-                with_escalated_privileges: None,
+                with_escalated_permissions: None,
                 justification: None,
             };
             let effective_call_id = match (call_id, id) {
@@ -1570,7 +1570,7 @@ fn to_exec_params(params: ShellToolCallParams, sess: &Session) -> ExecParams {
         cwd: sess.resolve_path(params.workdir.clone()),
         timeout_ms: params.timeout_ms,
         env: create_env(&sess.shell_environment_policy),
-        with_escalated_privileges: params.with_escalated_privileges,
+        with_escalated_permissions: params.with_escalated_permissions,
         justification: params.justification,
     }
 }
@@ -1671,7 +1671,7 @@ async fn handle_container_exec_with_params(
                 cwd: cwd.clone(),
                 timeout_ms: params.timeout_ms,
                 env: HashMap::new(),
-                with_escalated_privileges: None,
+                with_escalated_permissions: None,
                 justification: None,
             };
             let safety = if *user_explicitly_approved_this_action {
@@ -1682,7 +1682,7 @@ async fn handle_container_exec_with_params(
                 assess_safety_for_untrusted_command(
                     sess.approval_policy,
                     &sess.sandbox_policy,
-                    params.with_escalated_privileges.unwrap_or(false),
+                    params.with_escalated_permissions.unwrap_or(false),
                 )
             };
             (
@@ -1699,7 +1699,7 @@ async fn handle_container_exec_with_params(
                     sess.approval_policy,
                     &sess.sandbox_policy,
                     &state.approved_commands,
-                    params.with_escalated_privileges.unwrap_or(false),
+                    params.with_escalated_permissions.unwrap_or(false),
                 )
             };
             let command_for_display = params.command.clone();

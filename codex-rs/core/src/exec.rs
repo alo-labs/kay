@@ -43,7 +43,7 @@ pub struct ExecParams {
     pub cwd: PathBuf,
     pub timeout_ms: Option<u64>,
     pub env: HashMap<String, String>,
-    pub with_escalated_privileges: Option<bool>,
+    pub with_escalated_permissions: Option<bool>,
     pub justification: Option<String>,
 }
 
@@ -76,7 +76,7 @@ pub async fn process_exec_tool_call(
                 cwd,
                 timeout_ms,
                 env,
-                with_escalated_privileges: _,
+                with_escalated_permissions: _,
                 justification: _,
             } = params;
             let child = spawn_command_under_seatbelt(
@@ -95,7 +95,7 @@ pub async fn process_exec_tool_call(
                 cwd,
                 timeout_ms,
                 env,
-                with_escalated_privileges: _,
+                with_escalated_permissions: _,
                 justification: _,
             } = params;
 
@@ -236,7 +236,7 @@ async fn exec(
         cwd,
         timeout_ms,
         env,
-        with_escalated_privileges: _,
+        with_escalated_permissions: _,
         justification: _,
     }: ExecParams,
     sandbox_policy: &SandboxPolicy,

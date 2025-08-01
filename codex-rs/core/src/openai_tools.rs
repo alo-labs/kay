@@ -149,15 +149,15 @@ fn create_shell_tool_for_sandbox(sandbox_policy: SandboxPolicy) -> OpenAiTool {
 
     if sandbox_policy != SandboxPolicy::DangerFullAccess {
         properties.insert(
-        "with_escalated_privileges".to_string(),
+        "with_escalated_permissions".to_string(),
         JsonSchema::Boolean {
-            description: Some("Whether to request escalated privileges. Set to true if command needs to be run without sandbox restrictions".to_string()),
+            description: Some("Whether to request escalated permissions. Set to true if command needs to be run without sandbox restrictions".to_string()),
         },
     );
         properties.insert(
         "justification".to_string(),
         JsonSchema::String {
-            description: Some("Only set if with_escalated_privileges is true. 1-sentence explanation of why we want to run this command.".to_string()),
+            description: Some("Only set if ask_for_escalated_permissions is true. 1-sentence explanation of why we want to run this command.".to_string()),
         },
     );
     }
@@ -181,8 +181,8 @@ The shell tool is used to execute shell commands.
     - cargo build
     - cargo test
 - When invoking a command that will require escalated privileges:
-  - Provide the with_escalated_privileges parameter with the boolean value true
-  - Include a short, 1 sentence explanation for why we need to run with_escalated_privileges."#,
+  - Provide the with_escalated_permissions parameter with the boolean value true
+  - Include a short, 1 sentence explanation for why we need to run with_escalated_permissions in the justification parameter."#,
                 if !network_access {
                     "\n  - Commands that require network access\n"
                 } else {
@@ -196,9 +196,9 @@ The shell tool is used to execute shell commands.
         SandboxPolicy::ReadOnly => {
             r#"
 The shell tool is used to execute shell commands.
-IMPORTANT: If you are running the apply_patch command, you will need to provide the with_escalated_privileges parameter with the boolean value true.
+IMPORTANT: If you are running the apply_patch command, you will need to provide the with_escalated_permissions parameter with the boolean value true.
 
-- When invoking the shell tool, your call will be running in a landlock sandbox, and some shell commands (including apply_patch) will require escalated privileges:
+- When invoking the shell tool, your call will be running in a landlock sandbox, and some shell commands (including apply_patch) will require escalated permissions:
   - Types of actions that require escalated privileges:
     - Reading files outside the current directory
     - Writing files
@@ -210,8 +210,8 @@ IMPORTANT: If you are running the apply_patch command, you will need to provide 
     - cargo build
     - cargo test
 - When invoking a command that will require escalated privileges:
-  - Provide the with_escalated_privileges parameter with the boolean value true
-  - Include a short, 1 sentence explanation for why we need to run with_escalated_privileges."#.to_string()
+  - Provide the with_escalated_permissions parameter with the boolean value true
+  - Include a short, 1 sentence explanation for why we need to run with_escalated_permissions in the justification parameter"#.to_string()
         }
     };
 
@@ -312,7 +312,7 @@ mod tests {
         let properties = tools_json[0]["parameters"]["properties"]
             .as_object()
             .unwrap();
-        assert!(!properties.contains_key("with_escalated_privileges"));
+        assert!(!properties.contains_key("with_escalated_permissions"));
         assert!(!properties.contains_key("justification"));
     }
 
@@ -332,7 +332,7 @@ mod tests {
         let properties = tools_json[0]["parameters"]["properties"]
             .as_object()
             .unwrap();
-        assert!(properties.contains_key("with_escalated_privileges"));
+        assert!(properties.contains_key("with_escalated_permissions"));
         assert!(properties.contains_key("justification"));
     }
 }
