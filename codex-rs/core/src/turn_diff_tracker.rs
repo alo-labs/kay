@@ -27,6 +27,8 @@ pub struct TurnDiffTracker {
     temp_name_to_current_external: HashMap<String, PathBuf>,
     /// Internal filename -> baseline file contents (None means the file did not exist, i.e. /dev/null).
     baseline_contents: HashMap<String, Option<String>>,
+    /// Internal filename -> baseline file mode (100644 or 100755). Only set when baseline file existed.
+    baseline_mode: HashMap<String, String>,
     /// Aggregated unified diff for all accumulated changes across files.
     pub unified_diff: Option<String>,
 }
@@ -56,6 +58,10 @@ impl TurnDiffTracker {
                 let baseline = if path.exists() {
                     let contents = fs::read(path)
                         .with_context(|| format!("failed to read original {}", path.display()))?;
+                    // Capture baseline mode for later file mode lines.
+                    if let Some(mode) = file_mode_for_path(path) {
+                        self.baseline_mode.insert(internal.clone(), mode);
+                    }
                     Some(String::from_utf8_lossy(&contents).into_owned())
                 } else {
                     None
@@ -172,6 +178,30 @@ impl TurnDiffTracker {
             // Emit a git-style header for better readability and parity with previous behavior.
             aggregated.push_str(&format!("diff --git a/{left_display} b/{right_display}\n"));
 
+            // Emit file mode lines and index line similar to git.
+            let is_add = left_content.is_none() && right_content.is_some();
+            let is_delete = left_content.is_some() && right_content.is_none();
+
+            // Determine modes.
+            let baseline_mode = self
+                .baseline_mode
+                .get(&internal)
+                .cloned()
+                .unwrap_or_else(|| "100644".to_string());
+            let current_mode =
+                file_mode_for_path(&current_external).unwrap_or_else(|| "100644".to_string());
+
+            if is_add {
+                aggregated.push_str(&format!("new file mode {current_mode}\n"));
+            } else if is_delete {
+                aggregated.push_str(&format!("deleted file mode {baseline_mode}\n"));
+            } else if baseline_mode != current_mode {
+                aggregated.push_str(&format!("old mode {baseline_mode}\n"));
+                aggregated.push_str(&format!("new mode {current_mode}\n"));
+            }
+
+            aggregated.push_str(&format!("index {ZERO_OID}..{ZERO_OID}\n"));
+
             let old_header = if left_content.is_some() {
                 format!("a/{left_display}")
             } else {
@@ -210,6 +240,28 @@ fn uuid_filename_for(path: &Path) -> String {
     match path.extension().and_then(|e| e.to_str()) {
         Some(ext) if !ext.is_empty() => format!("{id}.{ext}"),
         _ => id,
+    }
+}
+
+const ZERO_OID: &str = "0000000000000000000000000000000000000000";
+
+fn file_mode_for_path(path: &Path) -> Option<String> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let meta = fs::metadata(path).ok()?;
+        let mode = meta.permissions().mode();
+        let is_exec = (mode & 0o111) != 0;
+        Some(if is_exec {
+            "100755".to_string()
+        } else {
+            "100644".to_string()
+        })
+    }
+    #[cfg(not(unix))]
+    {
+        // Default to non-executable on non-unix.
+        Some("100644".to_string())
     }
 }
 
@@ -268,12 +320,12 @@ mod tests {
         acc.get_unified_diff().unwrap();
         let first = acc.unified_diff.clone().unwrap();
         let first = normalize_diff_for_test(&first, dir.path());
-        let expected_first = r#"diff --git a/<TMP>/a.txt b/<TMP>/a.txt
---- /dev/null
-+++ b/<TMP>/a.txt
-@@ -0,0 +1 @@
-+foo
-"#;
+        let expected_first = {
+            let mode = file_mode_for_path(&file).unwrap_or_else(|| "100644".to_string());
+            format!(
+                "diff --git a/<TMP>/a.txt b/<TMP>/a.txt\nnew file mode {mode}\nindex {ZERO_OID}..{ZERO_OID}\n--- /dev/null\n+++ b/<TMP>/a.txt\n@@ -0,0 +1 @@\n+foo\n",
+            )
+        };
         assert_eq!(first, expected_first);
 
         // Second patch: update the file on disk.
@@ -291,13 +343,12 @@ mod tests {
         acc.get_unified_diff().unwrap();
         let combined = acc.unified_diff.clone().unwrap();
         let combined = normalize_diff_for_test(&combined, dir.path());
-        let expected_combined = r#"diff --git a/<TMP>/a.txt b/<TMP>/a.txt
---- /dev/null
-+++ b/<TMP>/a.txt
-@@ -0,0 +1,2 @@
-+foo
-+bar
-"#;
+        let expected_combined = {
+            let mode = file_mode_for_path(&file).unwrap_or_else(|| "100644".to_string());
+            format!(
+                "diff --git a/<TMP>/a.txt b/<TMP>/a.txt\nnew file mode {mode}\nindex {ZERO_OID}..{ZERO_OID}\n--- /dev/null\n+++ b/<TMP>/a.txt\n@@ -0,0 +1,2 @@\n+foo\n+bar\n",
+            )
+        };
         assert_eq!(combined, expected_combined);
     }
 
@@ -312,16 +363,14 @@ mod tests {
         acc.on_patch_begin(&del_changes).unwrap();
 
         // Simulate apply: delete the file from disk.
+        let baseline_mode = file_mode_for_path(&file).unwrap_or_else(|| "100644".to_string());
         fs::remove_file(&file).unwrap();
         acc.get_unified_diff().unwrap();
         let diff = acc.unified_diff.clone().unwrap();
         let diff = normalize_diff_for_test(&diff, dir.path());
-        let expected = r#"diff --git a/<TMP>/b.txt b/<TMP>/b.txt
---- a/<TMP>/b.txt
-+++ /dev/null
-@@ -1 +0,0 @@
--x
-"#;
+        let expected = format!(
+            "diff --git a/<TMP>/b.txt b/<TMP>/b.txt\ndeleted file mode {baseline_mode}\nindex {ZERO_OID}..{ZERO_OID}\n--- a/<TMP>/b.txt\n+++ /dev/null\n@@ -1 +0,0 @@\n-x\n",
+        );
         assert_eq!(diff, expected);
     }
 
@@ -349,13 +398,11 @@ mod tests {
         acc.get_unified_diff().unwrap();
         let out = acc.unified_diff.clone().unwrap();
         let out = normalize_diff_for_test(&out, dir.path());
-        let expected = r#"diff --git a/<TMP>/src.txt b/<TMP>/dst.txt
---- a/<TMP>/src.txt
-+++ b/<TMP>/dst.txt
-@@ -1 +1 @@
--line
-+line2
-"#;
+        let expected = {
+            format!(
+                "diff --git a/<TMP>/src.txt b/<TMP>/dst.txt\nindex {ZERO_OID}..{ZERO_OID}\n--- a/<TMP>/src.txt\n+++ b/<TMP>/dst.txt\n@@ -1 +1 @@\n-line\n+line2\n"
+            )
+        };
         assert_eq!(out, expected);
     }
 
@@ -383,36 +430,29 @@ mod tests {
         acc.get_unified_diff().unwrap();
         let first = acc.unified_diff.clone().unwrap();
         let first = normalize_diff_for_test(&first, dir.path());
-        let expected_first = r#"diff --git a/<TMP>/a.txt b/<TMP>/a.txt
---- a/<TMP>/a.txt
-+++ b/<TMP>/a.txt
-@@ -1 +1,2 @@
- foo
-+bar
-"#;
+        let expected_first = {
+            format!(
+                "diff --git a/<TMP>/a.txt b/<TMP>/a.txt\nindex {ZERO_OID}..{ZERO_OID}\n--- a/<TMP>/a.txt\n+++ b/<TMP>/a.txt\n@@ -1 +1,2 @@\n foo\n+bar\n"
+            )
+        };
         assert_eq!(first, expected_first);
 
         // Next: introduce a brand-new path b.txt into baseline snapshots via a delete change.
         let del_b = HashMap::from([(b.clone(), FileChange::Delete)]);
         acc.on_patch_begin(&del_b).unwrap();
         // Simulate apply: delete b.txt.
+        let baseline_mode = file_mode_for_path(&b).unwrap_or_else(|| "100644".to_string());
         fs::remove_file(&b).unwrap();
         acc.get_unified_diff().unwrap();
 
         let combined = acc.unified_diff.clone().unwrap();
         let combined = normalize_diff_for_test(&combined, dir.path());
-        let expected = r#"diff --git a/<TMP>/a.txt b/<TMP>/a.txt
---- a/<TMP>/a.txt
-+++ b/<TMP>/a.txt
-@@ -1 +1,2 @@
- foo
-+bar
-diff --git a/<TMP>/b.txt b/<TMP>/b.txt
---- a/<TMP>/b.txt
-+++ /dev/null
-@@ -1 +0,0 @@
--z
-"#;
+        let expected = {
+            format!(
+                "diff --git a/<TMP>/a.txt b/<TMP>/a.txt\nindex {ZERO_OID}..{ZERO_OID}\n--- a/<TMP>/a.txt\n+++ b/<TMP>/a.txt\n@@ -1 +1,2 @@\n foo\n+bar\n\
+                diff --git a/<TMP>/b.txt b/<TMP>/b.txt\ndeleted file mode {baseline_mode}\nindex {ZERO_OID}..{ZERO_OID}\n--- a/<TMP>/b.txt\n+++ /dev/null\n@@ -1 +0,0 @@\n-z\n",
+            )
+        };
         assert_eq!(combined, expected);
     }
 }
