@@ -2011,7 +2011,7 @@ fn get_last_assistant_message_from_turn(responses: &[ResponseItem]) -> Option<St
 }
 
 async fn drain_to_completed(sess: &Session, prompt: &Prompt) -> CodexResult<()> {
-    let mut stream = sess.client.clone().stream(prompt).await?;
+    let mut stream = sess.client.clone().stream(prompt, None).await?;
     loop {
         let maybe_event = stream.next().await;
         let Some(event) = maybe_event else {
