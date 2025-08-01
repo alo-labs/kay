@@ -196,12 +196,15 @@ The shell tool is used to execute shell commands.
         SandboxPolicy::ReadOnly => {
             r#"
 The shell tool is used to execute shell commands.
+IMPORTANT: If you are running the apply_patch command, you will need to provide the with_escalated_privileges parameter with the boolean value true.
 
-- When invoking the shell tool, your call will be running in a landlock sandbox, and some shell commands will require escalated privileges:
+- When invoking the shell tool, your call will be running in a landlock sandbox, and some shell commands (including apply_patch) will require escalated privileges:
   - Types of actions that require escalated privileges:
     - Reading files outside the current directory
     - Writing files
+    - Applying patches
   - Examples of commands that require escalated privileges:
+    - apply_patch
     - git commit
     - npm install or pnpm install
     - cargo build
