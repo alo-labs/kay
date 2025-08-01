@@ -2,27 +2,22 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
-use std::process::Command;
 
 use anyhow::Context;
 use anyhow::Result;
-use tempfile::TempDir;
 use uuid::Uuid;
 
 use crate::protocol::FileChange;
 
 /// Tracks sets of changes to files and exposes the overall unified diff.
 /// Internally, the way this works is now:
-/// 1. Create a temp directory to store baseline snapshots of files when they are first seen.
-/// 2. When a path is first observed, copy its current contents into the baseline dir if it exists on disk.
-///    For new additions, do not create a baseline file so that diffs are shown as proper additions (using /dev/null).
-/// 3. Keep a stable internal filename (uuid + same extension) per external path for path rewrite in diffs.
-/// 4. To compute the aggregated unified diff, compare each baseline snapshot to the current file on disk using
-///    `git diff --no-index` and rewrite paths to external paths.
+/// 1. Maintain an in-memory baseline snapshot of files when they are first seen.
+///    For new additions, do not create a baseline so that diffs are shown as proper additions (using /dev/null).
+/// 2. Keep a stable internal filename (uuid + same extension) per external path for rename tracking.
+/// 3. To compute the aggregated unified diff, compare each baseline snapshot to the current file on disk entirely in-memory
+///    using the `similar` crate and emit unified diffs with rewritten external paths.
 #[derive(Default)]
 pub struct TurnDiffTracker {
-    /// Temp directory holding baseline snapshots of files as first seen.
-    baseline_files_dir: Option<TempDir>,
     /// Map external path -> internal filename (uuid + same extension).
     external_to_temp_name: HashMap<PathBuf, String>,
     /// Internal filename -> external path as of baseline snapshot.
@@ -30,6 +25,8 @@ pub struct TurnDiffTracker {
     /// Internal filename -> external path as of current accumulated state (after applying all changes).
     /// This is where renames are tracked.
     temp_name_to_current_external: HashMap<String, PathBuf>,
+    /// Internal filename -> baseline file contents (None means the file did not exist, i.e. /dev/null).
+    baseline_contents: HashMap<String, Option<String>>,
     /// Aggregated unified diff for all accumulated changes across files.
     pub unified_diff: Option<String>,
 }
@@ -40,13 +37,10 @@ impl TurnDiffTracker {
     }
 
     /// Front-run apply patch calls to track the starting contents of any modified files.
-    /// - Creates a baseline snapshot for files that already exist on disk when first seen.
+    /// - Creates an in-memory baseline snapshot for files that already exist on disk when first seen.
     /// - For additions, we intentionally do not create a baseline snapshot so that diffs are proper additions.
     /// - Also updates internal mappings for move/rename events.
     pub fn on_patch_begin(&mut self, changes: &HashMap<PathBuf, FileChange>) -> Result<()> {
-        self.ensure_baseline_dir()?;
-        let baseline_dir = self.baseline_dir()?.to_path_buf();
-
         for (path, change) in changes.iter() {
             // Ensure a stable internal filename exists for this external path.
             if !self.external_to_temp_name.contains_key(path) {
@@ -59,14 +53,14 @@ impl TurnDiffTracker {
                     .insert(internal.clone(), path.clone());
 
                 // If the file exists on disk now, snapshot as baseline; else leave missing to represent /dev/null.
-                if path.exists() {
+                let baseline = if path.exists() {
                     let contents = fs::read(path)
                         .with_context(|| format!("failed to read original {}", path.display()))?;
-                    let internal_path = baseline_dir.join(&internal);
-                    fs::write(&internal_path, contents).with_context(|| {
-                        format!("failed to write baseline file {}", internal_path.display())
-                    })?;
-                }
+                    Some(String::from_utf8_lossy(&contents).into_owned())
+                } else {
+                    None
+                };
+                self.baseline_contents.insert(internal.clone(), baseline);
             }
 
             // Track rename/move in current mapping if provided in an Update.
@@ -86,6 +80,8 @@ impl TurnDiffTracker {
                         self.external_to_temp_name.insert(path.clone(), i.clone());
                         self.temp_name_to_baseline_external
                             .insert(i.clone(), path.clone());
+                        // No on-disk file read here; treat as addition.
+                        self.baseline_contents.insert(i.clone(), None);
                         i
                     }
                 };
@@ -103,89 +99,72 @@ impl TurnDiffTracker {
     }
 
     /// Recompute the aggregated unified diff by comparing all baseline snapshots against
-    /// current files on disk using `git diff --no-index` and rewriting paths to external paths.
+    /// current files on disk using the `similar` crate and rewriting paths to external paths.
     pub fn update_and_get_unified_diff(&mut self) -> Result<Option<String>> {
-        let baseline_dir = self.baseline_dir()?.to_path_buf();
-        let current_dir = baseline_dir.join("current");
-        if current_dir.exists() {
-            // Best-effort cleanup of previous run's mirror.
-            let _ = fs::remove_dir_all(&current_dir);
-        }
-        fs::create_dir_all(&current_dir).with_context(|| {
-            format!(
-                "failed to create current mirror dir {}",
-                current_dir.display()
-            )
-        })?;
-
         let mut aggregated = String::new();
 
         // Compute diffs per tracked internal file.
         for (internal, baseline_external) in &self.temp_name_to_baseline_external {
-            let baseline_path = baseline_dir.join(internal);
             let current_external = self
                 .temp_name_to_current_external
                 .get(internal)
                 .cloned()
                 .unwrap_or_else(|| baseline_external.clone());
 
-            let left_is_dev_null = !baseline_path.exists();
-            let right_exists = current_external.exists();
+            let left_content = self
+                .baseline_contents
+                .get(internal)
+                .cloned()
+                .unwrap_or(None);
 
-            // Prepare right side mirror file if exists; otherwise use /dev/null for deletions.
-            let right_arg = if right_exists {
-                let mirror_path = current_dir.join(internal);
+            let right_content = if current_external.exists() {
                 let contents = fs::read(&current_external).with_context(|| {
                     format!(
                         "failed to read current file for diff {}",
                         current_external.display()
                     )
                 })?;
-                fs::write(&mirror_path, contents).with_context(|| {
-                    format!(
-                        "failed to write current mirror file {}",
-                        mirror_path.display()
-                    )
-                })?;
-                // Use relative path from baseline_dir (so headers say a/<uuid> b/current/<uuid>).
-                format!("current/{internal}")
+                Some(String::from_utf8_lossy(&contents).into_owned())
             } else {
-                // Deletion: right side is /dev/null to show proper deleted file diff.
-                "/dev/null".to_string()
+                None
             };
 
-            // Prepare left arg: baseline file path or /dev/null for additions.
-            let left_arg = if left_is_dev_null {
-                "/dev/null".to_string()
-            } else {
-                internal.clone()
-            };
+            let left_text = left_content.as_deref().unwrap_or("");
+            let right_text = right_content.as_deref().unwrap_or("");
 
-            // Run git diff --no-index from baseline_dir to keep paths predictable.
-            let raw = run_git_allow_exit_codes(
-                &baseline_dir,
-                &[
-                    "-c",
-                    "color.ui=false",
-                    "diff",
-                    "--no-color",
-                    "--no-index",
-                    "--",
-                    &left_arg,
-                    &right_arg,
-                ],
-                &[0, 1], // 0: no changes, 1: differences
-            )?;
-
-            if raw.trim().is_empty() {
+            if left_text == right_text {
                 continue;
             }
-            let rewritten = self.rewrite_diff_paths(&raw);
-            if !rewritten.trim().is_empty() {
-                if !aggregated.is_empty() && !aggregated.ends_with('\n') {
-                    aggregated.push('\n');
-                }
-                aggregated.push_str(&rewritten);
+
+            let left_display = baseline_external.display().to_string();
+            let right_display = current_external.display().to_string();
+
+            // Diff the contents.
+            let diff = similar::TextDiff::from_lines(left_text, right_text);
+
+            // Emit a git-style header for better readability and parity with previous behavior.
+            aggregated.push_str(&format!("diff --git a/{left_display} b/{right_display}\n"));
+
+            let old_header = if left_content.is_some() {
+                format!("a/{left_display}")
+            } else {
+                "/dev/null".to_string()
+            };
+            let new_header = if right_content.is_some() {
+                format!("b/{right_display}")
+            } else {
+                "/dev/null".to_string()
+            };
+
+            let unified = diff
+                .unified_diff()
+                .context_radius(3)
+                .header(&old_header, &new_header)
+                .to_string();
+
+            aggregated.push_str(&unified);
+            if !aggregated.ends_with('\n') {
+                aggregated.push('\n');
             }
         }
 
@@ -195,122 +174,7 @@ impl TurnDiffTracker {
             Some(aggregated)
         };
 
-        // Clean up the current dir.
-        let _ = fs::remove_dir_all(&current_dir);
-
         Ok(self.unified_diff.clone())
-    }
-
-    fn baseline_dir(&self) -> Result<&Path> {
-        self.baseline_files_dir
-            .as_ref()
-            .map(|d| d.path())
-            .ok_or_else(|| anyhow::anyhow!("baseline temp dir not initialized"))
-    }
-
-    fn ensure_baseline_dir(&mut self) -> Result<()> {
-        if self.baseline_files_dir.is_some() {
-            return Ok(());
-        }
-        let tmp = TempDir::new().context("create baseline temp dir")?;
-        self.baseline_files_dir = Some(tmp);
-        Ok(())
-    }
-
-    /// Rewrites the internal filenames to external paths in diff headers.
-    /// Handles inputs like:
-    ///   diff --git a/<uuid> b/current/<uuid>
-    ///   --- a/<uuid> | /dev/null
-    ///   +++ b/current/<uuid> | /dev/null
-    /// and replaces uuid with the external paths tracking baseline/current.
-    fn rewrite_diff_paths(&self, diff: &str) -> String {
-        let mut out = String::new();
-        for line in diff.lines() {
-            if let Some(rest) = line.strip_prefix("diff --git ") {
-                // Format: diff --git a/<f> b/<f>
-                let parts: Vec<&str> = rest.split_whitespace().collect();
-                if parts.len() == 2 {
-                    let a = parts[0].strip_prefix("a/").unwrap_or(parts[0]);
-                    let b = parts[1].strip_prefix("b/").unwrap_or(parts[1]);
-
-                    let a_ext_display = if a == "/dev/null" {
-                        "/dev/null".to_string()
-                    } else {
-                        let a_base = Path::new(a)
-                            .file_name()
-                            .and_then(|s| s.to_str())
-                            .unwrap_or(a);
-                        let mapped = self
-                            .temp_name_to_baseline_external
-                            .get(a_base)
-                            .cloned()
-                            .unwrap_or_else(|| PathBuf::from(a));
-                        mapped.display().to_string()
-                    };
-
-                    let b_ext_display = if b == "/dev/null" {
-                        "/dev/null".to_string()
-                    } else {
-                        let b_base = Path::new(b)
-                            .file_name()
-                            .and_then(|s| s.to_str())
-                            .unwrap_or(b);
-                        let mapped = self
-                            .temp_name_to_current_external
-                            .get(b_base)
-                            .cloned()
-                            .unwrap_or_else(|| PathBuf::from(b));
-                        mapped.display().to_string()
-                    };
-
-                    out.push_str(&format!("diff --git a/{a_ext_display} b/{b_ext_display}\n"));
-                    continue;
-                }
-            }
-            if let Some(rest) = line.strip_prefix("--- ") {
-                if let Some(path) = rest.strip_prefix("a/") {
-                    let external_display = if path == "/dev/null" {
-                        "/dev/null".to_string()
-                    } else {
-                        let p_base = Path::new(path)
-                            .file_name()
-                            .and_then(|s| s.to_str())
-                            .unwrap_or(path);
-                        self.temp_name_to_baseline_external
-                            .get(p_base)
-                            .cloned()
-                            .unwrap_or_else(|| PathBuf::from(path))
-                            .display()
-                            .to_string()
-                    };
-                    out.push_str(&format!("--- {external_display}\n"));
-                    continue;
-                }
-            }
-            if let Some(rest) = line.strip_prefix("+++ ") {
-                if let Some(path) = rest.strip_prefix("b/") {
-                    let external_display = if path == "/dev/null" {
-                        "/dev/null".to_string()
-                    } else {
-                        let p_base = Path::new(path)
-                            .file_name()
-                            .and_then(|s| s.to_str())
-                            .unwrap_or(path);
-                        self.temp_name_to_current_external
-                            .get(p_base)
-                            .cloned()
-                            .unwrap_or_else(|| PathBuf::from(path))
-                            .display()
-                            .to_string()
-                    };
-                    out.push_str(&format!("+++ {external_display}\n"));
-                    continue;
-                }
-            }
-            out.push_str(line);
-            out.push('\n');
-        }
-        out
     }
 }
 
@@ -320,28 +184,6 @@ fn uuid_filename_for(path: &Path) -> String {
         Some(ext) if !ext.is_empty() => format!("{id}.{ext}"),
         _ => id,
     }
-}
-
-fn run_git_allow_exit_codes(
-    repo: &Path,
-    args: &[&str],
-    allowed_exit_codes: &[i32],
-) -> Result<String> {
-    let output = Command::new("git")
-        .current_dir(repo)
-        .args(args)
-        .output()
-        .with_context(|| format!("failed to run git {:?} in {}", args, repo.display()))?;
-    let code = output.status.code().unwrap_or(-1);
-    if !allowed_exit_codes.contains(&code) {
-        anyhow::bail!(
-            "git {:?} failed with status {:?}: {}",
-            args,
-            output.status,
-            String::from_utf8_lossy(&output.stderr)
-        );
-    }
-    Ok(String::from_utf8_lossy(&output.stdout).into_owned())
 }
 
 #[cfg(test)]
