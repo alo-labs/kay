@@ -218,7 +218,7 @@ The shell tool is used to execute shell commands.
         strict: false,
         parameters: JsonSchema::Object {
             properties,
-            required: &["cmd"],
+            required: &["command"],
             additional_properties: false,
         },
     })
