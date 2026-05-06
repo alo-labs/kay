@@ -1,7 +1,7 @@
 use std::io::Cursor;
-use std::io::{self};
 use std::io::Read;
 use std::io::Write;
+use std::io::{self};
 use std::net::SocketAddr;
 use std::net::TcpStream;
 use std::path::Path;
@@ -17,6 +17,7 @@ use chrono::Utc;
 use code_app_server_protocol::AuthMode;
 use code_core::auth::AuthDotJson;
 use code_core::auth::get_auth_file;
+use code_core::auth::provider_credentials_from_auth_file;
 use code_core::token_data::TokenData;
 use code_core::token_data::parse_id_token;
 use rand::RngCore;
@@ -133,7 +134,9 @@ pub fn run_login_server(opts: ServerOptions) -> io::Result<LoginServer> {
                 }
                 Ok(())
             })
-            .map_err(|err| io::Error::other(format!("failed to spawn login listener thread: {err}")))?
+            .map_err(|err| {
+                io::Error::other(format!("failed to spawn login listener thread: {err}"))
+            })?
     };
 
     let shutdown_notify = Arc::new(tokio::sync::Notify::new());
@@ -194,7 +197,10 @@ pub fn run_login_server(opts: ServerOptions) -> io::Result<LoginServer> {
 enum HandledRequest {
     Response(Response<Cursor<Vec<u8>>>),
     RedirectWithHeader(Header),
-    ResponseAndExit { response: Response<Cursor<Vec<u8>>>, result: io::Result<()> },
+    ResponseAndExit {
+        response: Response<Cursor<Vec<u8>>>,
+        result: io::Result<()>,
+    },
 }
 
 async fn process_request(
@@ -289,11 +295,17 @@ async fn process_request(
             ) {
                 resp.add_header(h);
             }
-            HandledRequest::ResponseAndExit { response: resp, result: Ok(()) }
+            HandledRequest::ResponseAndExit {
+                response: resp,
+                result: Ok(()),
+            }
         }
         "/cancel" => HandledRequest::ResponseAndExit {
             response: Response::from_string("Login cancelled"),
-            result: Err(io::Error::new(io::ErrorKind::Interrupted, "Login cancelled")),
+            result: Err(io::Error::new(
+                io::ErrorKind::Interrupted,
+                "Login cancelled",
+            )),
         },
         _ => HandledRequest::Response(Response::from_string("Not Found").with_status_code(404)),
     }
@@ -474,6 +486,7 @@ pub(crate) async fn persist_tokens_async(
             }
         }
 
+        let provider_credentials = provider_credentials_from_auth_file(&auth_file)?;
         let mut tokens = TokenData {
             id_token: parse_id_token(&id_token).map_err(io::Error::other)?,
             access_token,
@@ -493,6 +506,7 @@ pub(crate) async fn persist_tokens_async(
             openai_api_key: api_key,
             tokens: Some(tokens),
             last_refresh: Some(last_refresh),
+            provider_credentials,
         };
         code_core::auth::write_auth_json(&auth_file, &auth)?;
         let email_for_store = tokens_for_store.id_token.email.clone();
