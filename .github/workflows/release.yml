@@ -1040,6 +1040,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
+            echo "::warning::NPM_TOKEN is missing in this repo, so per-target npm binary package publishing is being skipped."
+            echo "::warning::Add a granular automation token with publish + bypass-2FA if npm publishing is enabled later: https://docs.npmjs.com/creating-and-viewing-access-tokens"
+            exit 0
+          fi
           config_path="${NPM_CONFIG_USERCONFIG:-$HOME/.npmrc}"
           mkdir -p "$(dirname "$config_path")"
           echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > "$config_path"
@@ -1066,6 +1071,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
+            echo "::warning::NPM_TOKEN is missing in this repo, so the main npm package publish is being skipped."
+            echo "::warning::Add a granular automation token with publish + bypass-2FA if npm publishing is enabled later: https://docs.npmjs.com/creating-and-viewing-access-tokens"
+            exit 0
+          fi
           config_path="${NPM_CONFIG_USERCONFIG:-$HOME/.npmrc}"
           mkdir -p "$(dirname "$config_path")"
           echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > "$config_path"
