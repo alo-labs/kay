@@ -50,8 +50,9 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
-            echo "::error::NPM_TOKEN is missing. Create a granular automation token with publish + bypass-2FA: https://docs.npmjs.com/creating-and-viewing-access-tokens#creating-access-tokens ; add/update the secret: https://github.com/organizations/just-every/settings/secrets/actions/NPM_TOKEN" >&2
-            exit 1
+            echo "::warning::NPM_TOKEN is missing in this repo, so npm auth validation is being skipped."
+            echo "::warning::Add a granular automation token with publish + bypass-2FA if release publishing is enabled later: https://docs.npmjs.com/creating-and-viewing-access-tokens#creating-access-tokens"
+            exit 0
           fi
 
           echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > ~/.npmrc
