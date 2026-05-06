@@ -1007,11 +1007,11 @@ jobs:
       - name: Publish Homebrew formula to just-every/homebrew-tap
         shell: bash
         env:
-          GH_PAT: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
+          GH_PAT: ${{ secrets.GH_PAT }}
         run: |
           set -euo pipefail
           if [ -z "${GH_PAT:-}" ]; then
-            echo "GH_PAT/GITHUB_TOKEN not available; skipping tap publish" >&2
+            echo "GH_PAT not available; skipping tap publish" >&2
             exit 0
           fi
           tmpdir=$(mktemp -d)
