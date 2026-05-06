@@ -3,6 +3,7 @@ use chrono::Utc;
 use reqwest::StatusCode;
 use serde::Deserialize;
 use serde::Serialize;
+use std::collections::BTreeMap;
 use std::env;
 use std::fs::File;
 use std::io::Read;
@@ -16,12 +17,12 @@ use tempfile::NamedTempFile;
 
 use code_app_server_protocol::AuthMode;
 
-use crate::token_data::TokenData;
+use crate::config::resolve_code_path_for_read;
 use crate::token_data::KnownPlan;
 use crate::token_data::PlanType;
+use crate::token_data::TokenData;
 use crate::token_data::parse_id_token;
 use crate::token_data::parse_jwt_expiration;
-use crate::config::resolve_code_path_for_read;
 use crate::util::backoff;
 
 #[derive(Debug, Clone)]
@@ -78,8 +79,7 @@ impl std::fmt::Display for RefreshTokenError {
 
 impl std::error::Error for RefreshTokenError {}
 
-const REFRESH_TOKEN_ACCOUNT_MISMATCH_MESSAGE: &str =
-    "Your access token could not be refreshed because you have since logged out or signed in to another account. Please sign in again.";
+const REFRESH_TOKEN_ACCOUNT_MISMATCH_MESSAGE: &str = "Your access token could not be refreshed because you have since logged out or signed in to another account. Please sign in again.";
 const REFRESH_TOKEN_URL: &str = "https://auth.openai.com/oauth/token";
 pub const REFRESH_TOKEN_URL_OVERRIDE_ENV_VAR: &str = "CODEX_REFRESH_TOKEN_URL_OVERRIDE";
 
@@ -106,7 +106,7 @@ impl CodexAuth {
             attempt = attempt.saturating_add(1);
             match try_refresh_token(refresh_token.clone(), &self.client).await {
                 Ok(refresh_response) => {
-                    return self.persist_refresh_response(refresh_response).await
+                    return self.persist_refresh_response(refresh_response).await;
                 }
                 Err(err) => {
                     if err.is_refresh_token_reused() {
@@ -208,17 +208,13 @@ impl CodexAuth {
                     tokio::time::timeout(Duration::from_secs(60), self.refresh_token())
                         .await
                         .map_err(|_| {
-                            std::io::Error::other(
-                                "timed out while refreshing OpenAI API key",
-                            )
+                            std::io::Error::other("timed out while refreshing OpenAI API key")
                         })?
                         .map_err(std::io::Error::other)?;
 
-                    tokens = self
-                        .get_current_token_data()
-                        .ok_or(std::io::Error::other(
-                            "Token data is not available after refresh.",
-                        ))?;
+                    tokens = self.get_current_token_data().ok_or(std::io::Error::other(
+                        "Token data is not available after refresh.",
+                    ))?;
                 }
 
                 Ok(tokens)
@@ -284,6 +280,7 @@ impl CodexAuth {
                 account_id: Some("account_id".to_string()),
             }),
             last_refresh: Some(Utc::now()),
+            provider_credentials: BTreeMap::new(),
         };
 
         let auth_dot_json = Arc::new(Mutex::new(Some(auth_dot_json)));
@@ -337,6 +334,7 @@ impl CodexAuth {
             openai_api_key: None,
             tokens: Some(tokens),
             last_refresh,
+            provider_credentials: BTreeMap::new(),
         };
 
         Self {
@@ -359,9 +357,7 @@ fn should_proactively_refresh_auth(
         return expires_at <= Utc::now();
     }
 
-    last_refresh.is_some_and(|last_refresh| {
-        last_refresh < Utc::now() - chrono::Duration::days(28)
-    })
+    last_refresh.is_some_and(|last_refresh| last_refresh < Utc::now() - chrono::Duration::days(28))
 }
 
 pub const OPENAI_API_KEY_ENV_VAR: &str = "OPENAI_API_KEY";
@@ -398,22 +394,55 @@ pub fn logout(code_home: &Path) -> std::io::Result<bool> {
     Ok(removed)
 }
 
-/// Writes an `auth.json` that contains only the API key. Intended for CLI use.
+/// Writes OpenAI API-key auth while preserving any provider-specific credentials.
 pub fn login_with_api_key(code_home: &Path, api_key: &str) -> std::io::Result<()> {
+    let auth_file = get_auth_file(code_home);
+    let provider_credentials = provider_credentials_from_auth_file(&auth_file)?;
     let auth_dot_json = AuthDotJson {
         auth_mode: Some(AuthMode::ApiKey),
         openai_api_key: Some(api_key.to_string()),
         tokens: None,
         last_refresh: None,
+        provider_credentials,
     };
-    write_auth_json(&get_auth_file(code_home), &auth_dot_json)?;
-    let _ = crate::auth_accounts::upsert_api_key_account(
-        code_home,
-        api_key.to_string(),
-        None,
-        true,
-    )?;
+    write_auth_json(&auth_file, &auth_dot_json)?;
+    let _ =
+        crate::auth_accounts::upsert_api_key_account(code_home, api_key.to_string(), None, true)?;
     Ok(())
+}
+
+pub fn save_provider_api_key(
+    code_home: &Path,
+    provider_ref: &str,
+    api_key: &str,
+) -> std::io::Result<()> {
+    let provider_ref = normalize_provider_ref(provider_ref)?;
+    let api_key = api_key.trim();
+    if api_key.is_empty() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "provider API key must not be empty",
+        ));
+    }
+
+    if provider_ref == "openai" {
+        return login_with_api_key(code_home, api_key);
+    }
+
+    let auth_file = get_auth_file(code_home);
+    let mut auth_dot_json = match try_read_auth_json(&auth_file) {
+        Ok(auth) => auth,
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => AuthDotJson::default(),
+        Err(err) => return Err(err),
+    };
+
+    auth_dot_json.provider_credentials.insert(
+        provider_ref,
+        ProviderCredentialEntry {
+            api_key: api_key.to_string(),
+        },
+    );
+    write_auth_json(&auth_file, &auth_dot_json)
 }
 
 pub fn login_with_chatgpt_auth_tokens(
@@ -422,6 +451,8 @@ pub fn login_with_chatgpt_auth_tokens(
     chatgpt_account_id: &str,
     chatgpt_plan_type: Option<&str>,
 ) -> std::io::Result<()> {
+    let auth_file = get_auth_file(code_home);
+    let provider_credentials = provider_credentials_from_auth_file(&auth_file)?;
     let mut id_token = parse_id_token(access_token).map_err(std::io::Error::other)?;
     if let Some(plan_type) = chatgpt_plan_type {
         id_token.chatgpt_plan_type = Some(match plan_type.trim().to_ascii_lowercase().as_str() {
@@ -448,8 +479,9 @@ pub fn login_with_chatgpt_auth_tokens(
         openai_api_key: None,
         tokens: Some(tokens.clone()),
         last_refresh: Some(last_refresh),
+        provider_credentials,
     };
-    write_auth_json(&get_auth_file(code_home), &auth_dot_json)?;
+    write_auth_json(&auth_file, &auth_dot_json)?;
 
     let email_for_store = tokens.id_token.email.clone();
     let _ = crate::auth_accounts::upsert_chatgpt_account(
@@ -503,9 +535,7 @@ pub async fn auth_for_stored_account(
                     try_refresh_token(tokens.refresh_token.clone(), &client),
                 )
                 .await
-                .map_err(|_| {
-                    std::io::Error::other("timed out while refreshing OpenAI API key")
-                })?;
+                .map_err(|_| std::io::Error::other("timed out while refreshing OpenAI API key"))?;
 
                 let refresh_response = match refresh_response {
                     Ok(response) => response,
@@ -566,6 +596,7 @@ pub fn activate_account(code_home: &Path, account_id: &str) -> std::io::Result<(
     };
 
     let auth_file = get_auth_file(code_home);
+    let provider_credentials = provider_credentials_from_auth_file(&auth_file)?;
     let account_id_owned = account.id.clone();
     match account.mode {
         AuthMode::ApiKey => {
@@ -577,6 +608,7 @@ pub fn activate_account(code_home: &Path, account_id: &str) -> std::io::Result<(
                 openai_api_key: Some(api_key),
                 tokens: None,
                 last_refresh: None,
+                provider_credentials,
             };
             write_auth_json(&auth_file, &auth)?;
         }
@@ -589,6 +621,7 @@ pub fn activate_account(code_home: &Path, account_id: &str) -> std::io::Result<(
                 openai_api_key: None,
                 tokens: Some(tokens),
                 last_refresh: account.last_refresh,
+                provider_credentials,
             };
             write_auth_json(&auth_file, &auth)?;
         }
@@ -632,6 +665,7 @@ fn load_auth(
         openai_api_key: auth_json_api_key,
         tokens,
         last_refresh,
+        provider_credentials,
     } = auth_dot_json;
 
     let mut effective_preference = preferred_auth_method;
@@ -660,6 +694,7 @@ fn load_auth(
                         openai_api_key: None,
                         tokens: Some(tokens),
                         last_refresh,
+                        provider_credentials,
                     }))),
                     client,
                 }));
@@ -706,6 +741,10 @@ fn load_auth(
 
     // For the AuthMode::ChatGPT variant, perhaps neither api_key nor
     // openai_api_key should exist?
+    if tokens.is_none() {
+        return Ok(None);
+    }
+
     Ok(Some(CodexAuth {
         api_key: None,
         mode: AuthMode::ChatGPT,
@@ -715,6 +754,7 @@ fn load_auth(
             openai_api_key: None,
             tokens,
             last_refresh,
+            provider_credentials,
         }))),
         client,
     }))
@@ -729,6 +769,24 @@ pub fn try_read_auth_json(auth_file: &Path) -> std::io::Result<AuthDotJson> {
     let auth_dot_json: AuthDotJson = serde_json::from_str(&contents)?;
 
     Ok(auth_dot_json)
+}
+
+pub fn provider_credentials_from_auth_file(
+    auth_file: &Path,
+) -> std::io::Result<BTreeMap<String, ProviderCredentialEntry>> {
+    #[derive(Deserialize)]
+    struct ProviderCredentialsOnly {
+        #[serde(default)]
+        provider_credentials: BTreeMap<String, ProviderCredentialEntry>,
+    }
+
+    match std::fs::read_to_string(auth_file) {
+        Ok(contents) => serde_json::from_str::<ProviderCredentialsOnly>(&contents)
+            .map(|auth| auth.provider_credentials)
+            .map_err(std::io::Error::other),
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(BTreeMap::new()),
+        Err(err) => Err(err),
+    }
 }
 
 pub fn write_auth_json(auth_file: &Path, auth_dot_json: &AuthDotJson) -> std::io::Result<()> {
@@ -773,9 +831,7 @@ async fn update_tokens(
 
     if let Some(code_home) = auth_file.parent() {
         if let Some(tokens) = auth_dot_json.tokens.clone() {
-            let last_refresh = auth_dot_json
-                .last_refresh
-                .unwrap_or_else(Utc::now);
+            let last_refresh = auth_dot_json.last_refresh.unwrap_or_else(Utc::now);
             let email = tokens.id_token.email.clone();
             let _ = crate::auth_accounts::upsert_chatgpt_account(
                 code_home,
@@ -861,9 +917,7 @@ fn classify_refresh_failure(status: StatusCode, body: &str) -> RefreshTokenError
             if let Some(code) = error.code.as_deref()
                 && matches!(
                     code,
-                    "refresh_token_expired"
-                        | "refresh_token_reused"
-                        | "refresh_token_invalidated"
+                    "refresh_token_expired" | "refresh_token_reused" | "refresh_token_invalidated"
                 )
             {
                 let message = error.message.unwrap_or_else(|| match code {
@@ -885,15 +939,11 @@ fn classify_refresh_failure(status: StatusCode, body: &str) -> RefreshTokenError
 
     if let Ok(parsed) = serde_json::from_str::<OAuthErrorBody>(body) {
         if let Some(code) = parsed.error.as_deref() {
-            let description = parsed
-                .error_description
-                .as_deref()
-                .unwrap_or(code)
-                .trim();
+            let description = parsed.error_description.as_deref().unwrap_or(code).trim();
             let formatted = format!("OAuth error ({code}): {description}");
             match code {
                 "invalid_grant" | "invalid_client" | "invalid_scope" => {
-                    return RefreshTokenError::permanent(formatted)
+                    return RefreshTokenError::permanent(formatted);
                 }
                 "access_denied" => {
                     return RefreshTokenError::permanent(formatted);
@@ -940,8 +990,7 @@ fn classify_refresh_failure(status: StatusCode, body: &str) -> RefreshTokenError
 }
 
 fn refresh_token_endpoint() -> String {
-    env::var(REFRESH_TOKEN_URL_OVERRIDE_ENV_VAR)
-        .unwrap_or_else(|_| REFRESH_TOKEN_URL.to_string())
+    env::var(REFRESH_TOKEN_URL_OVERRIDE_ENV_VAR).unwrap_or_else(|_| REFRESH_TOKEN_URL.to_string())
 }
 
 fn summarize_body(body: &str) -> String {
@@ -971,6 +1020,57 @@ pub struct AuthDotJson {
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub last_refresh: Option<DateTime<Utc>>,
+
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub provider_credentials: BTreeMap<String, ProviderCredentialEntry>,
+}
+
+impl Default for AuthDotJson {
+    fn default() -> Self {
+        Self {
+            auth_mode: None,
+            openai_api_key: None,
+            tokens: None,
+            last_refresh: None,
+            provider_credentials: BTreeMap::new(),
+        }
+    }
+}
+
+impl AuthDotJson {
+    pub fn provider_api_key(&self, provider_ref: &str) -> Option<&str> {
+        let provider_ref = provider_ref.trim().to_ascii_lowercase();
+        if provider_ref.is_empty() {
+            return None;
+        }
+        if provider_ref == "openai" {
+            return self
+                .openai_api_key
+                .as_deref()
+                .map(str::trim)
+                .filter(|key| !key.is_empty());
+        }
+        self.provider_credentials
+            .get(&provider_ref)
+            .map(|entry| entry.api_key.trim())
+            .filter(|key| !key.is_empty())
+    }
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq)]
+pub struct ProviderCredentialEntry {
+    pub api_key: String,
+}
+
+fn normalize_provider_ref(provider_ref: &str) -> std::io::Result<String> {
+    let provider_ref = provider_ref.trim().to_ascii_lowercase();
+    if provider_ref.is_empty() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "provider id must not be empty",
+        ));
+    }
+    Ok(provider_ref)
 }
 
 // Shared constant for token refresh (client id used for oauth token refresh flow)
@@ -1008,8 +1108,8 @@ mod tests {
     use crate::token_data::KnownPlan;
     use crate::token_data::PlanType;
     use base64::Engine;
-    use reqwest::StatusCode;
     use pretty_assertions::assert_eq;
+    use reqwest::StatusCode;
     use serde::Serialize;
     use serde_json::json;
     use tempfile::tempdir;
@@ -1047,6 +1147,11 @@ mod tests {
                 "access_token": "stale-access",
                 "refresh_token": "stale-refresh",
                 "account_id": "stale-acc"
+            },
+            "provider_credentials": {
+                "minimax": {
+                    "api_key": "sk-minimax"
+                }
             }
         });
         std::fs::write(
@@ -1060,6 +1165,54 @@ mod tests {
         let auth = super::try_read_auth_json(&auth_path).expect("auth.json should parse");
         assert_eq!(auth.openai_api_key.as_deref(), Some("sk-new"));
         assert!(auth.tokens.is_none(), "tokens should be cleared");
+        assert_eq!(auth.provider_api_key("minimax"), Some("sk-minimax"));
+    }
+
+    #[test]
+    fn save_provider_api_key_preserves_openai_auth_and_stores_provider_key() {
+        let dir = tempdir().unwrap();
+
+        super::login_with_api_key(dir.path(), "sk-openai").expect("openai login should write auth");
+        super::save_provider_api_key(dir.path(), "minimax", "sk-minimax")
+            .expect("provider key should be saved");
+
+        let auth = super::try_read_auth_json(&super::get_auth_file(dir.path()))
+            .expect("auth should parse");
+        assert_eq!(auth.openai_api_key.as_deref(), Some("sk-openai"));
+        assert_eq!(auth.provider_api_key("minimax"), Some("sk-minimax"));
+    }
+
+    #[test]
+    fn login_with_api_key_preserves_provider_credentials() {
+        let dir = tempdir().unwrap();
+
+        super::save_provider_api_key(dir.path(), "minimax", "sk-minimax")
+            .expect("provider key should be saved");
+        super::login_with_api_key(dir.path(), "sk-openai").expect("openai login should write auth");
+
+        let auth = super::try_read_auth_json(&super::get_auth_file(dir.path()))
+            .expect("auth should parse");
+        assert_eq!(auth.openai_api_key.as_deref(), Some("sk-openai"));
+        assert_eq!(auth.provider_api_key("minimax"), Some("sk-minimax"));
+    }
+
+    #[test]
+    fn auth_manager_reads_provider_api_key_without_active_openai_auth() {
+        let dir = tempdir().unwrap();
+        super::save_provider_api_key(dir.path(), "minimax", "sk-minimax")
+            .expect("provider key should be saved");
+
+        let manager = AuthManager::new(
+            dir.path().to_path_buf(),
+            AuthMode::ApiKey,
+            "code_cli_rs".to_string(),
+        );
+
+        assert!(manager.auth().is_none());
+        assert_eq!(
+            manager.provider_api_key("minimax").as_deref(),
+            Some("sk-minimax")
+        );
     }
 
     #[tokio::test]
@@ -1108,6 +1261,7 @@ mod tests {
                         .unwrap()
                         .with_timezone(&Utc)
                 ),
+                provider_credentials: BTreeMap::new(),
             },
             auth_dot_json
         )
@@ -1162,6 +1316,7 @@ mod tests {
                         .unwrap()
                         .with_timezone(&Utc)
                 ),
+                provider_credentials: BTreeMap::new(),
             },
             auth_dot_json
         )
@@ -1224,6 +1379,7 @@ mod tests {
             openai_api_key: Some("sk-test-key".to_string()),
             tokens: None,
             last_refresh: None,
+            provider_credentials: BTreeMap::new(),
         };
         write_auth_json(&get_auth_file(dir.path()), &auth_dot_json)?;
         assert!(dir.path().join("auth.json").exists());
@@ -1235,7 +1391,11 @@ mod tests {
 
     fn assert_permanent(body: &str, status: StatusCode) {
         let err = classify_refresh_failure(status, body);
-        assert!(err.is_permanent(), "expected permanent error, got {:?}", err.kind);
+        assert!(
+            err.is_permanent(),
+            "expected permanent error, got {:?}",
+            err.kind
+        );
     }
 
     fn assert_transient(body: &str, status: StatusCode) {
@@ -1321,6 +1481,7 @@ mod tests {
             openai_api_key: None,
             tokens: Some(cached_tokens.clone()),
             last_refresh: None,
+            provider_credentials: BTreeMap::new(),
         };
 
         let rotated_tokens = TokenData {
@@ -1335,6 +1496,7 @@ mod tests {
             openai_api_key: None,
             tokens: Some(rotated_tokens.clone()),
             last_refresh: Some(Utc::now()),
+            provider_credentials: BTreeMap::new(),
         };
 
         write_auth_json(&auth_file, &rotated_auth).expect("failed to write rotated auth");
@@ -1375,8 +1537,14 @@ mod tests {
         assert!(!should_proactively_refresh_auth(Some(fresh), None));
         assert!(should_proactively_refresh_auth(Some(stale), None));
         assert!(!should_proactively_refresh_auth(None, None));
-        assert!(!should_proactively_refresh_auth(Some(stale), Some(&future_access)));
-        assert!(should_proactively_refresh_auth(Some(fresh), Some(&expired_access)));
+        assert!(!should_proactively_refresh_auth(
+            Some(stale),
+            Some(&future_access)
+        ));
+        assert!(should_proactively_refresh_auth(
+            Some(fresh),
+            Some(&expired_access)
+        ));
     }
 
     #[tokio::test]
@@ -1392,7 +1560,10 @@ mod tests {
         let error = RefreshTokenError::permanent("refresh token already used");
 
         manager.record_permanent_refresh_failure_if_unchanged(&auth, &error);
-        assert_eq!(manager.refresh_failure_for_auth(&auth).unwrap().message, error.message);
+        assert_eq!(
+            manager.refresh_failure_for_auth(&auth).unwrap().message,
+            error.message
+        );
 
         let updated_auth = CodexAuth::from_api_key("sk-after");
         if let Ok(mut guard) = manager.inner.write() {
@@ -1489,7 +1660,10 @@ mod tests {
 
         assert!(parsed.id_token.is_none());
         assert_eq!(parsed.access_token.as_deref(), Some("updated-access-token"));
-        assert_eq!(parsed.refresh_token.as_deref(), Some("updated-refresh-token"));
+        assert_eq!(
+            parsed.refresh_token.as_deref(),
+            Some("updated-refresh-token")
+        );
     }
 }
 
@@ -1553,11 +1727,7 @@ impl AuthManager {
     }
 
     /// Test helper used by dependent crates to simulate a terminal refresh failure.
-    pub fn seed_refresh_failure_for_testing(
-        &self,
-        auth: &CodexAuth,
-        error: RefreshTokenError,
-    ) {
+    pub fn seed_refresh_failure_for_testing(&self, auth: &CodexAuth, error: RefreshTokenError) {
         self.record_permanent_refresh_failure_if_unchanged(auth, &error);
     }
 
@@ -1580,12 +1750,21 @@ impl AuthManager {
         self.inner.read().ok().and_then(|c| c.auth.clone())
     }
 
+    pub fn provider_api_key(&self, provider_ref: &str) -> Option<String> {
+        let auth_read_path = resolve_code_path_for_read(&self.code_home, Path::new("auth.json"));
+        try_read_auth_json(&auth_read_path)
+            .ok()
+            .and_then(|auth| auth.provider_api_key(provider_ref).map(ToString::to_string))
+    }
+
     pub fn refresh_failure_for_auth(&self, auth: &CodexAuth) -> Option<RefreshTokenError> {
         self.inner.read().ok().and_then(|cached| {
             cached
                 .permanent_refresh_failure
                 .as_ref()
-                .filter(|failure| Self::auths_equal_for_refresh(&Some(auth.clone()), &Some(failure.auth.clone())))
+                .filter(|failure| {
+                    Self::auths_equal_for_refresh(&Some(auth.clone()), &Some(failure.auth.clone()))
+                })
                 .map(|failure| failure.error.clone())
         })
     }
@@ -1619,15 +1798,14 @@ impl AuthManager {
         });
         if let Ok(mut guard) = self.inner.write() {
             let changed = !AuthManager::auths_equal(&guard.auth, &new_auth);
-            let auth_changed_for_refresh = !AuthManager::auths_equal_for_refresh(&guard.auth, &new_auth);
+            let auth_changed_for_refresh =
+                !AuthManager::auths_equal_for_refresh(&guard.auth, &new_auth);
             if auth_changed_for_refresh {
                 guard.permanent_refresh_failure = None;
             }
             guard.auth = new_auth;
-            guard.preferred_auth_mode = env_auth
-                .as_ref()
-                .map(|auth| auth.mode)
-                .unwrap_or(preferred);
+            guard.preferred_auth_mode =
+                env_auth.as_ref().map(|auth| auth.mode).unwrap_or(preferred);
             changed
         } else {
             false
@@ -1671,10 +1849,8 @@ impl AuthManager {
                 guard.permanent_refresh_failure = None;
             }
             guard.auth = new_auth;
-            guard.preferred_auth_mode = env_auth
-                .as_ref()
-                .map(|auth| auth.mode)
-                .unwrap_or(preferred);
+            guard.preferred_auth_mode =
+                env_auth.as_ref().map(|auth| auth.mode).unwrap_or(preferred);
             if changed {
                 ReloadOutcome::ReloadedChanged
             } else {
@@ -1762,9 +1938,9 @@ impl AuthManager {
         if expected_account_id.is_some() {
             match self.reload_if_account_id_matches(expected_account_id.as_deref()) {
                 ReloadOutcome::ReloadedChanged => {
-                    let token = self
-                        .auth()
-                        .and_then(|auth| auth.get_current_token_data().map(|data| data.access_token));
+                    let token = self.auth().and_then(|auth| {
+                        auth.get_current_token_data().map(|data| data.access_token)
+                    });
                     return Ok(token);
                 }
                 ReloadOutcome::ReloadedNoChange => {}

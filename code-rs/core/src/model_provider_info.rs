@@ -3,16 +3,18 @@
 //! Providers can be defined in two places:
 //!   1. Built-in defaults compiled into the binary so Codex works out-of-the-box.
 //!   2. User-defined entries inside `~/.code/config.toml` under the `model_providers`
-//!      table (Code also reads legacy `~/.codex/config.toml`).
-//!      key. These override or extend the defaults at runtime.
+//!      table (Code also reads legacy `~/.codex/config.toml`). These override
+//!      or extend the defaults at runtime.
 
 use crate::CodexAuth;
 use crate::error::CodexErr;
+use crate::error::EnvVarError;
 use code_protocol::config_types::ModelProviderAuthInfo;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
+use std::collections::HashMap;
 use std::env::VarError;
 use std::io;
 use std::path::Path;
@@ -23,7 +25,7 @@ use std::sync::OnceLock;
 use std::time::Duration;
 use std::time::Instant;
 use tokio::process::Command;
-use crate::error::EnvVarError;
+
 const DEFAULT_STREAM_IDLE_TIMEOUT_MS: u64 = 300_000;
 pub(crate) const DEFAULT_WEBSOCKET_CONNECT_TIMEOUT_MS: u64 = 15_000;
 const DEFAULT_STREAM_MAX_RETRIES: u64 = 5;
@@ -83,6 +85,22 @@ pub enum WireApi {
     Chat,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ChatCompletionsFormat {
+    #[default]
+    #[serde(rename = "openai", alias = "open_ai")]
+    OpenAi,
+    #[serde(rename = "minimax", alias = "mini_max")]
+    MiniMax,
+}
+
+impl ChatCompletionsFormat {
+    fn is_openai(&self) -> bool {
+        matches!(self, Self::OpenAi)
+    }
+}
+
 /// Serializable representation of a provider definition.
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct ModelProviderInfo {
@@ -105,9 +123,16 @@ pub struct ModelProviderInfo {
     /// Command-backed bearer-token configuration for this provider.
     pub auth: Option<ModelProviderAuthInfo>,
 
+    /// Provider credential id to read from auth.json provider_credentials.
+    pub credential_ref: Option<String>,
+
     /// Which wire protocol this provider expects.
     #[serde(default)]
     pub wire_api: WireApi,
+
+    /// Provider-specific compatibility tweaks for Chat Completions payloads.
+    #[serde(default, skip_serializing_if = "ChatCompletionsFormat::is_openai")]
+    pub chat_completions_format: ChatCompletionsFormat,
 
     /// Optional query parameters to append to the base URL.
     pub query_params: Option<HashMap<String, String>>,
@@ -250,6 +275,9 @@ impl ModelProviderInfo {
         if self.experimental_bearer_token.is_some() {
             conflicts.push("experimental_bearer_token");
         }
+        if self.credential_ref.is_some() {
+            conflicts.push("credential_ref");
+        }
         if self.requires_openai_auth {
             conflicts.push("requires_openai_auth");
         }
@@ -337,7 +365,6 @@ impl ModelProviderInfo {
         method: reqwest::Method,
         url: reqwest::Url,
     ) -> crate::error::Result<reqwest::RequestBuilder> {
-
         let mut builder = client.request(method, url);
 
         if let Some(auth) = auth.as_ref() {
@@ -365,7 +392,10 @@ impl ModelProviderInfo {
         client: &'a reqwest::Client,
         auth: &Option<CodexAuth>,
     ) -> crate::error::Result<reqwest::RequestBuilder> {
-        if !matches!(self.wire_api, WireApi::Responses | WireApi::ResponsesWebsocket) {
+        if !matches!(
+            self.wire_api,
+            WireApi::Responses | WireApi::ResponsesWebsocket
+        ) {
             return Err(CodexErr::UnsupportedOperation(
                 "Compaction endpoint requires Responses API providers".to_string(),
             ));
@@ -391,6 +421,14 @@ impl ModelProviderInfo {
         &self,
         auth: &Option<CodexAuth>,
     ) -> crate::error::Result<Option<CodexAuth>> {
+        self.effective_auth_with_provider_key(auth, None).await
+    }
+
+    pub(crate) async fn effective_auth_with_provider_key(
+        &self,
+        auth: &Option<CodexAuth>,
+        provider_api_key: Option<&str>,
+    ) -> crate::error::Result<Option<CodexAuth>> {
         if let Some(token) = self
             .experimental_bearer_token
             .as_deref()
@@ -407,17 +445,46 @@ impl ModelProviderInfo {
             return Ok(Some(CodexAuth::from_api_key(&token)));
         }
 
+        if let Some(key) = provider_api_key
+            .map(str::trim)
+            .filter(|key| !key.is_empty())
+        {
+            return Ok(Some(CodexAuth::from_api_key(key)));
+        }
+
         match self.api_key() {
             Ok(Some(key)) => Ok(Some(CodexAuth::from_api_key(&key))),
-            Ok(None) => Ok(auth.clone()),
+            Ok(None) => {
+                if self.credential_ref.is_some() {
+                    Err(self.missing_provider_credential_error())
+                } else {
+                    Ok(auth.clone())
+                }
+            }
             Err(err) => {
-                if auth.is_some() {
+                if self.credential_ref.is_some() {
+                    Err(err)
+                } else if auth.is_some() {
                     Ok(auth.clone())
                 } else {
                     Err(err)
                 }
             }
         }
+    }
+
+    fn missing_provider_credential_error(&self) -> CodexErr {
+        let credential_ref = self.credential_ref.as_deref().unwrap_or("provider");
+        let var = self
+            .env_key
+            .clone()
+            .unwrap_or_else(|| format!("provider_credentials.{credential_ref}.api_key"));
+        CodexErr::EnvVar(EnvVarError {
+            var,
+            instructions: Some(format!(
+                "Set an environment variable for this provider or run `code login --provider {credential_ref} --with-api-key`."
+            )),
+        })
     }
 
     /// Returns the OpenRouter-specific configuration, if this provider declares one.
@@ -459,7 +526,10 @@ impl ModelProviderInfo {
     }
 
     pub(crate) fn get_compact_url(&self, auth: &Option<CodexAuth>) -> Option<String> {
-        if !matches!(self.wire_api, WireApi::Responses | WireApi::ResponsesWebsocket) {
+        if !matches!(
+            self.wire_api,
+            WireApi::Responses | WireApi::ResponsesWebsocket
+        ) {
             return None;
         }
         let full = self.get_full_url(auth);
@@ -471,7 +541,10 @@ impl ModelProviderInfo {
     }
 
     pub(crate) fn is_azure_responses_endpoint(&self) -> bool {
-        if !matches!(self.wire_api, WireApi::Responses | WireApi::ResponsesWebsocket) {
+        if !matches!(
+            self.wire_api,
+            WireApi::Responses | WireApi::ResponsesWebsocket
+        ) {
             return false;
         }
 
@@ -486,7 +559,10 @@ impl ModelProviderInfo {
     }
 
     pub(crate) fn is_backend_responses_endpoint(&self) -> bool {
-        if !matches!(self.wire_api, WireApi::Responses | WireApi::ResponsesWebsocket) {
+        if !matches!(
+            self.wire_api,
+            WireApi::Responses | WireApi::ResponsesWebsocket
+        ) {
             return false;
         }
 
@@ -500,7 +576,10 @@ impl ModelProviderInfo {
     }
 
     pub(crate) fn is_public_openai_responses_endpoint(&self) -> bool {
-        if !matches!(self.wire_api, WireApi::Responses | WireApi::ResponsesWebsocket) {
+        if !matches!(
+            self.wire_api,
+            WireApi::Responses | WireApi::ResponsesWebsocket
+        ) {
             return false;
         }
         if self.is_backend_responses_endpoint() || self.is_azure_responses_endpoint() {
@@ -510,7 +589,11 @@ impl ModelProviderInfo {
         self.base_url
             .as_ref()
             .and_then(|base| reqwest::Url::parse(base).ok())
-            .and_then(|parsed| parsed.host_str().map(|host| host.eq_ignore_ascii_case("api.openai.com")))
+            .and_then(|parsed| {
+                parsed
+                    .host_str()
+                    .map(|host| host.eq_ignore_ascii_case("api.openai.com"))
+            })
             .unwrap_or(true)
     }
 
@@ -598,7 +681,12 @@ impl ModelProviderInfo {
 
 async fn resolve_provider_auth_token(config: &ModelProviderAuthInfo) -> io::Result<String> {
     let cache_key = ProviderAuthCacheKey::from(config);
-    if let Some(cached_token) = provider_auth_cache().lock().unwrap().get(&cache_key).cloned() {
+    if let Some(cached_token) = provider_auth_cache()
+        .lock()
+        .unwrap()
+        .get(&cache_key)
+        .cloned()
+    {
         let should_use_cached_token = match config.refresh_interval() {
             Some(refresh_interval) => cached_token.fetched_at.elapsed() < refresh_interval,
             None => true,
@@ -693,6 +781,8 @@ fn resolve_provider_auth_program(command: &str, cwd: &Path) -> io::Result<PathBu
 const DEFAULT_OLLAMA_PORT: u32 = 11434;
 
 pub const BUILT_IN_OSS_MODEL_PROVIDER_ID: &str = "oss";
+pub const MINIMAX_PROVIDER_ID: &str = "minimax";
+pub const MINIMAX_DEFAULT_BASE_URL: &str = "https://api.minimax.io/v1";
 
 /// Built-in default provider list.
 fn wire_api_override_from_env(env_key: &str) -> Option<WireApi> {
@@ -718,10 +808,9 @@ pub fn built_in_model_providers(
 ) -> HashMap<String, ModelProviderInfo> {
     use ModelProviderInfo as P;
 
-    // We do not want to be in the business of adjucating which third-party
-    // providers are bundled with Codex CLI, so we only include the OpenAI and
-    // open source ("oss") providers by default. Users are encouraged to add to
-    // `model_providers` in config.toml to add their own providers.
+    // Keep this list intentionally small. Additional direct-model providers can
+    // be added here when they need code-level compatibility shims; otherwise,
+    // users can extend `model_providers` in config.toml.
     [
         (
             "openai",
@@ -732,16 +821,16 @@ pub fn built_in_model_providers(
                 env_key_instructions: None,
                 experimental_bearer_token: None,
                 auth: None,
+                credential_ref: None,
                 wire_api: wire_api_override_from_env("OPENAI_WIRE_API")
                     .unwrap_or(WireApi::Responses),
+                chat_completions_format: ChatCompletionsFormat::OpenAi,
                 query_params: None,
                 http_headers: Some(
-                    [
-                        (
-                            "version".to_string(),
-                            code_version::wire_compatible_version().to_string(),
-                        ),
-                    ]
+                    [(
+                        "version".to_string(),
+                        code_version::wire_compatible_version().to_string(),
+                    )]
                     .into_iter()
                     .collect(),
                 ),
@@ -765,11 +854,44 @@ pub fn built_in_model_providers(
                 openrouter: None,
             },
         ),
+        (MINIMAX_PROVIDER_ID, create_minimax_provider()),
         (BUILT_IN_OSS_MODEL_PROVIDER_ID, create_oss_provider()),
     ]
     .into_iter()
     .map(|(k, v)| (k.to_string(), v))
     .collect()
+}
+
+pub fn create_minimax_provider() -> ModelProviderInfo {
+    let base_url = std::env::var("MINIMAX_BASE_URL")
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| MINIMAX_DEFAULT_BASE_URL.to_string());
+
+    ModelProviderInfo {
+        name: "MiniMax".into(),
+        base_url: Some(base_url),
+        env_key: Some("MINIMAX_API_KEY".into()),
+        env_key_instructions: Some(
+            "Set MINIMAX_API_KEY or run `code login --provider minimax --with-api-key`."
+                .to_string(),
+        ),
+        experimental_bearer_token: None,
+        auth: None,
+        credential_ref: Some(MINIMAX_PROVIDER_ID.to_string()),
+        wire_api: WireApi::Chat,
+        chat_completions_format: ChatCompletionsFormat::MiniMax,
+        query_params: None,
+        http_headers: None,
+        env_http_headers: None,
+        request_max_retries: None,
+        stream_max_retries: None,
+        stream_idle_timeout_ms: None,
+        websocket_connect_timeout_ms: None,
+        requires_openai_auth: false,
+        openrouter: None,
+    }
 }
 
 pub fn create_oss_provider() -> ModelProviderInfo {
@@ -801,7 +923,9 @@ pub fn create_oss_provider_with_base_url(base_url: &str) -> ModelProviderInfo {
         env_key_instructions: None,
         experimental_bearer_token: None,
         auth: None,
+        credential_ref: None,
         wire_api: WireApi::Chat,
+        chat_completions_format: ChatCompletionsFormat::OpenAi,
         query_params: None,
         http_headers: None,
         env_http_headers: None,
@@ -848,7 +972,9 @@ base_url = "http://localhost:11434/v1"
             env_key_instructions: None,
             experimental_bearer_token: None,
             auth: None,
+            credential_ref: None,
             wire_api: WireApi::Chat,
+            chat_completions_format: ChatCompletionsFormat::OpenAi,
             query_params: None,
             http_headers: None,
             env_http_headers: None,
@@ -879,7 +1005,9 @@ query_params = { api-version = "2025-04-01-preview" }
             env_key_instructions: None,
             experimental_bearer_token: None,
             auth: None,
+            credential_ref: None,
             wire_api: WireApi::Chat,
+            chat_completions_format: ChatCompletionsFormat::OpenAi,
             query_params: Some(maplit::hashmap! {
                 "api-version".to_string() => "2025-04-01-preview".to_string(),
             }),
@@ -913,7 +1041,9 @@ env_http_headers = { "X-Example-Env-Header" = "EXAMPLE_ENV_VAR" }
             env_key_instructions: None,
             experimental_bearer_token: None,
             auth: None,
+            credential_ref: None,
             wire_api: WireApi::Chat,
+            chat_completions_format: ChatCompletionsFormat::OpenAi,
             query_params: None,
             http_headers: Some(maplit::hashmap! {
                 "X-Example-Header".to_string() => "example-value".to_string(),
@@ -943,7 +1073,9 @@ env_http_headers = { "X-Example-Env-Header" = "EXAMPLE_ENV_VAR" }
                 env_key_instructions: None,
                 experimental_bearer_token: None,
                 auth: None,
+                credential_ref: None,
                 wire_api: WireApi::Responses,
+                chat_completions_format: ChatCompletionsFormat::OpenAi,
                 query_params: None,
                 http_headers: None,
                 env_http_headers: None,
@@ -979,7 +1111,9 @@ env_http_headers = { "X-Example-Env-Header" = "EXAMPLE_ENV_VAR" }
             env_key_instructions: None,
             experimental_bearer_token: None,
             auth: None,
+            credential_ref: None,
             wire_api: WireApi::Responses,
+            chat_completions_format: ChatCompletionsFormat::OpenAi,
             query_params: None,
             http_headers: None,
             env_http_headers: None,
@@ -1009,13 +1143,81 @@ env_http_headers = { "X-Example-Env-Header" = "EXAMPLE_ENV_VAR" }
     #[test]
     fn openai_provider_version_header_uses_wire_compatible_version() {
         let providers = built_in_model_providers(None);
-        let openai = providers.get("openai").expect("openai provider should exist");
-        let headers = openai.http_headers.as_ref().expect("openai provider should set headers");
+        let openai = providers
+            .get("openai")
+            .expect("openai provider should exist");
+        let headers = openai
+            .http_headers
+            .as_ref()
+            .expect("openai provider should set headers");
         let version = headers
             .get("version")
             .expect("openai provider should include version header");
 
         assert_eq!(version, code_version::wire_compatible_version());
+    }
+
+    #[test]
+    fn built_in_minimax_provider_uses_chat_completions_and_provider_credentials() {
+        let providers = built_in_model_providers(None);
+        let minimax = providers
+            .get(MINIMAX_PROVIDER_ID)
+            .expect("minimax provider should exist");
+
+        assert_eq!(minimax.name, "MiniMax");
+        assert_eq!(minimax.base_url.as_deref(), Some(MINIMAX_DEFAULT_BASE_URL));
+        assert_eq!(minimax.env_key.as_deref(), Some("MINIMAX_API_KEY"));
+        assert_eq!(minimax.credential_ref.as_deref(), Some(MINIMAX_PROVIDER_ID));
+        assert_eq!(minimax.wire_api, WireApi::Chat);
+        assert_eq!(
+            minimax.chat_completions_format,
+            ChatCompletionsFormat::MiniMax
+        );
+        assert!(!minimax.requires_openai_auth);
+    }
+
+    #[tokio::test]
+    async fn credential_ref_uses_provider_key_before_env_and_never_falls_back_to_openai_auth() {
+        let provider = ModelProviderInfo {
+            name: "MiniMax".into(),
+            base_url: Some(MINIMAX_DEFAULT_BASE_URL.into()),
+            env_key: None,
+            env_key_instructions: None,
+            experimental_bearer_token: None,
+            auth: None,
+            credential_ref: Some(MINIMAX_PROVIDER_ID.to_string()),
+            wire_api: WireApi::Chat,
+            chat_completions_format: ChatCompletionsFormat::MiniMax,
+            query_params: None,
+            http_headers: None,
+            env_http_headers: None,
+            request_max_retries: None,
+            stream_max_retries: None,
+            stream_idle_timeout_ms: None,
+            websocket_connect_timeout_ms: None,
+            requires_openai_auth: false,
+            openrouter: None,
+        };
+
+        let openai_auth = Some(CodexAuth::from_api_key("sk-openai"));
+        let auth = provider
+            .effective_auth_with_provider_key(&openai_auth, Some("sk-minimax"))
+            .await
+            .expect("provider key should resolve");
+        assert_eq!(
+            auth.expect("provider auth").get_token().await.unwrap(),
+            "sk-minimax"
+        );
+
+        let err = provider
+            .effective_auth_with_provider_key(&openai_auth, None)
+            .await
+            .expect_err("missing provider credential must not use OpenAI auth");
+        assert!(
+            err.to_string().contains("MINIMAX_API_KEY")
+                || err.to_string().contains("provider_credentials.minimax"),
+            "unexpected error: {err}"
+        );
     }
 
     #[test]
@@ -1082,7 +1284,9 @@ refresh_interval_ms = 0
                 refresh_interval_ms: 300_000,
                 cwd: AbsolutePathBuf::current_dir().unwrap(),
             }),
+            credential_ref: None,
             wire_api: WireApi::Responses,
+            chat_completions_format: ChatCompletionsFormat::OpenAi,
             query_params: None,
             http_headers: None,
             env_http_headers: None,

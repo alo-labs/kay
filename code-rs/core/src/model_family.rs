@@ -260,7 +260,19 @@ pub fn find_family_for_model(slug: &str) -> Option<ModelFamily> {
         return Some(family);
     }
 
-    if slug.starts_with("o3") {
+    let slug_lower = slug.to_ascii_lowercase();
+    if matches!(
+        slug_lower.as_str(),
+        "minimax-m2.7" | "codex-minimax-m2.7"
+    ) {
+        model_family!(
+            slug, "minimax-m2.7",
+            needs_special_apply_patch_instructions: true,
+            base_instructions: BASE_INSTRUCTIONS_WITH_APPLY_PATCH.to_string(),
+            context_window: Some(204_800),
+            truncation_policy: TruncationPolicy::Tokens(10_000),
+        )
+    } else if slug.starts_with("o3") {
         model_family!(
             slug, "o3",
             supports_reasoning_summaries: true,
@@ -522,6 +534,15 @@ mod tests {
         let family = find_family_for_model("gpt-5.4").expect("known upstream model");
 
         assert_eq!(family.default_reasoning_effort, Some(ReasoningEffort::XHigh));
+    }
+
+    #[test]
+    fn minimax_m27_has_first_class_model_family() {
+        let family = find_family_for_model("MiniMax-M2.7").expect("known MiniMax model");
+
+        assert_eq!(family.family, "minimax-m2.7");
+        assert_eq!(family.context_window, Some(204_800));
+        assert!(family.needs_special_apply_patch_instructions);
     }
 }
 
