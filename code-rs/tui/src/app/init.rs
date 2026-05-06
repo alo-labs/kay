@@ -359,15 +359,97 @@ impl App<'_> {
 
 fn should_show_onboarding(
     login_status: crate::LoginStatus,
-    _config: &Config,
+    config: &Config,
     show_trust_screen: bool,
 ) -> bool {
     if show_trust_screen {
         return true;
     }
-    matches!(login_status, crate::LoginStatus::NotAuthenticated)
+    should_show_login_screen(login_status, config)
 }
 
-fn should_show_login_screen(login_status: crate::LoginStatus, _config: &Config) -> bool {
-    matches!(login_status, crate::LoginStatus::NotAuthenticated)
+fn should_show_login_screen(login_status: crate::LoginStatus, config: &Config) -> bool {
+    config.model_provider.requires_openai_auth
+        && matches!(login_status, crate::LoginStatus::NotAuthenticated)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use code_core::config::{ConfigOverrides, ConfigToml};
+    use tempfile::TempDir;
+
+    fn config_for_provider(
+        provider: &str,
+        model: &str,
+    ) -> std::io::Result<(Config, TempDir, TempDir)> {
+        let code_home = TempDir::new()?;
+        let cwd = TempDir::new()?;
+        let cfg = ConfigToml {
+            model: Some(model.to_string()),
+            model_provider: Some(provider.to_string()),
+            ..Default::default()
+        };
+        let config = Config::load_from_base_config_with_overrides(
+            cfg,
+            ConfigOverrides {
+                cwd: Some(cwd.path().to_path_buf()),
+                ..Default::default()
+            },
+            code_home.path().to_path_buf(),
+        )?;
+
+        Ok((config, code_home, cwd))
+    }
+
+    #[test]
+    fn minimax_provider_without_openai_auth_skips_login_onboarding() -> std::io::Result<()> {
+        let (config, _code_home, _cwd) = config_for_provider("minimax", "MiniMax-M2.7")?;
+
+        assert!(!should_show_login_screen(
+            crate::LoginStatus::NotAuthenticated,
+            &config
+        ));
+        assert!(!should_show_onboarding(
+            crate::LoginStatus::NotAuthenticated,
+            &config,
+            false
+        ));
+
+        Ok(())
+    }
+
+    #[test]
+    fn openai_provider_without_auth_still_shows_login_onboarding() -> std::io::Result<()> {
+        let (config, _code_home, _cwd) = config_for_provider("openai", "gpt-5.1")?;
+
+        assert!(should_show_login_screen(
+            crate::LoginStatus::NotAuthenticated,
+            &config
+        ));
+        assert!(should_show_onboarding(
+            crate::LoginStatus::NotAuthenticated,
+            &config,
+            false
+        ));
+
+        Ok(())
+    }
+
+    #[test]
+    fn minimax_provider_still_shows_trust_onboarding_when_required() -> std::io::Result<()> {
+        let (config, _code_home, _cwd) = config_for_provider("minimax", "MiniMax-M2.7")?;
+
+        assert!(should_show_onboarding(
+            crate::LoginStatus::NotAuthenticated,
+            &config,
+            true
+        ));
+        assert!(!should_show_login_screen(
+            crate::LoginStatus::NotAuthenticated,
+            &config
+        ));
+
+        Ok(())
+    }
 }

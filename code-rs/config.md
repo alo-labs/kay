@@ -24,6 +24,27 @@ model = "o3"  # overrides the default of "gpt-5.1"
 
 This option lets you override and amend the default set of model providers bundled with Codex. This value is a map where the key is the value to use with `model_provider` to select the corresponding provider. Providers must expose an OpenAI-compatible HTTP API (Chat Completions or Responses); native Anthropic/Gemini APIs are not supported directly without a proxy.
 
+Built-in provider IDs:
+
+- `openai`: default OpenAI provider.
+- `oss`: local OpenAI-compatible OSS provider, usually Ollama.
+- `minimax`: MiniMax Chat Completions provider, default base URL `https://api.minimax.io/v1`.
+
+The built-in `minimax` provider reads credentials from `~/.code/auth.json` under
+`provider_credentials.minimax.api_key`, with `MINIMAX_API_KEY` as an environment
+fallback. To store the key persistently:
+
+```bash
+printenv MINIMAX_API_KEY | code login --provider minimax --with-api-key
+```
+
+To use MiniMax M2.7:
+
+```toml
+model_provider = "minimax"
+model = "MiniMax-M2.7"
+```
+
 For example, if you wanted to add a provider that uses the OpenAI 4o model via the chat completions API, then you could add the following configuration:
 
 ```toml
@@ -41,8 +62,15 @@ base_url = "https://api.openai.com/v1"
 # using Codex with this provider. The value of the environment variable must be
 # non-empty and will be used in the `Bearer TOKEN` HTTP header for the POST request.
 env_key = "OPENAI_API_KEY"
+# Optional auth.json provider_credentials key. If set, this provider first
+# reads `provider_credentials.<credential_ref>.api_key`, then falls back to
+# `env_key`. It never falls back to the OpenAI API key.
+credential_ref = "openai-chat-completions"
 # Valid values for wire_api are "chat" and "responses". Defaults to "chat" if omitted.
 wire_api = "chat"
+# Optional Chat Completions compatibility mode. Omit for OpenAI-compatible
+# providers; use "minimax" only for MiniMax-style payloads.
+# chat_completions_format = "openai"
 # If necessary, extra query params that need to be added to the URL.
 # See the Azure example below.
 query_params = {}
@@ -123,7 +151,7 @@ How long Codex will wait for activity on a streaming response before treating th
 
 ## model_provider
 
-Identifies which provider to use from the `model_providers` map. Defaults to `"openai"`. You can override the `base_url` for the built-in `openai` provider via the `OPENAI_BASE_URL` environment variable and force the wire protocol (`"responses"` or `"chat"`) with `OPENAI_WIRE_API`.
+Identifies which provider to use from the `model_providers` map. Defaults to `"openai"`. Built-in provider IDs include `"openai"`, `"oss"`, and `"minimax"`. You can override the `base_url` for the built-in `openai` provider via the `OPENAI_BASE_URL` environment variable and force the wire protocol (`"responses"` or `"chat"`) with `OPENAI_WIRE_API`.
 
 Note that if you override `model_provider`, then you likely want to override
 `model`, as well. For example, if you are running ollama with Mistral locally,

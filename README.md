@@ -87,7 +87,7 @@ npx -y @just-every/code
 
 ```bash
 npm install -g @just-every/code
-code // or `coder` if you're using VS Code
+codex // or `code` / `coder` aliases if you prefer
 ```
 
 Note: If another tool already provides a `code` command (e.g. VS Code), our CLI is also installed as `coder`. Use `coder` to avoid conflicts.
@@ -282,12 +282,35 @@ model_reasoning_effort = "high"
 model_reasoning_summary = "detailed"
 ```
 
+### MiniMax M2.7
+
+Every Code includes a built-in MiniMax provider. Store the API key in the same
+auth file used for OpenAI credentials:
+
+```bash
+printenv MINIMAX_API_KEY | code login --provider minimax --with-api-key
+```
+
+Then launch with MiniMax M2.7:
+
+```bash
+code -c model_provider=minimax -c model=MiniMax-M2.7
+```
+
+To switch back to OpenAI for a session:
+
+```bash
+code -c model_provider=openai -c model=gpt-5.1
+```
+
 ### Environment variables
 
 - `CODE_HOME`: Override config directory location
 - `OPENAI_API_KEY`: Use API key instead of ChatGPT auth
 - `OPENAI_BASE_URL`: Use OpenAI-compatible API endpoints (chat or responses)
 - `OPENAI_WIRE_API`: Force the built-in OpenAI provider to use `chat` or `responses` wiring
+- `MINIMAX_API_KEY`: Optional environment fallback for the built-in MiniMax provider
+- `MINIMAX_BASE_URL`: Optional base URL override for the built-in MiniMax provider
 
 &ensp;
 ## FAQ
@@ -360,6 +383,7 @@ Using OpenAI, Anthropic or Google services through Every Code means you agree to
 
 ### Privacy
 - Your auth file lives at `~/.code/auth.json`
+- Third-party provider API keys are stored under `provider_credentials` in `~/.code/auth.json`
 - Inputs/outputs you send to AI providers are handled under their Terms and Privacy Policy; consult those documents (and any org-level data-sharing settings).
 
 ### Subject to change
