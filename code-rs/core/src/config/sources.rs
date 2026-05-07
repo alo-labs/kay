@@ -25,6 +25,7 @@ use toml_edit::Item as TomlItem;
 use toml_edit::Table as TomlTable;
 use which::which;
 
+use crate::host::host_codex_path;
 use super::CONFIG_TOML_FILE;
 
 pub fn load_config_as_toml(code_home: &Path) -> std::io::Result<TomlValue> {
@@ -1719,6 +1720,13 @@ fn path_exists(path: &Path) -> bool {
 pub fn resolve_code_path_for_read(code_home: &Path, relative: &Path) -> PathBuf {
     let default_path = code_home.join(relative);
 
+    // `config.toml` is Kay-owned writable state and must not read through to
+    // the host Codex home, otherwise writes would silently copy host config
+    // into Kay's local state.
+    if relative == Path::new(CONFIG_TOML_FILE) {
+        return default_path;
+    }
+
     if env_overrides_present() {
         return default_path;
     }
@@ -1773,26 +1781,41 @@ pub fn find_code_home() -> std::io::Result<PathBuf> {
 
 pub(crate) fn load_instructions(code_dir: Option<&Path>) -> Option<String> {
     let code_home = code_dir?;
-    let read_path = resolve_code_path_for_read(code_home, Path::new("AGENTS.md"));
+    let local_path = code_home.join("AGENTS.md");
+    let mut contents = Vec::new();
 
-    let contents = match std::fs::read_to_string(&read_path) {
-        Ok(s) => s,
-        Err(_) => {
-            if env_overrides_present() {
-                return None;
-            }
-            let Some(legacy_home) = legacy_code_home_dir() else {
-                return None;
-            };
-            let legacy_path = legacy_home.join("AGENTS.md");
-            match std::fs::read_to_string(&legacy_path) {
-                Ok(s) => s,
-                Err(_) => return None,
-            }
+    if let Ok(local) = std::fs::read_to_string(&local_path) {
+        contents.push(local);
+    }
+
+    if let Some(host_path) = host_codex_path(Path::new("AGENTS.md"))
+        && host_path != local_path
+        && let Ok(host) = std::fs::read_to_string(&host_path)
+    {
+        contents.insert(0, host);
+    }
+
+    if contents.is_empty() {
+        if env_overrides_present() {
+            return None;
         }
-    };
+        let Some(legacy_home) = legacy_code_home_dir() else {
+            return None;
+        };
+        let legacy_path = legacy_home.join("AGENTS.md");
+        let Ok(contents) = std::fs::read_to_string(&legacy_path) else {
+            return None;
+        };
+        let trimmed = contents.trim();
+        return if trimmed.is_empty() {
+            None
+        } else {
+            Some(trimmed.to_string())
+        };
+    }
 
-    let trimmed = contents.trim();
+    let trimmed = contents.join("\n\n");
+    let trimmed = trimmed.trim();
     if trimmed.is_empty() {
         None
     } else {

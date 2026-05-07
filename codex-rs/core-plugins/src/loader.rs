@@ -10,9 +10,11 @@ use crate::store::PluginStore;
 use crate::store::plugin_version_for_source;
 use codex_config::ConfigLayerStack;
 use codex_config::HooksFile;
+use codex_config::host_codex_path;
 use codex_config::types::McpServerConfig;
 use codex_config::types::PluginConfig;
 use codex_config::types::PluginMcpServerConfig;
+use codex_config::merge_toml_values;
 use codex_core_skills::SkillMetadata;
 use codex_core_skills::config_rules::SkillConfigRules;
 use codex_core_skills::config_rules::resolve_disabled_skill_paths;
@@ -43,6 +45,7 @@ use std::process::Command;
 use std::sync::Arc;
 use tempfile::TempDir;
 use tracing::warn;
+use toml::Value as TomlValue;
 
 const DEFAULT_SKILLS_DIR_NAME: &str = "skills";
 const DEFAULT_HOOKS_CONFIG_FILE: &str = "hooks/hooks.json";
@@ -378,10 +381,7 @@ fn refresh_non_curated_plugin_cache_with_mode(
 fn configured_plugins_from_stack(
     config_layer_stack: &ConfigLayerStack,
 ) -> HashMap<String, PluginConfig> {
-    let Some(user_layer) = config_layer_stack.get_user_layer() else {
-        return HashMap::new();
-    };
-    configured_plugins_from_user_config_value(&user_layer.config)
+    configured_plugins_from_user_config_value(&config_layer_stack.effective_config())
 }
 
 fn is_full_git_sha(value: &str) -> bool {
@@ -408,33 +408,11 @@ fn configured_plugins_from_codex_home(
     read_error_message: &str,
     parse_error_message: &str,
 ) -> HashMap<String, PluginConfig> {
-    let config_path = codex_home.join(CONFIG_TOML_FILE);
-    let user_config = match fs::read_to_string(&config_path) {
-        Ok(user_config) => user_config,
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => return HashMap::new(),
-        Err(err) => {
-            warn!(
-                path = %config_path.display(),
-                error = %err,
-                "{read_error_message}"
-            );
-            return HashMap::new();
-        }
+    let Some(config) = merged_home_config_toml(codex_home, read_error_message, parse_error_message)
+    else {
+        return HashMap::new();
     };
-
-    let user_config = match toml::from_str::<toml::Value>(&user_config) {
-        Ok(user_config) => user_config,
-        Err(err) => {
-            warn!(
-                path = %config_path.display(),
-                error = %err,
-                "{parse_error_message}"
-            );
-            return HashMap::new();
-        }
-    };
-
-    configured_plugins_from_user_config_value(&user_config)
+    configured_plugins_from_user_config_value(&config)
 }
 
 fn configured_plugin_ids(
@@ -491,6 +469,55 @@ pub fn configured_curated_plugin_ids_from_codex_home(codex_home: &Path) -> Vec<P
         "failed to read user config while refreshing curated plugin cache",
         "failed to parse user config while refreshing curated plugin cache",
     ))
+}
+
+pub(crate) fn merged_home_config_toml(
+    codex_home: &Path,
+    read_error_message: &str,
+    parse_error_message: &str,
+) -> Option<TomlValue> {
+    let mut merged = TomlValue::Table(toml::map::Map::new());
+    let mut loaded_any = false;
+
+    let mut config_paths = Vec::new();
+    if let Some(host_path) = host_codex_path(Path::new(CONFIG_TOML_FILE))
+        && host_path != codex_home.join(CONFIG_TOML_FILE)
+    {
+        config_paths.push(host_path);
+    }
+    config_paths.push(codex_home.join(CONFIG_TOML_FILE));
+
+    for config_path in config_paths {
+        let raw_config = match fs::read_to_string(&config_path) {
+            Ok(raw_config) => raw_config,
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => continue,
+            Err(err) => {
+                warn!(
+                    path = %config_path.display(),
+                    error = %err,
+                    "{read_error_message}"
+                );
+                continue;
+            }
+        };
+
+        let parsed = match toml::from_str::<TomlValue>(&raw_config) {
+            Ok(config) => config,
+            Err(err) => {
+                warn!(
+                    path = %config_path.display(),
+                    error = %err,
+                    "{parse_error_message}"
+                );
+                continue;
+            }
+        };
+
+        merge_toml_values(&mut merged, &parsed);
+        loaded_any = true;
+    }
+
+    loaded_any.then_some(merged)
 }
 
 async fn load_plugin(

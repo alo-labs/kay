@@ -3,6 +3,7 @@ mod layer_io;
 mod macos;
 
 use self::layer_io::LoadedConfigLayers;
+use self::layer_io::read_config_from_path;
 use crate::CONFIG_TOML_FILE;
 use crate::cloud_requirements::CloudRequirementsLoader;
 use crate::config_requirements::ConfigRequirementsToml;
@@ -19,6 +20,7 @@ use crate::merge::merge_toml_values;
 use crate::overrides::build_cli_overrides_layer;
 use crate::project_root_markers::default_project_root_markers;
 use crate::project_root_markers::project_root_markers_from_config;
+use crate::host::host_codex_path;
 use crate::state::ConfigLayerEntry;
 use crate::state::ConfigLayerStack;
 use crate::state::LoaderOverrides;
@@ -184,14 +186,30 @@ pub async fn load_config_layers_state(
                 },
                 config_toml,
             )
-        })
-        .await?;
+    })
+    .await?;
     layers.push(system_layer);
+
+    let user_file = AbsolutePathBuf::resolve_path_against_base(CONFIG_TOML_FILE, codex_home);
+
+    if let Some(host_user_file) = host_codex_path(Path::new(CONFIG_TOML_FILE))
+        && host_user_file.as_path() != user_file.as_path()
+    {
+        let host_user_file = AbsolutePathBuf::try_from(host_user_file)
+            .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
+        if let Some(host_config) = read_config_from_path(fs, &host_user_file, false).await? {
+            layers.push(ConfigLayerEntry::new(
+                ConfigLayerSource::System {
+                    file: host_user_file,
+                },
+                host_config,
+            ));
+        }
+    }
 
     // Add a layer for $CODEX_HOME/config.toml so folder-derived resources such
     // as rules/ can still be discovered. When user config is ignored, preserve
     // the layer metadata without reading config.toml.
-    let user_file = AbsolutePathBuf::resolve_path_against_base(CONFIG_TOML_FILE, codex_home);
     let user_layer = if ignore_user_config {
         ConfigLayerEntry::new(
             ConfigLayerSource::User {

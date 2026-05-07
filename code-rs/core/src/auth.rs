@@ -17,7 +17,6 @@ use tempfile::NamedTempFile;
 
 use code_app_server_protocol::AuthMode;
 
-use crate::config::resolve_code_path_for_read;
 use crate::token_data::KnownPlan;
 use crate::token_data::PlanType;
 use crate::token_data::TokenData;
@@ -641,7 +640,7 @@ fn load_auth(
     // back to AuthMode::ApiKey using the OPENAI_API_KEY environment variable
     // (if it is set).
     let auth_file = get_auth_file(code_home);
-    let auth_read_path = resolve_code_path_for_read(code_home, Path::new("auth.json"));
+    let auth_read_path = code_home.join("auth.json");
     let client = crate::default_client::create_client(originator);
     let auth_dot_json = match try_read_auth_json(&auth_read_path) {
         Ok(auth) => auth,
@@ -1751,7 +1750,7 @@ impl AuthManager {
     }
 
     pub fn provider_api_key(&self, provider_ref: &str) -> Option<String> {
-        let auth_read_path = resolve_code_path_for_read(&self.code_home, Path::new("auth.json"));
+        let auth_read_path = self.code_home.join("auth.json");
         try_read_auth_json(&auth_read_path)
             .ok()
             .and_then(|auth| auth.provider_api_key(provider_ref).map(ToString::to_string))
