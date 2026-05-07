@@ -257,7 +257,7 @@ args = ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/project"]
 Main config file: `~/.code/config.toml`
 
 > [!NOTE]
-> Every Code reads from both `~/.code/` and `~/.codex/` for backwards compatibility, but it only writes updates to `~/.code/`. If you switch back to Codex and it fails to start, remove `~/.codex/config.toml`. If Every Code appears to miss settings after upgrading, copy your legacy `~/.codex/config.toml` into `~/.code/`.
+> Every Code uses `~/.code/` for its own writable state. It also reads the host Codex environment rooted at `~/.codex/` by reference for shared skills, prompts, MCP servers, hooks, and plugins. Writes stay in `~/.code/`, so Kay and the host environment keep separate run history and auth while still sharing the same tool surface.
 
 ```toml
 # Model settings
@@ -319,7 +319,7 @@ code -c model_provider=openai -c model=gpt-5.1
 > This fork adds browser integration, multi-agent commands (`/plan`, `/solve`, `/code`), theme system, and enhanced reasoning controls while maintaining full compatibility.
 
 **Can I use my existing Codex configuration?**
-> Yes. Every Code reads from both `~/.code/` (primary) and legacy `~/.codex/` directories. We only write to `~/.code/`, so Codex will keep running if you switch back; copy or remove legacy files if you notice conflicts.
+> Yes. Every Code reads `~/.codex/` as the host environment overlay and `~/.code/` as its own writable home. If you have Kay-specific settings, keep them under `~/.code/`; host-side prompts, skills, hooks, MCPs, and plugins stay rooted at `~/.codex/`.
 
 **Does this work with ChatGPT Plus?**
 > Absolutely. Use the same "Sign in with ChatGPT" flow as the original.

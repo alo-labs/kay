@@ -1248,11 +1248,10 @@ pub(super) async fn submission_loop(
                 };
 
                 let custom_prompts: Vec<code_protocol::custom_prompts::CustomPrompt> =
-                    if let Some(dir) = crate::custom_prompts::default_prompts_dir() {
-                        crate::custom_prompts::discover_prompts_in(&dir).await
-                    } else {
-                        Vec::new()
-                    };
+                    crate::custom_prompts::discover_prompts_in_roots(
+                        &crate::custom_prompts::default_prompts_dirs(),
+                    )
+                    .await;
 
                 let event = Event {
                     id: sub.id.clone(),

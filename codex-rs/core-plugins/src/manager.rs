@@ -44,9 +44,11 @@ use crate::startup_sync::read_curated_plugins_sha;
 use crate::startup_sync::sync_openai_plugins_repo;
 use crate::store::PluginInstallResult as StorePluginInstallResult;
 use crate::store::PluginStore;
+use crate::store::PLUGINS_CACHE_DIR;
 use crate::store::PluginStoreError;
 use codex_analytics::AnalyticsEventsClient;
 use codex_config::ConfigLayerStack;
+use codex_config::host_codex_home_dir;
 use codex_config::PluginConfigEdit;
 use codex_config::apply_user_plugin_config_edits;
 use codex_config::clear_user_plugin;
@@ -410,6 +412,13 @@ impl PluginsManager {
         codex_home: PathBuf,
         restriction_product: Option<Product>,
     ) -> Self {
+        let mut store = PluginStore::new(codex_home.clone());
+        if let Some(host_home) = host_codex_home_dir() {
+            let host_plugin_cache = host_home.join(PLUGINS_CACHE_DIR);
+            if host_plugin_cache.is_dir() {
+                store = store.with_overlay_roots(vec![host_plugin_cache]);
+            }
+        }
         // Product restrictions are enforced at marketplace admission time for a given CODEX_HOME:
         // listing, install, and curated refresh all consult this restriction context before new
         // plugins enter local config or cache. After admission, runtime plugin loading trusts the
@@ -419,7 +428,7 @@ impl PluginsManager {
         // This assumes a single CODEX_HOME is only used by one product.
         Self {
             codex_home: codex_home.clone(),
-            store: PluginStore::new(codex_home),
+            store,
             featured_plugin_ids_cache: RwLock::new(None),
             configured_marketplace_upgrade_state: RwLock::new(
                 ConfiguredMarketplaceUpgradeState::default(),
@@ -1826,6 +1835,12 @@ impl PluginsManager {
         // Treat the curated catalog as an extra marketplace root so plugin listing can surface it
         // without requiring every caller to know where it is stored.
         let mut roots = additional_roots.to_vec();
+        if let Some(host_home) = host_codex_home_dir()
+            && host_home.is_dir()
+            && let Ok(host_home) = AbsolutePathBuf::try_from(host_home)
+        {
+            roots.push(host_home);
+        }
         roots.extend(installed_marketplace_roots_from_layer_stack(
             &config.config_layer_stack,
             self.codex_home.as_path(),
@@ -1938,11 +1953,9 @@ impl PluginUninstallError {
 pub(crate) fn configured_plugins_from_stack(
     config_layer_stack: &ConfigLayerStack,
 ) -> HashMap<String, PluginConfig> {
-    // Plugin entries remain persisted user config only.
-    let Some(user_layer) = config_layer_stack.get_user_layer() else {
-        return HashMap::new();
-    };
-    configured_plugins_from_user_config_value(&user_layer.config)
+    // Plugin entries are resolved from the merged config stack so host Codex
+    // marketplace and plugin settings remain visible to Kay by reference.
+    configured_plugins_from_user_config_value(&config_layer_stack.effective_config())
 }
 
 fn configured_plugins_from_user_config_value(

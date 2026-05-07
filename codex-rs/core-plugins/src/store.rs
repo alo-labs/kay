@@ -26,6 +26,7 @@ pub struct PluginInstallResult {
 pub struct PluginStore {
     root: AbsolutePathBuf,
     data_root: AbsolutePathBuf,
+    overlay_roots: Vec<AbsolutePathBuf>,
 }
 
 impl PluginStore {
@@ -41,7 +42,22 @@ impl PluginStore {
             AbsolutePathBuf::from_absolute_path_checked(codex_home.join(PLUGINS_DATA_DIR))
                 .map_err(|err| PluginStoreError::io("failed to resolve plugin data root", err))?;
 
-        Ok(Self { root, data_root })
+        Ok(Self {
+            root,
+            data_root,
+            overlay_roots: Vec::new(),
+        })
+    }
+
+    pub fn with_overlay_roots(mut self, overlay_roots: Vec<PathBuf>) -> Self {
+        self.overlay_roots = overlay_roots
+            .into_iter()
+            .filter_map(|path| AbsolutePathBuf::try_from(path).ok())
+            .filter(|path| path.as_path() != self.root.as_path())
+            .collect();
+        self.overlay_roots.sort_unstable();
+        self.overlay_roots.dedup();
+        self
     }
 
     pub fn root(&self) -> &AbsolutePathBuf {
@@ -54,8 +70,16 @@ impl PluginStore {
             .join(&plugin_id.plugin_name)
     }
 
+    fn plugin_base_root_in(root: &Path, plugin_id: &PluginId) -> PathBuf {
+        root.join(&plugin_id.marketplace_name).join(&plugin_id.plugin_name)
+    }
+
     pub fn plugin_root(&self, plugin_id: &PluginId, plugin_version: &str) -> AbsolutePathBuf {
         self.plugin_base_root(plugin_id).join(plugin_version)
+    }
+
+    fn plugin_root_in(root: &Path, plugin_id: &PluginId, plugin_version: &str) -> PathBuf {
+        Self::plugin_base_root_in(root, plugin_id).join(plugin_version)
     }
 
     pub fn plugin_data_root(&self, plugin_id: &PluginId) -> AbsolutePathBuf {
@@ -66,7 +90,34 @@ impl PluginStore {
     }
 
     pub fn active_plugin_version(&self, plugin_id: &PluginId) -> Option<String> {
-        let mut discovered_versions = fs::read_dir(self.plugin_base_root(plugin_id).as_path())
+        self.active_plugin_location(plugin_id)
+            .map(|(_, version)| version)
+    }
+
+    pub fn active_plugin_root(&self, plugin_id: &PluginId) -> Option<AbsolutePathBuf> {
+        self.active_plugin_location(plugin_id)
+            .map(|(root, _)| root)
+    }
+
+    pub fn is_installed(&self, plugin_id: &PluginId) -> bool {
+        self.active_plugin_version(plugin_id).is_some()
+    }
+
+    fn active_plugin_location(&self, plugin_id: &PluginId) -> Option<(AbsolutePathBuf, String)> {
+        self.active_plugin_location_in_root(self.root.as_path(), plugin_id).or_else(|| {
+            self.overlay_roots
+                .iter()
+                .find_map(|root| self.active_plugin_location_in_root(root.as_path(), plugin_id))
+        })
+    }
+
+    fn active_plugin_location_in_root(
+        &self,
+        root: &Path,
+        plugin_id: &PluginId,
+    ) -> Option<(AbsolutePathBuf, String)> {
+        let plugin_base_root = Self::plugin_base_root_in(root, plugin_id);
+        let mut discovered_versions = fs::read_dir(&plugin_base_root)
             .ok()?
             .filter_map(Result::ok)
             .filter_map(|entry| {
@@ -76,7 +127,7 @@ impl PluginStore {
             .filter(|version| validate_plugin_version_segment(version).is_ok())
             .collect::<Vec<_>>();
         discovered_versions.sort_unstable();
-        if discovered_versions.is_empty() {
+        let plugin_version = if discovered_versions.is_empty() {
             None
         } else if discovered_versions
             .iter()
@@ -85,16 +136,8 @@ impl PluginStore {
             Some(DEFAULT_PLUGIN_VERSION.to_string())
         } else {
             discovered_versions.pop()
-        }
-    }
-
-    pub fn active_plugin_root(&self, plugin_id: &PluginId) -> Option<AbsolutePathBuf> {
-        self.active_plugin_version(plugin_id)
-            .map(|plugin_version| self.plugin_root(plugin_id, &plugin_version))
-    }
-
-    pub fn is_installed(&self, plugin_id: &PluginId) -> bool {
-        self.active_plugin_version(plugin_id).is_some()
+        }?;
+        Some((AbsolutePathBuf::try_from(Self::plugin_root_in(root, plugin_id, &plugin_version)).ok()?, plugin_version))
     }
 
     pub fn install(

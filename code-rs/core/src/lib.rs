@@ -39,6 +39,7 @@ pub mod review_coord;
 mod environment_context;
 mod reasoning;
 pub mod retention;
+mod host;
 pub mod telemetry;
 pub mod timeboxed_exec_guidance;
 pub use environment_context::BrowserSnapshot;

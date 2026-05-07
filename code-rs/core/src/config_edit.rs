@@ -1,4 +1,3 @@
-use crate::config::resolve_code_path_for_read;
 use crate::config_types::SubagentCommandConfig;
 use anyhow::Result;
 use std::path::Path;
@@ -100,7 +99,7 @@ fn apply_toml_edit_override_segments(
 pub async fn upsert_subagent_command(code_home: &Path, cmd: &SubagentCommandConfig) -> Result<()> {
     const CONFIG_TOML_FILE: &str = "config.toml";
     let config_path = code_home.join(CONFIG_TOML_FILE);
-    let read_path = resolve_code_path_for_read(code_home, Path::new(CONFIG_TOML_FILE));
+    let read_path = code_home.join(CONFIG_TOML_FILE);
     let mut doc = match tokio::fs::read_to_string(&read_path).await {
         Ok(s) => s.parse::<DocumentMut>()?,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
@@ -168,7 +167,7 @@ pub async fn upsert_subagent_command(code_home: &Path, cmd: &SubagentCommandConf
 pub async fn delete_subagent_command(code_home: &Path, name: &str) -> Result<bool> {
     const CONFIG_TOML_FILE: &str = "config.toml";
     let config_path = code_home.join(CONFIG_TOML_FILE);
-    let read_path = resolve_code_path_for_read(code_home, Path::new(CONFIG_TOML_FILE));
+    let read_path = code_home.join(CONFIG_TOML_FILE);
     let mut doc = match tokio::fs::read_to_string(&read_path).await {
         Ok(s) => s.parse::<DocumentMut>()?,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(false),
@@ -212,7 +211,7 @@ pub async fn upsert_agent_config(
 ) -> Result<()> {
     let config_path = code_home.join(CONFIG_TOML_FILE);
 
-    let read_path = resolve_code_path_for_read(code_home, Path::new(CONFIG_TOML_FILE));
+    let read_path = code_home.join(CONFIG_TOML_FILE);
     let mut doc = match tokio::fs::read_to_string(&read_path).await {
         Ok(s) => s.parse::<DocumentMut>()?,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
@@ -358,7 +357,7 @@ async fn persist_overrides_with_behavior(
     }
 
     let config_path = code_home.join(CONFIG_TOML_FILE);
-    let read_path = resolve_code_path_for_read(code_home, Path::new(CONFIG_TOML_FILE));
+    let read_path = code_home.join(CONFIG_TOML_FILE);
     let read_result = tokio::fs::read_to_string(&read_path).await;
     let mut doc = match read_result {
         Ok(contents) => contents.parse::<DocumentMut>()?,
