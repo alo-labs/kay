@@ -46,6 +46,7 @@ jobs:
     timeout-minutes: 10
     outputs:
       skip_due_to_active: ${{ steps.active_guard.outputs.skip_due_to_active }}
+      has_openai_key: ${{ steps.key_guard.outputs.has_openai_key }}
       action: ${{ steps.check.outputs.action }}
       upstream_only: ${{ steps.check.outputs.upstream_only }}
       merge_only: ${{ steps.check.outputs.merge_only }}
@@ -143,6 +144,28 @@ jobs:
             echo "- upstream_in_merge: ${upstream_in_merge}";
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Detect OpenAI proxy secret
+        if: steps.active_guard.outputs.skip_due_to_active != 'true'
+        id: key_guard
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -n "${OPENAI_API_KEY:-}" ]; then
+            echo "has_openai_key=true" >> "$GITHUB_OUTPUT"
+            {
+              echo "### Upstream Merge: Proxy Secret";
+              echo "- openai_api_key: present";
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "has_openai_key=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "### Upstream Merge: Proxy Secret";
+              echo "- openai_api_key: missing";
+              echo "- merge job: skipped";
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Close stale upstream-merge PR on skip when zero diff (opt-in)
         if: steps.active_guard.outputs.skip_due_to_active != 'true' && steps.check.outputs.skip == 'true' && steps.check.outputs.mirror_on_skip == 'true' && env.CLOSE_ZERO_DIFF_ON_SKIP == 'true'
         uses: actions/github-script@v7
@@ -176,7 +199,7 @@ jobs:
 
   merge:
     needs: [precheck]
-    if: needs.precheck.outputs.skip_due_to_active != 'true' && needs.precheck.outputs.action == 'merge'
+    if: needs.precheck.outputs.skip_due_to_active != 'true' && needs.precheck.outputs.action == 'merge' && needs.precheck.outputs.has_openai_key == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
