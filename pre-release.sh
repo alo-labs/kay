@@ -14,4 +14,5 @@ SKIP_CARGO_TESTS=1 CI_CLI_BIN="$CARGO_TARGET_DIR/dev-fast/code" \
   bash "$ROOT_DIR/scripts/ci-tests.sh"
 
 echo "[pre-release] running workspace tests (nextest)"
-cargo nextest run --no-fail-fast --locked
+cd "$ROOT_DIR/code-rs"
+cargo +stable nextest run --no-fail-fast --locked

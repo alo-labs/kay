@@ -1,14 +1,13 @@
-## @just-every/code v0.6.97
+## @just-every/code v0.6.99
 
-This release improves keyboard-driven workflows, hook management, plugin sharing, and sandbox controls across Code.
+This release packages Kay as a standalone Every Code build, keeps MiniMax as the active provider, and hardens the release path around host-environment sharing and installer behavior.
 
 ### Changes
 
-- CLI/TUI: add configurable keymaps, a Vim composer mode, and a dedicated `codex update` command for faster keyboard-driven workflows.
-- Hooks: add a `/hooks` browser, persist hook enablement state, and fix migrated hook path rewriting so hook management is easier and more reliable.
-- Plugins: track local paths for shared plugins, add remote plugin skill reads, sync cached installed bundles, and surface admin-disabled remote plugin status.
-- Sandbox: add explicit sandbox permission profiles and CLI config controls, and ignore dangerous project-level config keys by default.
-- TUI: color the status line from the active theme, format multi-day goal durations clearly, and trim extended history persistence to keep large sessions responsive.
+- Kay: make `code` the canonical command, keep MiniMax provider support active, and treat the host `~/.codex` tree as a read-only environment overlay while keeping Kay auth/history local.
+- Installer: repoint Sidekick consumption to `alo-labs/kay`, keep the local `code` launcher canonical, and harden startup against upstream merge and publish-path surprises.
+- Release/CI: skip npm publish when the token is absent, skip Homebrew tap publishing when the PAT is absent, and keep the release checks from failing on missing external credentials.
+- Prompts/config: preserve local `~/.code` precedence while borrowing host prompts, instructions, skills, MCPs, and plugin roots by reference when available.
 
 ### Install
 
@@ -21,4 +20,4 @@ code
 
 Thanks to @owenlin for contributions!
 
-Compare: https://github.com/just-every/code/compare/v0.6.96...v0.6.97
+Compare: https://github.com/just-every/code/compare/v0.6.98...v0.6.99

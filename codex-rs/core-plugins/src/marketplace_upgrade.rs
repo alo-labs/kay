@@ -7,7 +7,7 @@ use self::activation::write_installed_marketplace_metadata;
 use self::git::clone_git_source;
 use self::git::git_remote_revision;
 use crate::marketplace::validate_marketplace_root;
-use codex_config::CONFIG_TOML_FILE;
+use crate::loader::merged_home_config_toml;
 use codex_config::ConfigLayerStack;
 use codex_config::MarketplaceConfigUpdate;
 use codex_config::record_user_marketplace;
@@ -108,10 +108,8 @@ fn marketplace_install_root(codex_home: &Path) -> PathBuf {
 fn configured_git_marketplaces(
     config_layer_stack: &ConfigLayerStack,
 ) -> Vec<ConfiguredGitMarketplace> {
-    let Some(user_layer) = config_layer_stack.get_user_layer() else {
-        return Vec::new();
-    };
-    let Some(marketplaces_value) = user_layer.config.get("marketplaces") else {
+    let merged_config = config_layer_stack.effective_config();
+    let Some(marketplaces_value) = merged_config.get("marketplaces") else {
         return Vec::new();
     };
     let marketplaces = match marketplaces_value
@@ -264,23 +262,13 @@ fn read_configured_git_marketplace(
     codex_home: &Path,
     marketplace_name: &str,
 ) -> Result<Option<ConfiguredGitMarketplace>, String> {
-    let config_path = codex_home.join(CONFIG_TOML_FILE);
-    let raw_config = match std::fs::read_to_string(&config_path) {
-        Ok(raw_config) => raw_config,
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Ok(None),
-        Err(err) => {
-            return Err(format!(
-                "failed to read user config {} while checking marketplace auto-upgrade: {err}",
-                config_path.display()
-            ));
-        }
+    let Some(config) = merged_home_config_toml(
+        codex_home,
+        "failed to read user config while checking marketplace auto-upgrade",
+        "failed to parse user config while checking marketplace auto-upgrade",
+    ) else {
+        return Ok(None);
     };
-    let config: toml::Value = toml::from_str(&raw_config).map_err(|err| {
-        format!(
-            "failed to parse user config {} while checking marketplace auto-upgrade: {err}",
-            config_path.display()
-        )
-    })?;
     let Some(marketplaces_value) = config.get("marketplaces") else {
         return Ok(None);
     };

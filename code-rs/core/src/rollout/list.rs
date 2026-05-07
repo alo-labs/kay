@@ -15,7 +15,6 @@ use time::format_description::well_known::Rfc3339;
 use uuid::Uuid;
 
 use super::SESSIONS_SUBDIR;
-use crate::config::resolve_code_path_for_read;
 use crate::protocol::event_msg_from_protocol;
 use crate::protocol::EventMsg;
 use code_protocol::protocol::RolloutItem;
@@ -115,7 +114,7 @@ pub(crate) async fn get_conversations(
     cursor: Option<&Cursor>,
     allowed_sources: &[SessionSource],
 ) -> io::Result<ConversationsPage> {
-    let root = resolve_code_path_for_read(code_home, Path::new(SESSIONS_SUBDIR));
+    let root = code_home.join(SESSIONS_SUBDIR);
 
     if !root.exists() {
         return Ok(ConversationsPage {

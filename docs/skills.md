@@ -8,7 +8,7 @@ Codex can automatically discover reusable "skills" you keep on disk. A skill is 
 
 Skills are behind the experimental `skills` feature flag and are enabled by default.
 
-- Disable in config (preferred): add the following to `$CODEX_HOME/config.toml` (usually `~/.codex/config.toml`) and restart Codex:
+- Disable in config (preferred): add the following to `$CODEX_HOME/config.toml` (usually `~/.code/config.toml` for Kay-local state) and restart Codex:
 
   ```toml
   [features]
@@ -23,7 +23,7 @@ Skills are behind the experimental `skills` feature flag and are enabled by defa
   - Repo: `.agents/skills/**/SKILL.md` from the current working directory up to the repo root.
   - Repo (legacy): `.codex/skills/**/SKILL.md` from the current working directory up to the repo root.
   - User: `$HOME/.agents/skills/**/SKILL.md`.
-  - User (legacy): `$CODEX_HOME/skills/**/SKILL.md` (usually `~/.code/skills`; legacy `~/.codex/skills` is still read for compatibility).
+  - User: `$CODEX_HOME/skills/**/SKILL.md` (Kay uses `~/.code/skills`; the host Codex overlay lives at `~/.codex/skills`).
   - System: bundled skills under `$CODEX_HOME/skills/.system/**/SKILL.md`.
   - Admin (optional): `/etc/codex/skills/**/SKILL.md`.
 - Discovery is recursive and only files named exactly `SKILL.md` count.

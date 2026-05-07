@@ -1968,6 +1968,7 @@ persistence = "none"
         Ok(())
     }
 
+    #[serial_test::serial]
     #[test]
     fn load_default_with_cli_overrides_applies_cli_model_override() -> std::io::Result<()> {
         let _code_home_guard = EnvVarGuard::new("CODE_HOME");
@@ -1988,10 +1989,17 @@ persistence = "none"
         Ok(())
     }
 
+    #[serial_test::serial]
     #[test]
     fn load_instructions_reads_from_code_home() -> anyhow::Result<()> {
+        let host_home = TempDir::new()?;
         let code_home = TempDir::new()?;
         std::fs::write(code_home.path().join("AGENTS.md"), "  keep me  \n")?;
+
+        let _host_home_guard = EnvVarGuard::new("CODEX_HOST_HOME");
+        unsafe {
+            std::env::set_var("CODEX_HOST_HOME", host_home.path());
+        }
 
         let loaded = Config::load_instructions(Some(code_home.path()));
 
@@ -1999,19 +2007,23 @@ persistence = "none"
         Ok(())
     }
 
+    #[serial_test::serial]
     #[test]
     fn load_instructions_falls_back_to_legacy_codex_home() -> anyhow::Result<()> {
         let code_home = TempDir::new()?;
+        let host_home = TempDir::new()?;
         let legacy_home = TempDir::new()?;
         let legacy_codex = legacy_home.path().join(".codex");
         std::fs::create_dir_all(&legacy_codex)?;
         std::fs::write(legacy_codex.join("AGENTS.md"), " legacy guidance \n")?;
 
+        let _host_home_guard = EnvVarGuard::new("CODEX_HOST_HOME");
         let _home_guard = EnvVarGuard::new("HOME");
         let _code_home_guard = EnvVarGuard::new("CODE_HOME");
         let _codex_home_guard = EnvVarGuard::new("CODEX_HOME");
 
         unsafe {
+            std::env::set_var("CODEX_HOST_HOME", host_home.path());
             std::env::set_var("HOME", legacy_home.path());
             std::env::remove_var("CODE_HOME");
             std::env::remove_var("CODEX_HOME");
@@ -2020,6 +2032,48 @@ persistence = "none"
         let loaded = Config::load_instructions(Some(code_home.path()));
 
         assert_eq!(loaded.as_deref(), Some("legacy guidance"));
+        Ok(())
+    }
+
+    #[serial_test::serial]
+    #[test]
+    fn load_instructions_merges_host_codex_and_local_code_home() -> anyhow::Result<()> {
+        let host_home = TempDir::new()?;
+        let code_home = TempDir::new()?;
+        let host_codex = host_home.path().join(".codex");
+        std::fs::create_dir_all(&host_codex)?;
+        std::fs::write(host_codex.join("AGENTS.md"), "host guidance")?;
+        std::fs::write(code_home.path().join("AGENTS.md"), "local guidance")?;
+
+        let _host_home_guard = EnvVarGuard::new("CODEX_HOST_HOME");
+        unsafe {
+            std::env::set_var("CODEX_HOST_HOME", &host_codex);
+        }
+
+        let loaded = Config::load_instructions(Some(code_home.path()));
+
+        assert_eq!(loaded.as_deref(), Some("host guidance\n\nlocal guidance"));
+        Ok(())
+    }
+
+    #[serial_test::serial]
+    #[test]
+    fn resolve_code_path_for_read_keeps_config_toml_local_only() -> anyhow::Result<()> {
+        let host_home = TempDir::new()?;
+        let code_home = TempDir::new()?;
+        let host_codex = host_home.path().join(".codex");
+        std::fs::create_dir_all(&host_codex)?;
+        std::fs::write(host_codex.join("config.toml"), "model = 'host'")?;
+
+        let _host_home_guard = EnvVarGuard::new("CODEX_HOST_HOME");
+        unsafe {
+            std::env::set_var("CODEX_HOST_HOME", &host_codex);
+        }
+
+        let resolved =
+            resolve_code_path_for_read(code_home.path(), Path::new("config.toml"));
+
+        assert_eq!(resolved, code_home.path().join("config.toml"));
         Ok(())
     }
 
