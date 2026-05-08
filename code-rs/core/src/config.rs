@@ -1,63 +1,60 @@
 use crate::codex::ApprovedCommandPattern;
+use crate::protocol::ApprovedCommandMatchKind;
 use crate::config_profile::ConfigProfile;
 use crate::config_types::AgentConfig;
+use std::collections::HashMap;
+use crate::config_types::AutoDriveSettings;
+use crate::config_types::AutoDriveModelRoutingEntry;
 use crate::config_types::AllowedCommand;
 use crate::config_types::AllowedCommandMatchKind;
-use crate::config_types::AutoDriveModelRoutingEntry;
-use crate::config_types::AutoDriveSettings;
 use crate::config_types::BrowserConfig;
 use crate::config_types::ClientTools;
-use crate::config_types::ConfirmGuardConfig;
-use crate::config_types::ContextMode;
-use crate::config_types::DEFAULT_OTEL_ENVIRONMENT;
-use crate::config_types::GithubConfig;
+use crate::config_types::Notice;
 use crate::config_types::History;
+use crate::config_types::GithubConfig;
+use crate::config_types::ValidationConfig;
 use crate::config_types::McpServerConfig;
 use crate::config_types::MemoriesConfig;
 use crate::config_types::MemoriesToml;
-use crate::config_types::Notice;
 use crate::config_types::Notifications;
 use crate::config_types::OtelConfig;
 use crate::config_types::OtelConfigToml;
 use crate::config_types::OtelExporterKind;
-use crate::config_types::Personality;
+use crate::config_types::default_auto_drive_model_routing_entries;
 use crate::config_types::ProjectCommandConfig;
 use crate::config_types::ProjectHookConfig;
-use crate::config_types::ReasoningEffort;
-use crate::config_types::ReasoningSummary;
 use crate::config_types::SandboxWorkspaceWrite;
-use crate::config_types::ServiceTier;
 use crate::config_types::ShellEnvironmentPolicy;
 use crate::config_types::ShellEnvironmentPolicyToml;
 use crate::config_types::TextVerbosity;
 use crate::config_types::Tui;
 use crate::config_types::UriBasedFileOpener;
-use crate::config_types::ValidationConfig;
-use crate::config_types::default_auto_drive_model_routing_entries;
+use crate::config_types::ConfirmGuardConfig;
+use crate::config_types::Personality;
+use crate::config_types::DEFAULT_OTEL_ENVIRONMENT;
 use crate::git_info::resolve_root_git_project_for_trust;
 use crate::model_family::ModelFamily;
+use crate::model_family::resolve_context_mode_limits;
 use crate::model_family::derive_default_model_family;
 use crate::model_family::find_family_for_model;
-use crate::model_family::resolve_context_mode_limits;
 use crate::model_provider_info::ModelProviderInfo;
 use crate::model_provider_info::built_in_model_providers;
-use crate::project_features::ProjectCommand;
-use crate::project_features::ProjectHooks;
-use crate::project_features::load_project_commands;
-use crate::protocol::ApprovedCommandMatchKind;
+use crate::reasoning::clamp_reasoning_effort_for_model;
 use crate::protocol::AskForApproval;
 use crate::protocol::SandboxPolicy;
-use crate::reasoning::clamp_reasoning_effort_for_model;
+use crate::config_types::ReasoningEffort;
+use crate::config_types::ReasoningSummary;
+use crate::config_types::ContextMode;
+use crate::config_types::ServiceTier;
+use crate::project_features::{load_project_commands, ProjectCommand, ProjectHooks};
 use code_app_server_protocol::AuthMode;
 use code_protocol::config_types::SandboxMode;
 use code_protocol::dynamic_tools::DynamicToolSpec;
+use std::time::Instant;
 use serde::Deserialize;
-use serde::de::Unexpected;
-use serde::de::{self};
-use std::collections::HashMap;
+use serde::de::{self, Unexpected};
 use std::path::Path;
 use std::path::PathBuf;
-use std::time::Instant;
 use toml::Value as TomlValue;
 
 mod builder;
@@ -65,9 +62,7 @@ mod defaults;
 mod sources;
 mod validation;
 
-use defaults::default_responses_originator;
-use defaults::default_review_model;
-use defaults::default_true_local;
+use defaults::{default_responses_originator, default_review_model, default_true_local};
 
 const OPENAI_BASE_URL_ENV_VAR: &str = "OPENAI_BASE_URL";
 const RESERVED_MODEL_PROVIDER_IDS: [&str; 3] = ["openai", "oss", "minimax"];
@@ -91,9 +86,7 @@ fn validate_reserved_model_provider_ids(
     }
 }
 
-fn validate_model_providers(
-    model_providers: &HashMap<String, ModelProviderInfo>,
-) -> Result<(), String> {
+fn validate_model_providers(model_providers: &HashMap<String, ModelProviderInfo>) -> Result<(), String> {
     validate_reserved_model_provider_ids(model_providers)?;
     for (key, provider) in model_providers {
         provider
@@ -105,37 +98,39 @@ fn validate_model_providers(
 
 pub use builder::ConfigBuilder;
 pub use defaults::set_default_originator;
-pub use sources::add_mcp_server;
-pub use sources::add_project_allowed_command;
-pub use sources::find_code_home;
-pub use sources::list_mcp_servers;
-pub use sources::load_config_as_toml;
-pub use sources::load_global_mcp_servers;
-pub use sources::persist_model_selection;
-pub use sources::resolve_code_path_for_read;
-pub use sources::set_auto_drive_settings;
-pub use sources::set_auto_review_model;
-pub use sources::set_auto_review_resolve_model;
-pub use sources::set_cached_terminal_background;
-pub use sources::set_custom_spinner;
-pub use sources::set_custom_theme;
-pub use sources::set_github_actionlint_on_patch;
-pub use sources::set_github_check_on_push;
-pub use sources::set_mcp_server_enabled;
-pub use sources::set_planning_model;
-pub use sources::set_project_access_mode;
-pub use sources::set_project_trusted;
-pub use sources::set_review_model;
-pub use sources::set_review_resolve_model;
-pub use sources::set_tui_alternate_screen;
-pub use sources::set_tui_auto_review_enabled;
-pub use sources::set_tui_notifications;
-pub use sources::set_tui_review_auto_resolve;
-pub use sources::set_tui_spinner_name;
-pub use sources::set_tui_theme_name;
-pub use sources::set_validation_group_enabled;
-pub use sources::set_validation_tool_enabled;
-pub use sources::write_global_mcp_servers;
+pub use sources::{
+    add_mcp_server,
+    add_project_allowed_command,
+    find_code_home,
+    list_mcp_servers,
+    load_config_as_toml,
+    load_global_mcp_servers,
+    persist_model_selection,
+    resolve_code_path_for_read,
+    set_auto_drive_settings,
+    set_auto_review_model,
+    set_auto_review_resolve_model,
+    set_cached_terminal_background,
+    set_custom_spinner,
+    set_custom_theme,
+    set_github_actionlint_on_patch,
+    set_github_check_on_push,
+    set_mcp_server_enabled,
+    set_planning_model,
+    set_project_access_mode,
+    set_project_trusted,
+    set_review_model,
+    set_review_resolve_model,
+    set_tui_alternate_screen,
+    set_tui_auto_review_enabled,
+    set_tui_notifications,
+    set_tui_review_auto_resolve,
+    set_tui_spinner_name,
+    set_tui_theme_name,
+    set_validation_group_enabled,
+    set_validation_tool_enabled,
+    write_global_mcp_servers,
+};
 
 #[allow(deprecated)]
 pub use sources::set_tui_auto_drive_settings;
@@ -199,8 +194,7 @@ fn sanitize_auto_drive_routing_entries(entries: &mut Vec<AutoDriveModelRoutingEn
             continue;
         };
 
-        let reasoning_levels =
-            normalize_auto_drive_routing_reasoning_levels(&entry.reasoning_levels);
+        let reasoning_levels = normalize_auto_drive_routing_reasoning_levels(&entry.reasoning_levels);
         if reasoning_levels.is_empty() {
             continue;
         }
@@ -501,7 +495,7 @@ pub struct Config {
 
     /// Enable debug logging of LLM requests and responses
     pub debug: bool,
-
+    
     /// Whether we're using ChatGPT authentication (affects feature availability)
     pub using_chatgpt_auth: bool,
 
@@ -706,10 +700,7 @@ pub struct ConfigToml {
     pub otel: Option<OtelConfigToml>,
 
     /// Enable silent upgrades during startup when a newer release is available.
-    #[serde(
-        default,
-        deserialize_with = "deserialize_option_bool_from_maybe_string"
-    )]
+    #[serde(default, deserialize_with = "deserialize_option_bool_from_maybe_string")]
     pub auto_upgrade_enabled: Option<bool>,
 
     /// Optional external command to spawn for end-user notifications.
@@ -1121,10 +1112,7 @@ impl Config {
 
         // (removed placeholder) sandbox_policy computed below after resolving project overrides.
 
-        let openai_base_url = cfg
-            .openai_base_url
-            .clone()
-            .filter(|url| !url.trim().is_empty());
+        let openai_base_url = cfg.openai_base_url.clone().filter(|url| !url.trim().is_empty());
         let openai_base_url_from_env = std::env::var(OPENAI_BASE_URL_ENV_VAR)
             .ok()
             .filter(|url| !url.trim().is_empty());
@@ -1194,7 +1182,10 @@ impl Config {
 
         // Project-specific overrides based on final resolved cwd (exact match)
         let project_key = resolved_cwd.to_string_lossy().to_string();
-        let project_override = cfg.projects.as_ref().and_then(|m| m.get(&project_key));
+        let project_override = cfg
+            .projects
+            .as_ref()
+            .and_then(|m| m.get(&project_key));
         // Resolve sandbox mode with correct precedence:
         // CLI override > per-project override > global config.toml > default
         let effective_sandbox_mode = sandbox_mode
@@ -1318,15 +1309,16 @@ impl Config {
             OPENAI_DEFAULT_MODEL
         };
 
-        let model_explicit =
-            model.is_some() || config_profile.model.is_some() || cfg.model.is_some();
+        let model_explicit = model.is_some() || config_profile.model.is_some() || cfg.model.is_some();
 
         let model = model
             .or(config_profile.model)
             .or(cfg.model)
             .unwrap_or_else(|| default_model_slug.to_string());
 
-        let model_personality = config_profile.model_personality.or(cfg.model_personality);
+        let model_personality = config_profile
+            .model_personality
+            .or(cfg.model_personality);
 
         let service_tier = match config_profile.service_tier.or(cfg.service_tier) {
             Some(ServiceTier::Fast) => Some(ServiceTier::Fast),
@@ -1352,7 +1344,8 @@ impl Config {
 
         let requested_chat_effort =
             preferred_model_reasoning_effort.unwrap_or(ReasoningEffort::Medium);
-        let chat_reasoning_effort = clamp_reasoning_effort_for_model(&model, requested_chat_effort);
+        let chat_reasoning_effort =
+            clamp_reasoning_effort_for_model(&model, requested_chat_effort);
 
         let mut model_context_window = cfg.model_context_window;
         let model_max_output_tokens = cfg
@@ -1483,8 +1476,10 @@ impl Config {
                 .or(cfg.planning_model_reasoning_effort)
                 .unwrap_or(chat_reasoning_effort)
         };
-        let planning_model_reasoning_effort =
-            clamp_reasoning_effort_for_model(&planning_model, planning_model_reasoning_effort);
+        let planning_model_reasoning_effort = clamp_reasoning_effort_for_model(
+            &planning_model,
+            planning_model_reasoning_effort,
+        );
 
         let review_use_chat_model = config_profile
             .review_use_chat_model
@@ -1500,8 +1495,10 @@ impl Config {
         } else {
             review_model_reasoning_effort
         };
-        let review_model_reasoning_effort =
-            clamp_reasoning_effort_for_model(&review_model, review_model_reasoning_effort);
+        let review_model_reasoning_effort = clamp_reasoning_effort_for_model(
+            &review_model,
+            review_model_reasoning_effort,
+        );
 
         let auto_review_use_chat_model = config_profile
             .auto_review_use_chat_model
@@ -1605,8 +1602,10 @@ impl Config {
             auto_drive.model_reasoning_effort = chat_reasoning_effort;
         }
 
-        auto_drive.model_reasoning_effort =
-            clamp_reasoning_effort_for_model(&auto_drive.model, auto_drive.model_reasoning_effort);
+        auto_drive.model_reasoning_effort = clamp_reasoning_effort_for_model(
+            &auto_drive.model,
+            auto_drive.model_reasoning_effort,
+        );
 
         let config = Self {
             model,
@@ -1730,7 +1729,10 @@ impl Config {
             api_key_fallback_on_all_accounts_limited,
             github: cfg.github.unwrap_or_default(),
             validation: cfg.validation.unwrap_or_default(),
-            subagent_commands: cfg.subagents.map(|s| s.commands).unwrap_or_default(),
+            subagent_commands: cfg
+                .subagents
+                .map(|s| s.commands)
+                .unwrap_or_default(),
             subagent_max_depth,
             experimental_resume: cfg.experimental_resume,
             max_run_seconds: None,
@@ -1762,16 +1764,16 @@ impl Config {
 
     /// Check if we're using ChatGPT authentication
     fn is_using_chatgpt_auth(code_home: &Path) -> bool {
-        use crate::CodexAuth;
         use code_app_server_protocol::AuthMode;
-
+        use crate::CodexAuth;
+        
         // Prefer ChatGPT when both ChatGPT tokens and an API key are present.
         match CodexAuth::from_code_home(code_home, AuthMode::ChatGPT, "code_cli_rs") {
             Ok(Some(auth)) => auth.mode.is_chatgpt(),
             _ => false,
         }
     }
-
+    
     fn load_instructions(code_dir: Option<&Path>) -> Option<String> {
         sources::load_instructions(code_dir)
     }
