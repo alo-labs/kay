@@ -37,4 +37,7 @@ fi
 "${BIN}" completion bash >/dev/null
 "${BIN}" doctor >/dev/null || true
 
+echo "[ci-tests] Post-release cleanup policy..."
+bash ./scripts/test-post-release-cleanup.sh
+
 echo "[ci-tests] Done."
