@@ -366,6 +366,8 @@ The `pre-push` hook runs `./pre-release.sh` automatically when pushing to `main`
 5. Build successfully: `./build-fast.sh`
 6. Submit a pull request
 
+After a release or heavy local build, run `./scripts/post-release-cleanup.sh` to remove transient build/cache artifacts. This cleanup intentionally preserves planning, spec, and design folders.
+
 
 &ensp;
 ## Legal & Use
