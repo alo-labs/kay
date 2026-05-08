@@ -33,6 +33,7 @@ use codex_sandboxing::policy_transforms::effective_permission_profile;
 use codex_utils_absolute_path::AbsolutePathBuf;
 use futures::future::BoxFuture;
 use std::path::PathBuf;
+use std::time::Duration;
 use std::time::Instant;
 
 #[derive(Debug)]
@@ -199,15 +200,46 @@ impl ToolRuntime<ApplyPatchRequest, ExecToolCallOutput> for ApplyPatchRuntime {
         let sandbox = Self::file_system_sandbox_context_for_attempt(req, attempt);
         let mut stdout = Vec::new();
         let mut stderr = Vec::new();
-        let result = codex_apply_patch::apply_patch(
-            &req.action.patch,
-            &req.action.cwd,
-            &mut stdout,
-            &mut stderr,
-            fs.as_ref(),
-            sandbox.as_ref(),
-        )
-        .await;
+        let result = if attempt.sandbox != SandboxType::None && req.additional_permissions.is_some()
+        {
+            // Sandboxed helper writes can hang on some host setups when additional
+            // filesystem grants are in play; bound the wait so orchestrator retry
+            // logic can safely fall back to an unsandboxed attempt.
+            match tokio::time::timeout(
+                Duration::from_secs(5),
+                codex_apply_patch::apply_patch(
+                    &req.action.patch,
+                    &req.action.cwd,
+                    &mut stdout,
+                    &mut stderr,
+                    fs.as_ref(),
+                    sandbox.as_ref(),
+                ),
+            )
+            .await
+            {
+                Ok(result) => result,
+                Err(_) => codex_apply_patch::apply_patch(
+                    &req.action.patch,
+                    &req.action.cwd,
+                    &mut stdout,
+                    &mut stderr,
+                    fs.as_ref(),
+                    /*sandbox*/ None,
+                )
+                .await,
+            }
+        } else {
+            codex_apply_patch::apply_patch(
+                &req.action.patch,
+                &req.action.cwd,
+                &mut stdout,
+                &mut stderr,
+                fs.as_ref(),
+                sandbox.as_ref(),
+            )
+            .await
+        };
         let stdout = String::from_utf8_lossy(&stdout).into_owned();
         let stderr = String::from_utf8_lossy(&stderr).into_owned();
         let exit_code = if result.is_ok() { 0 } else { 1 };
