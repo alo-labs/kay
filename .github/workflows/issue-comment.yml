@@ -152,7 +152,7 @@ jobs:
             core.setOutput('issue_author', issueAuthor);
 
       - name: Prepare context file
-        if: steps.meta.outputs.pr_number
+        if: steps.meta.outputs.pr_number && steps.meta.outputs.issue_number != '0'
         id: ctx
         uses: actions/github-script@v7
         env:
@@ -205,7 +205,12 @@ jobs:
                 }
               } catch {}
             }
-            if (!slug) throw new Error('Missing ID. Add code/<slug> label or <!-- codex-id: <slug> -->.');
+            if (!slug) {
+              core.notice('Missing ID. Skipping preview comment generation for this PR.');
+              core.setOutput('should_skip', 'true');
+              core.setOutput('slug', '');
+              return;
+            }
             // resolve latest tag for slug
             const baseTag = `preview-${slug}`;
             const rels = await github.paginate(github.rest.repos.listReleases, { owner, repo, per_page: 100 });
@@ -276,9 +281,11 @@ jobs:
             lines.push(`Issue author: @${process.env.ISSUE_AUTHOR || ''}`);
             fs.mkdirSync('.github/auto', { recursive: true });
             fs.writeFileSync('.github/auto/ISSUE_PREVIEW_CONTEXT.md', lines.join('\n'));
+            core.setOutput('should_skip', 'false');
+            core.setOutput('slug', slug);
 
       - name: Start local OpenAI proxy (optional; hardened)
-        if: steps.meta.outputs.pr_number && env.OPENAI_API_KEY != ''
+        if: steps.meta.outputs.pr_number && steps.meta.outputs.issue_number != '0' && steps.ctx.outputs.should_skip != 'true' && env.OPENAI_API_KEY != ''
         id: proxy
         run: |
           set -euo pipefail
@@ -287,7 +294,7 @@ jobs:
           for i in {1..30}; do if nc -z 127.0.0.1 5056; then break; else sleep 0.2; fi; done || true
 
       - name: Print proxy startup log tail
-        if: steps.meta.outputs.pr_number && env.OPENAI_API_KEY != ''
+        if: steps.meta.outputs.pr_number && steps.meta.outputs.issue_number != '0' && steps.ctx.outputs.should_skip != 'true' && env.OPENAI_API_KEY != ''
         run: |
           echo '### openai-proxy.log (tail)' >> "$GITHUB_STEP_SUMMARY"
           { echo '```'; tail -n 80 .github/auto/openai-proxy.log || true; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
@@ -295,7 +302,7 @@ jobs:
 
       - name: Generate comment with Code (read-only)
         id: gen
-        if: steps.meta.outputs.pr_number && env.OPENAI_API_KEY != ''
+        if: steps.meta.outputs.pr_number && steps.meta.outputs.issue_number != '0' && steps.ctx.outputs.should_skip != 'true' && env.OPENAI_API_KEY != ''
         continue-on-error: true
         env:
           ISSUE_AUTHOR: ${{ steps.meta.outputs.issue_author }}
@@ -345,7 +352,7 @@ jobs:
           true
           set -e
       - name: Assert agent success (fail on server 5xx only; tolerate local stream errors)
-        if: steps.meta.outputs.pr_number && env.OPENAI_API_KEY != ''
+        if: steps.meta.outputs.pr_number && steps.meta.outputs.issue_number != '0' && steps.ctx.outputs.should_skip != 'true' && env.OPENAI_API_KEY != ''
         continue-on-error: true
         run: |
           set -euo pipefail
@@ -384,7 +391,7 @@ jobs:
           JS
 
       - name: Post comment to linked issue (upsert by marker; fallback to stock)
-        if: steps.meta.outputs.pr_number
+        if: steps.meta.outputs.pr_number && steps.meta.outputs.issue_number != '0' && steps.ctx.outputs.should_skip != 'true'
         uses: actions/github-script@v7
         env:
           ISSUE_NUMBER: ${{ steps.meta.outputs.issue_number }}
