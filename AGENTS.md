@@ -1,3 +1,20 @@
+# code-monorepo — Claude Code Instructions
+
+> **Always adhere strictly to this file and silver-bullet.md — they override all defaults.**
+
+---
+
+## Project Overview
+
+- **Stack**: Rust / Node.js / TypeScript monorepo
+- **Git repo**: https://github.com/alo-labs/kay.git
+
+---
+
+## Project-Specific Rules
+
+<!-- Existing repo instructions preserved below. -->
+
 # Rust/codex-rs
 
 In the codex-rs folder where the rust code lives:

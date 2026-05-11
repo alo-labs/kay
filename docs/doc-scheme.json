@@ -1,0 +1,118 @@
+{
+  "version": 1,
+  "sync": {
+    "doc_scheme_md_path": "docs/doc-scheme.md",
+    "task_checklist_path": "docs/task-doc-checklist.json"
+  },
+  "enforcement": {
+    "enabled": true,
+    "granularity_levels": [2, 3]
+  },
+  "mandatory_updated_docs": [
+    "docs/ARCHITECTURE.md",
+    "docs/TESTING.md",
+    "docs/CHANGELOG.md",
+    "docs/knowledge/INDEX.md",
+    "docs/knowledge/2026-05.md",
+    "docs/lessons/2026-05.md",
+    "docs/workflows/full-dev-cycle.md",
+    "docs/workflows/devops-cycle.md",
+    "docs/doc-scheme.md",
+    "docs/doc-scheme.json",
+    "docs/task-doc-checklist.json"
+  ],
+  "required_docs": [
+    {
+      "key": "docs/ARCHITECTURE.md",
+      "mandatory_updated": true,
+      "required_sections": [
+        "System Shape",
+        "Data Flow"
+      ]
+    },
+    {
+      "key": "docs/TESTING.md",
+      "mandatory_updated": true,
+      "required_sections": [
+        "Required Gate",
+        "Recommended Checks"
+      ]
+    },
+    {
+      "key": "docs/CHANGELOG.md",
+      "mandatory_updated": true,
+      "required_sections": [
+        "2026-05-11"
+      ]
+    },
+    {
+      "key": "docs/knowledge/INDEX.md",
+      "mandatory_updated": true,
+      "required_sections": [
+        "Monthly Files"
+      ]
+    },
+    {
+      "key": "docs/knowledge/2026-05.md",
+      "mandatory_updated": true,
+      "required_sections": [
+        "Architecture Patterns",
+        "Known Gotchas",
+        "Key Decisions"
+      ]
+    },
+    {
+      "key": "docs/lessons/2026-05.md",
+      "mandatory_updated": true,
+      "required_sections": [
+        "practice:init",
+        "practice:docs"
+      ]
+    },
+    {
+      "key": "docs/workflows/full-dev-cycle.md",
+      "mandatory_updated": true,
+      "required_sections": [
+        "Start",
+        "Core Loop",
+        "Supporting Commands"
+      ]
+    },
+    {
+      "key": "docs/workflows/devops-cycle.md",
+      "mandatory_updated": true,
+      "required_sections": [
+        "Start",
+        "Core Loop",
+        "Release Discipline"
+      ]
+    },
+    {
+      "key": "docs/doc-scheme.md",
+      "mandatory_updated": true,
+      "required_sections": [
+        "Current Shape",
+        "Governed Documents"
+      ]
+    },
+    {
+      "key": "docs/doc-scheme.json",
+      "mandatory_updated": true,
+      "required_sections": [
+        "version",
+        "required_docs"
+      ]
+    },
+    {
+      "key": "docs/task-doc-checklist.json",
+      "mandatory_updated": true,
+      "required_sections": [
+        "task_id",
+        "task_granularity",
+        "docs"
+      ]
+    }
+  ],
+  "preserved_mappings": [],
+  "archive_moves": []
+}
