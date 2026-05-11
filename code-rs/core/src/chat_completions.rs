@@ -31,6 +31,8 @@ use crate::error::CodexErr;
 use crate::error::Result;
 use crate::error::RetryLimitReachedError;
 use crate::error::UnexpectedResponseError;
+use crate::model_family::ChatCompletionsRoleStrategy;
+use crate::model_family::ChatCompletionsReasoningStrategy;
 use crate::model_family::ModelFamily;
 use crate::model_provider_info::ChatCompletionsFormat;
 use crate::openai_tools::create_tools_json_for_chat_completions_api;
@@ -58,6 +60,16 @@ fn build_chat_completions_payload(
         provider.chat_completions_format,
         ChatCompletionsFormat::MiniMax
     );
+    let collapse_non_chat_roles = minimax
+        || matches!(
+            model_family.chat_completions_role_strategy,
+            ChatCompletionsRoleStrategy::CollapseNonChatRolesToSystem
+        );
+    let reasoning_field_name = matches!(
+        model_family.chat_completions_reasoning_strategy,
+        ChatCompletionsReasoningStrategy::PreserveReasoningContent
+    )
+    .then_some("reasoning_content");
     let mut messages = Vec::<serde_json::Value>::new();
     let mut system_fragments = Vec::<String>::new();
 
@@ -76,96 +88,52 @@ fn build_chat_completions_payload(
 
     let mut reasoning_by_anchor_index: std::collections::HashMap<usize, String> =
         std::collections::HashMap::new();
-
-    let mut last_emitted_role: Option<&str> = None;
-    for item in &input {
-        match item {
-            ResponseItem::Message { role, .. } => {
-                last_emitted_role = if minimax {
-                    Some(minimax_role(role))
-                } else {
-                    Some(role.as_str())
-                };
-            }
-            ResponseItem::FunctionCall { .. }
-            | ResponseItem::ToolSearchCall { .. }
-            | ResponseItem::LocalShellCall { .. } => last_emitted_role = Some("assistant"),
-            ResponseItem::FunctionCallOutput { .. } | ResponseItem::ToolSearchOutput { .. } => {
-                last_emitted_role = Some("tool")
-            }
-            ResponseItem::CompactionSummary { .. } => last_emitted_role = Some("assistant"),
-            ResponseItem::Reasoning { .. } | ResponseItem::Other => {}
-            ResponseItem::CustomToolCall { .. } => {}
-            ResponseItem::CustomToolCallOutput { .. } => {}
-            ResponseItem::WebSearchCall { .. } => {}
-            ResponseItem::ImageGenerationCall { .. } => {}
-            ResponseItem::GhostSnapshot { .. } => {}
-        }
-    }
-
-    let mut last_user_index: Option<usize> = None;
     for (idx, item) in input.iter().enumerate() {
-        if let ResponseItem::Message { role, .. } = item
-            && role == "user"
+        if let ResponseItem::Reasoning {
+            content: Some(items),
+            ..
+        } = item
         {
-            last_user_index = Some(idx);
-        }
-    }
-
-    if !matches!(last_emitted_role, Some("user")) {
-        for (idx, item) in input.iter().enumerate() {
-            if let Some(u_idx) = last_user_index
-                && idx <= u_idx
-            {
+            let mut text = String::new();
+            for c in items {
+                match c {
+                    ReasoningItemContent::ReasoningText { text: t }
+                    | ReasoningItemContent::Text { text: t } => text.push_str(t),
+                }
+            }
+            if text.trim().is_empty() {
                 continue;
             }
 
-            if let ResponseItem::Reasoning {
-                content: Some(items),
-                ..
-            } = item
+            let mut attached = false;
+            if idx > 0
+                && let ResponseItem::Message { role, .. } = &input[idx - 1]
+                && role == "assistant"
             {
-                let mut text = String::new();
-                for c in items {
-                    match c {
-                        ReasoningItemContent::ReasoningText { text: t }
-                        | ReasoningItemContent::Text { text: t } => text.push_str(t),
-                    }
-                }
-                if text.trim().is_empty() {
-                    continue;
-                }
+                reasoning_by_anchor_index
+                    .entry(idx - 1)
+                    .and_modify(|v| v.push_str(&text))
+                    .or_insert(text.clone());
+                attached = true;
+            }
 
-                let mut attached = false;
-                if idx > 0
-                    && let ResponseItem::Message { role, .. } = &input[idx - 1]
-                    && role == "assistant"
-                {
-                    reasoning_by_anchor_index
-                        .entry(idx - 1)
-                        .and_modify(|v| v.push_str(&text))
-                        .or_insert(text.clone());
-                    attached = true;
-                }
-
-                if !attached && idx + 1 < input.len() {
-                    match &input[idx + 1] {
-                        ResponseItem::FunctionCall { .. }
-                        | ResponseItem::ToolSearchCall { .. }
-                        | ResponseItem::LocalShellCall { .. } => {
-                            reasoning_by_anchor_index
-                                .entry(idx + 1)
-                                .and_modify(|v| v.push_str(&text))
-                                .or_insert(text.clone());
-                        }
-                        ResponseItem::Message { role, .. } if role == "assistant" => {
-                            reasoning_by_anchor_index
-                                .entry(idx + 1)
-                                .and_modify(|v| v.push_str(&text))
-                                .or_insert(text.clone());
-                        }
-                        _ => {}
+            if !attached && idx + 1 < input.len() {
+                match &input[idx + 1] {
+                    ResponseItem::FunctionCall { .. }
+                    | ResponseItem::ToolSearchCall { .. }
+                    | ResponseItem::LocalShellCall { .. } => {
+                        reasoning_by_anchor_index
+                            .entry(idx + 1)
+                            .and_modify(|v| v.push_str(&text))
+                            .or_insert(text.clone());
                     }
+                    ResponseItem::Message { role, .. } if role == "assistant" => {
+                        reasoning_by_anchor_index
+                            .entry(idx + 1)
+                            .and_modify(|v| v.push_str(&text))
+                            .or_insert(text.clone());
+                    }
+                    _ => {}
                 }
             }
         }
@@ -174,11 +142,7 @@ fn build_chat_completions_payload(
     for (idx, item) in input.iter().enumerate() {
         match item {
             ResponseItem::Message { role, content, .. } => {
-                let role = if minimax {
-                    minimax_role(role)
-                } else {
-                    role.as_str()
-                };
+                let role = normalize_chat_role(role, collapse_non_chat_roles);
                 if minimax && role == "system" {
                     push_system_fragment(&mut system_fragments, content);
                     continue;
@@ -187,6 +151,7 @@ fn build_chat_completions_payload(
                 let contains_image = content
                     .iter()
                     .any(|c| matches!(c, ContentItem::InputImage { .. }));
+                let reasoning = reasoning_by_anchor_index.get(&idx).map(String::as_str);
 
                 if contains_image && !minimax {
                     let mut parts = Vec::<serde_json::Value>::new();
@@ -203,9 +168,23 @@ fn build_chat_completions_payload(
                             }
                         }
                     }
-                    messages.push(json!({"role": role, "content": parts}));
+                    let mut message = json!({"role": role, "content": parts});
+                    if let Some(reasoning) = reasoning
+                        && let Some(field_name) = reasoning_field_name
+                        && let Some(obj) = message.as_object_mut()
+                    {
+                        obj.insert(field_name.to_string(), json!(reasoning));
+                    }
+                    messages.push(message);
                 } else {
-                    messages.push(json!({"role": role, "content": content_text(content)}));
+                    let mut message = json!({"role": role, "content": content_text(content)});
+                    if let Some(reasoning) = reasoning
+                        && let Some(field_name) = reasoning_field_name
+                        && let Some(obj) = message.as_object_mut()
+                    {
+                        obj.insert(field_name.to_string(), json!(reasoning));
+                    }
+                    messages.push(message);
                 }
             }
             ResponseItem::CompactionSummary { .. } => {
@@ -226,7 +205,12 @@ fn build_chat_completions_payload(
                         "arguments": arguments,
                     }
                 });
-                push_tool_call_message(&mut messages, tool_call, reasoning);
+                push_tool_call_message(
+                    &mut messages,
+                    tool_call,
+                    reasoning,
+                    reasoning_field_name,
+                );
             }
             ResponseItem::ToolSearchCall {
                 call_id,
@@ -244,7 +228,12 @@ fn build_chat_completions_payload(
                     "execution": execution,
                     "arguments": arguments,
                 });
-                push_tool_call_message(&mut messages, tool_call, reasoning);
+                push_tool_call_message(
+                    &mut messages,
+                    tool_call,
+                    reasoning,
+                    reasoning_field_name,
+                );
             }
             ResponseItem::LocalShellCall {
                 id,
@@ -259,7 +248,12 @@ fn build_chat_completions_payload(
                     "status": status,
                     "action": action,
                 });
-                push_tool_call_message(&mut messages, tool_call, reasoning);
+                push_tool_call_message(
+                    &mut messages,
+                    tool_call,
+                    reasoning,
+                    reasoning_field_name,
+                );
             }
             ResponseItem::FunctionCallOutput { call_id, output } => {
                 messages.push(json!({
@@ -301,7 +295,12 @@ fn build_chat_completions_payload(
                         "input": input,
                     }
                 });
-                push_tool_call_message(&mut messages, tool_call, reasoning);
+                push_tool_call_message(
+                    &mut messages,
+                    tool_call,
+                    reasoning,
+                    reasoning_field_name,
+                );
             }
             ResponseItem::CustomToolCallOutput {
                 call_id, output, ..
@@ -378,7 +377,11 @@ fn build_chat_completions_payload(
     Ok(payload)
 }
 
-fn minimax_role(role: &str) -> &str {
+fn normalize_chat_role(role: &str, collapse_non_chat_roles: bool) -> &str {
+    if !collapse_non_chat_roles {
+        return role;
+    }
+
     match role {
         "user" | "assistant" | "tool" | "system" => role,
         _ => "system",
@@ -597,7 +600,12 @@ pub(crate) async fn stream_chat_completions(
     }
 }
 
-fn push_tool_call_message(messages: &mut Vec<Value>, tool_call: Value, reasoning: Option<&str>) {
+fn push_tool_call_message(
+    messages: &mut Vec<Value>,
+    tool_call: Value,
+    reasoning: Option<&str>,
+    reasoning_field_name: Option<&str>,
+) {
     // Chat Completions requires that tool calls are grouped into a single assistant message
     // (with `tool_calls: [...]`) followed by tool role responses.
     if let Some(Value::Object(obj)) = messages.last_mut()
@@ -606,15 +614,17 @@ fn push_tool_call_message(messages: &mut Vec<Value>, tool_call: Value, reasoning
         && let Some(tool_calls) = obj.get_mut("tool_calls").and_then(Value::as_array_mut)
     {
         tool_calls.push(tool_call);
-        if let Some(reasoning) = reasoning {
-            if let Some(Value::String(existing)) = obj.get_mut("reasoning") {
+        if let Some(reasoning) = reasoning
+            && let Some(field_name) = reasoning_field_name
+        {
+            if let Some(Value::String(existing)) = obj.get_mut(field_name) {
                 if !existing.is_empty() {
                     existing.push('\n');
                 }
                 existing.push_str(reasoning);
             } else {
                 obj.insert(
-                    "reasoning".to_string(),
+                    field_name.to_string(),
                     Value::String(reasoning.to_string()),
                 );
             }
@@ -628,9 +638,10 @@ fn push_tool_call_message(messages: &mut Vec<Value>, tool_call: Value, reasoning
         "tool_calls": [tool_call],
     });
     if let Some(reasoning) = reasoning
+        && let Some(field_name) = reasoning_field_name
         && let Some(obj) = msg.as_object_mut()
     {
-        obj.insert("reasoning".to_string(), json!(reasoning));
+        obj.insert(field_name.to_string(), json!(reasoning));
     }
     messages.push(msg);
 }
@@ -1428,7 +1439,10 @@ mod tests {
     use super::*;
     use crate::debug_logger::DebugLogger;
     use crate::model_family::derive_default_model_family;
+    use crate::model_family::ChatCompletionsRoleStrategy;
+    use crate::model_family::ChatCompletionsReasoningStrategy;
     use code_protocol::models::ContentItem;
+    use code_protocol::models::ReasoningItemContent;
     use futures::stream;
     use pretty_assertions::assert_eq;
 
@@ -1494,6 +1508,137 @@ mod tests {
                 .all(|message| message["role"] != "developer"),
             "MiniMax payload must not include unsupported developer role"
         );
+    }
+
+    #[test]
+    fn qwen_and_deepseek_chat_payload_collapses_developer_role_into_system_message() {
+        let provider = crate::model_provider_info::create_opencode_go_provider();
+        for model in ["qwen3.6-plus", "deepseek-v4-pro"] {
+            let model_family = crate::model_family::find_family_for_model(model)
+                .expect("known collapsed-role model");
+            assert_eq!(
+                model_family.chat_completions_role_strategy,
+                ChatCompletionsRoleStrategy::CollapseNonChatRolesToSystem
+            );
+            let prompt = Prompt {
+                input: vec![
+                    ResponseItem::Message {
+                        id: None,
+                        role: "developer".to_string(),
+                        content: vec![ContentItem::InputText {
+                            text: "developer guidance".to_string(),
+                        }],
+                        end_turn: None,
+                        phase: None,
+                    },
+                    ResponseItem::Message {
+                        id: None,
+                        role: "user".to_string(),
+                        content: vec![ContentItem::InputText {
+                            text: "hello".to_string(),
+                        }],
+                        end_turn: None,
+                        phase: None,
+                    },
+                ],
+                base_instructions_override: Some("base instructions".to_string()),
+                include_additional_instructions: false,
+                ..Default::default()
+            };
+
+            let payload = build_chat_completions_payload(&prompt, &model_family, model, &provider)
+                .expect("payload should build");
+
+            assert_eq!(payload["model"], model);
+
+            let messages = payload["messages"].as_array().expect("messages array");
+            assert_eq!(messages.len(), 3);
+            assert_eq!(messages[0]["role"], "system");
+            assert_eq!(messages[1]["role"], "system");
+            assert_eq!(messages[2]["role"], "user");
+            assert!(
+                messages[1]["content"]
+                    .as_str()
+                    .expect("system content")
+                    .contains("developer guidance")
+            );
+            assert!(
+                messages
+                    .iter()
+                    .all(|message| message["role"] != "developer"),
+                "{model} payload must not include unsupported developer role"
+            );
+        }
+    }
+
+    #[test]
+    fn deepseek_chat_payload_preserves_reasoning_content_on_assistant_message() {
+        let provider = crate::model_provider_info::create_opencode_go_provider();
+        let model_family = crate::model_family::find_family_for_model("deepseek-v4-pro")
+            .expect("known deepseek model");
+        assert_eq!(
+            model_family.chat_completions_reasoning_strategy,
+            ChatCompletionsReasoningStrategy::PreserveReasoningContent
+        );
+
+        let prompt = Prompt {
+            input: vec![
+                ResponseItem::Message {
+                    id: None,
+                    role: "user".to_string(),
+                    content: vec![ContentItem::InputText {
+                        text: "hello".to_string(),
+                    }],
+                    end_turn: None,
+                    phase: None,
+                },
+                ResponseItem::Message {
+                    id: None,
+                    role: "assistant".to_string(),
+                    content: vec![ContentItem::OutputText {
+                        text: "assistant reply".to_string(),
+                    }],
+                    end_turn: None,
+                    phase: None,
+                },
+                ResponseItem::Reasoning {
+                    id: "reasoning-1".to_string(),
+                    summary: Vec::new(),
+                    content: Some(vec![ReasoningItemContent::ReasoningText {
+                        text: "thinking".to_string(),
+                    }]),
+                    encrypted_content: None,
+                },
+                ResponseItem::Message {
+                    id: None,
+                    role: "user".to_string(),
+                    content: vec![ContentItem::InputText {
+                        text: "follow up".to_string(),
+                    }],
+                    end_turn: None,
+                    phase: None,
+                },
+            ],
+            base_instructions_override: Some("base instructions".to_string()),
+            include_additional_instructions: false,
+            ..Default::default()
+        };
+
+        let payload = build_chat_completions_payload(&prompt, &model_family, "deepseek-v4-pro", &provider)
+            .expect("payload should build");
+
+        let messages = payload["messages"].as_array().expect("messages array");
+        let assistant = messages
+            .iter()
+            .find(|message| {
+                message["role"] == "assistant"
+                    && message["content"] == "assistant reply"
+                    && message["reasoning_content"] == "thinking"
+            })
+            .expect("assistant message should preserve reasoning_content");
+
+        assert_eq!(assistant["content"], "assistant reply");
+        assert_eq!(assistant["reasoning_content"], "thinking");
     }
 
     #[tokio::test]

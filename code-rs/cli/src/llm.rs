@@ -43,6 +43,14 @@ pub struct RequestArgs {
     #[arg(long = "format-type", default_value = "json_schema")]
     pub format_type: String,
 
+    /// Do not request structured output; return plain text instead.
+    #[arg(long = "no-format", default_value_t = false)]
+    pub no_format: bool,
+
+    /// Optional provider override (e.g. openai, minimax, opencode-go)
+    #[arg(long)]
+    pub provider: Option<String>,
+
     /// Optional `text.format.name`
     #[arg(long = "format-name")]
     pub format_name: Option<String>,
@@ -76,15 +84,12 @@ async fn run_llm_request(
 ) -> anyhow::Result<()> {
     let overrides_vec = cli_overrides.parse_overrides().map_err(anyhow::Error::msg)?;
 
-    let overrides = if let Some(model) = &args.model {
-        ConfigOverrides {
-            model: Some(model.clone()),
-            compact_prompt_override: None,
-            compact_prompt_override_file: None,
-            ..ConfigOverrides::default()
-        }
-    } else {
-        ConfigOverrides::default()
+    let overrides = ConfigOverrides {
+        model: args.model.clone(),
+        model_provider: args.provider.clone(),
+        compact_prompt_override: None,
+        compact_prompt_override_file: None,
+        ..ConfigOverrides::default()
     };
 
     let config = Config::load_with_cli_overrides(overrides_vec, overrides)?;
@@ -116,20 +121,22 @@ async fn run_llm_request(
         None
     };
 
-    let text_format = TextFormat {
-        r#type: args.format_type.clone(),
-        name: args.format_name.clone(),
-        strict: Some(args.format_strict),
-        schema: schema_val,
-    };
-
     let mut prompt = Prompt::default();
     prompt.input = input;
     prompt.store = true;
     prompt.user_instructions = None;
     prompt.status_items = vec![];
     prompt.base_instructions_override = None;
-    prompt.text_format = Some(text_format);
+    prompt.text_format = if args.no_format {
+        None
+    } else {
+        Some(TextFormat {
+            r#type: args.format_type.clone(),
+            name: args.format_name.clone(),
+            strict: Some(args.format_strict),
+            schema: schema_val,
+        })
+    };
     if let Some(custom) = model_guide_markdown_with_custom(&config.agents) {
         prompt.model_descriptions = Some(custom);
     }
@@ -157,6 +164,7 @@ async fn run_llm_request(
     // Collect the assistant message text from the stream (no TUI events)
     let mut stream = client.stream(&prompt).await?;
     let mut final_text: String = String::new();
+    let mut pending_text: String = String::new();
     tracing::info!("LLM: created");
     while let Some(ev) = stream.next().await {
         let ev = ev?;
@@ -165,6 +173,7 @@ async fn run_llm_request(
             code_core::ResponseEvent::ReasoningContentDelta { delta, .. } => { tracing::info!(target: "llm", "reasoning: {}", delta); }
             code_core::ResponseEvent::OutputItemDone { item, .. } => {
                 if let ResponseItem::Message { content, .. } = item {
+                    final_text.clear();
                     for c in content {
                         if let ContentItem::OutputText { text } = c {
                             final_text.push_str(&text);
@@ -174,12 +183,15 @@ async fn run_llm_request(
             }
             code_core::ResponseEvent::OutputTextDelta { delta, .. } => {
                 tracing::info!(target: "llm", "delta: {}", delta);
-                // For completeness, but we only print at the end to stay simple
-                final_text.push_str(&delta);
+                pending_text.push_str(&delta);
             }
             code_core::ResponseEvent::Completed { .. } => { tracing::info!("LLM: completed"); break; }
             _ => {}
         }
+    }
+
+    if final_text.is_empty() {
+        final_text = pending_text;
     }
 
     println!("{}", final_text);
