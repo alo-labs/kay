@@ -3,6 +3,15 @@
 > [!TIP]
 > We're constantly improving Code! This page documents the core changes. You can also check our [releases page](https://github.com/just-every/code/releases) for additional information.
 
+## [0.6.100] — 2026-05-11
+
+- Core: add the built-in OpenCode Go provider, normalize provider-prefixed model slugs across chat/completions, responses, and compaction, and keep hyphenated provider IDs working end-to-end.
+- Tests: add request-body coverage proving OpenCode Go sends the bare model slug over chat completions, plus live coverage for the OpenCode Go model matrix.
+- CLI/TUI: update login guidance for `OPENCODE_GO_API_KEY` and skip onboarding for non-OpenAI OpenCode Go sessions.
+- Docs: document OpenCode Go provider configuration and examples.
+
+---
+
 ## [Unreleased]
 
 - (none)
