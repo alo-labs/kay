@@ -1,0 +1,29 @@
+# DevOps Cycle Workflow
+
+This workflow covers infrastructure, release, and operations work.
+
+## Start
+
+1. Read `.planning/STATE.md` and the current roadmap
+2. Identify the infrastructure scope and blast radius
+3. Switch from feature mode to DevOps mode when the task is ops-heavy
+
+## Core Loop
+
+1. `discuss` - capture the operational decision points
+2. `blast radius` - understand what the change can affect
+3. `plan` - break the change into safe rollout steps
+4. `execute` - implement the change in small, reversible pieces
+5. `verify` - confirm the infra change works and is safe to promote
+
+## Release Discipline
+
+- Validate the change at the lowest safe environment first
+- Preserve rollback paths and audit trails
+- Use the same non-destructive init rules as the feature workflow
+
+## Finish
+
+- Update docs and project state
+- Return to the feature workflow when the ops task is complete
+- Keep the release notes and verification artifacts current
