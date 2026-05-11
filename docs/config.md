@@ -53,6 +53,20 @@ wire_api = "chat"
 query_params = {}
 ```
 
+OpenCode Go is available as a built-in provider using the `opencode-go` id:
+
+```toml
+[model_providers.opencode-go]
+name = "OpenCode Go"
+base_url = "https://opencode.ai/zen/go/v1"
+env_key = "OPENCODE_GO_API_KEY"
+wire_api = "chat"
+requires_openai_auth = false
+```
+
+OpenCode Go model ids use the `opencode-go/<model-id>` format, for example
+`opencode-go/kimi-k2.6`.
+
 Note this makes it possible to use the Code CLI with non-OpenAI models, so long as they use a wire API that is compatible with the OpenAI chat completions API. For example, you could define the following provider to use Code CLI with Ollama running locally:
 
 ```toml

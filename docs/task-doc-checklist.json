@@ -1,9 +1,11 @@
 {
   "task_id": "silver-init",
   "task_granularity": 2,
-  "updated_at": "2026-05-11T05:53:57Z",
+  "updated_at": "2026-05-11T10:37:29Z",
   "_notes": [
-    "This checklist records the docs that were created or refreshed during Silver Bullet init."
+    "This checklist records the docs that were created or refreshed during Silver Bullet init.",
+    "Refreshed during the 2026-05-11 docs-scheme gate after the Phase 1 plan rewrite.",
+    "Updated again during the OpenCode Go provider and resume-compatibility review so the docs-scheme ledger reflects the current session."
   ],
   "docs": {
     "docs/ARCHITECTURE.md": "updated",
