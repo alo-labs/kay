@@ -1,7 +1,7 @@
 {
   "task_id": "silver-init",
   "task_granularity": 2,
-  "updated_at": "2026-05-11T05:28:48Z",
+  "updated_at": "2026-05-11T05:53:57Z",
   "_notes": [
     "This checklist records the docs that were created or refreshed during Silver Bullet init."
   ],
@@ -17,5 +17,53 @@
     "docs/doc-scheme.md": "updated",
     "docs/doc-scheme.json": "updated",
     "docs/task-doc-checklist.json": "updated"
+  },
+  "sections": {
+    "docs/ARCHITECTURE.md": {
+      "System Shape": "updated",
+      "Data Flow": "updated"
+    },
+    "docs/TESTING.md": {
+      "Required Gate": "updated",
+      "Recommended Checks": "updated"
+    },
+    "docs/CHANGELOG.md": {
+      "2026-05-11": "updated"
+    },
+    "docs/knowledge/INDEX.md": {
+      "Monthly Files": "updated"
+    },
+    "docs/knowledge/2026-05.md": {
+      "Architecture Patterns": "updated",
+      "Known Gotchas": "updated",
+      "Key Decisions": "updated"
+    },
+    "docs/lessons/2026-05.md": {
+      "practice:init": "updated",
+      "practice:docs": "updated"
+    },
+    "docs/workflows/full-dev-cycle.md": {
+      "Start": "updated",
+      "Core Loop": "updated",
+      "Supporting Commands": "updated"
+    },
+    "docs/workflows/devops-cycle.md": {
+      "Start": "updated",
+      "Core Loop": "updated",
+      "Release Discipline": "updated"
+    },
+    "docs/doc-scheme.md": {
+      "Current Shape": "updated",
+      "Governed Documents": "updated"
+    },
+    "docs/doc-scheme.json": {
+      "version": "updated",
+      "required_docs": "updated"
+    },
+    "docs/task-doc-checklist.json": {
+      "task_id": "updated",
+      "task_granularity": "updated",
+      "docs": "updated"
+    }
   }
 }
