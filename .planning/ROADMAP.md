@@ -2,50 +2,47 @@
 
 ## Overview
 
-This roadmap starts from a brownfield CLI monorepo. The near-term goal is to stabilize the project scaffolding, capture the current baseline, and keep the existing docs and build behavior intact so future phases can focus on product work rather than bootstrap drift.
+This milestone adds first-class OpenCode Go support to Kay, proves it with a live OpenCode Go API key, and finishes with a Kay release once the integration is verified. The work stays inside the existing multi-provider architecture and preserves OpenAI and MiniMax behavior.
 
 ## Phases
 
-- [ ] **Phase 1: Baseline and Orientation** - Create and verify Silver Bullet and GSD scaffolding, capture the current project shape, and preserve existing docs.
-- [ ] **Phase 2: Documentation Baseline** - Establish the canonical docs placeholders and record the initial monthly knowledge/lesson entries.
-- [ ] **Phase 3: Workflow Hardening** - Verify the build, hooks, and release hygiene so normal development stays safe.
+- [ ] **Phase 1: OpenCode Provider Foundation** - Add the built-in provider, auth plumbing, and representative model routing.
+- [ ] **Phase 2: Live Validation and Docs** - Prove the provider with a live API key and document the supported setup.
+- [ ] **Phase 3: Release Kay** - Bump release metadata, update notes, and cut the release after verification.
 
 ## Phase Details
 
-### Phase 1: Baseline and Orientation
-**Goal**: Establish a trustworthy init state and capture the brownfield baseline.
+### Phase 1: OpenCode Provider Foundation
+**Goal**: Add OpenCode Go as a first-class provider and make a representative OpenCode Go model resolve correctly.
 **Depends on**: Nothing
-**Requirements**: init scaffolding, preserved docs, working GSD catalog
+**Requirements**: PROV-01, PROV-02, MODEL-01
 **Success Criteria** (what must be TRUE):
-  1. Silver Bullet files exist and reference the active workflow.
-  2. `.planning/PROJECT.md` and `.planning/STATE.md` describe the repo accurately.
-  3. GSD can read the restored shared model catalog.
-**Plans**: TBD
+  1. Kay can load an OpenCode Go provider entry without breaking OpenAI or MiniMax.
+  2. A representative `opencode-go/<model>` slug resolves to the expected provider/model-family behavior.
+  3. Existing provider-related tests continue to pass alongside the new provider wiring.
 
-### Phase 2: Documentation Baseline
-**Goal**: Create the canonical docs placeholders and record initial monthly knowledge.
+### Phase 2: Live Validation and Docs
+**Goal**: Prove the provider works with a real API key and make setup discoverable in docs.
 **Depends on**: Phase 1
-**Requirements**: docs scheme, workflow docs, knowledge/lessons files
+**Requirements**: TEST-01, DOCS-01
 **Success Criteria** (what must be TRUE):
-  1. `docs/doc-scheme.*` and `docs/task-doc-checklist.json` exist.
-  2. `docs/ARCHITECTURE.md`, `docs/TESTING.md`, and `docs/CHANGELOG.md` exist.
-  3. `docs/knowledge/INDEX.md`, monthly knowledge, and lessons files exist.
-**Plans**: TBD
+  1. A live test can authenticate with the supplied OpenCode Go API key and complete a prompt.
+  2. The docs show how to configure OpenCode Go and which model namespace is verified.
+  3. Verification output clearly distinguishes the tested OpenCode Go path from any unverified model families.
 
-### Phase 3: Workflow Hardening
-**Goal**: Confirm the repo build and enforcement hooks are ready for normal work.
+### Phase 3: Release Kay
+**Goal**: Cut a new Kay release after the OpenCode Go integration has been verified.
 **Depends on**: Phase 2
-**Requirements**: build-fast, hook registration, permission mode
+**Requirements**: REL-01
 **Success Criteria** (what must be TRUE):
-  1. `./build-fast.sh` passes cleanly.
-  2. SB hooks are registered in the user's global Claude settings.
-  3. The repo can resume into normal development without init blockers.
-**Plans**: TBD
+  1. Release notes and version metadata reflect the OpenCode Go milestone.
+  2. `./build-fast.sh` passes on the release candidate.
+  3. The release is ready to publish with the new provider support included.
 
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Baseline and Orientation | 0/TBD | Not started | - |
-| 2. Documentation Baseline | 0/TBD | Not started | - |
-| 3. Workflow Hardening | 0/TBD | Not started | - |
+| 1. OpenCode Provider Foundation | 0/TBD | Not started | - |
+| 2. Live Validation and Docs | 0/TBD | Not started | - |
+| 3. Release Kay | 0/TBD | Not started | - |
