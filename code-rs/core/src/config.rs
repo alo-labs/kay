@@ -65,7 +65,7 @@ mod validation;
 use defaults::{default_responses_originator, default_review_model, default_true_local};
 
 const OPENAI_BASE_URL_ENV_VAR: &str = "OPENAI_BASE_URL";
-const RESERVED_MODEL_PROVIDER_IDS: [&str; 3] = ["openai", "oss", "minimax"];
+const RESERVED_MODEL_PROVIDER_IDS: [&str; 4] = ["openai", "oss", "minimax", "opencode-go"];
 
 fn validate_reserved_model_provider_ids(
     model_providers: &HashMap<String, ModelProviderInfo>,
@@ -2528,6 +2528,36 @@ model_verbosity = "high"
         assert_eq!(
             config.model_provider_id,
             crate::model_provider_info::MINIMAX_PROVIDER_ID
+        );
+        assert_eq!(config.model_provider.wire_api, crate::WireApi::Chat);
+        assert!(!config.model_provider.requires_openai_auth);
+        Ok(())
+    }
+
+    #[test]
+    fn opencode_go_builtin_provider_can_be_selected_without_custom_config() -> std::io::Result<()> {
+        let cwd = TempDir::new().unwrap();
+        std::fs::write(cwd.path().join(".git"), "gitdir: nowhere")?;
+        let code_home = TempDir::new().unwrap();
+        let cfg = ConfigToml {
+            model: Some("opencode-go/kimi-k2.6".to_string()),
+            model_provider: Some(crate::model_provider_info::OPENCODE_GO_PROVIDER_ID.to_string()),
+            ..Default::default()
+        };
+
+        let config = Config::load_from_base_config_with_overrides(
+            cfg,
+            ConfigOverrides {
+                cwd: Some(cwd.path().to_path_buf()),
+                ..Default::default()
+            },
+            code_home.path().to_path_buf(),
+        )?;
+
+        assert_eq!(config.model, "opencode-go/kimi-k2.6");
+        assert_eq!(
+            config.model_provider_id,
+            crate::model_provider_info::OPENCODE_GO_PROVIDER_ID
         );
         assert_eq!(config.model_provider.wire_api, crate::WireApi::Chat);
         assert!(!config.model_provider.requires_openai_auth);

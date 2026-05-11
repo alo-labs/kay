@@ -32,3 +32,5 @@ This workflow covers feature work and normal product development.
 - Update project state and docs
 - Keep the next phase ready to resume
 - Do not delete prior context unless it is clearly superseded
+- If governed docs changed, refresh `docs/task-doc-checklist.json` in the same session so doc-scheme freshness stays aligned
+- When a change touches config, provider registration, or resume compatibility, verify the docs capture the new behavior before closing the task

@@ -783,6 +783,8 @@ const DEFAULT_OLLAMA_PORT: u32 = 11434;
 pub const BUILT_IN_OSS_MODEL_PROVIDER_ID: &str = "oss";
 pub const MINIMAX_PROVIDER_ID: &str = "minimax";
 pub const MINIMAX_DEFAULT_BASE_URL: &str = "https://api.minimax.io/v1";
+pub const OPENCODE_GO_PROVIDER_ID: &str = "opencode-go";
+pub const OPENCODE_GO_DEFAULT_BASE_URL: &str = "https://opencode.ai/zen/go/v1";
 
 /// Built-in default provider list.
 fn wire_api_override_from_env(env_key: &str) -> Option<WireApi> {
@@ -855,6 +857,7 @@ pub fn built_in_model_providers(
             },
         ),
         (MINIMAX_PROVIDER_ID, create_minimax_provider()),
+        (OPENCODE_GO_PROVIDER_ID, create_opencode_go_provider()),
         (BUILT_IN_OSS_MODEL_PROVIDER_ID, create_oss_provider()),
     ]
     .into_iter()
@@ -882,6 +885,32 @@ pub fn create_minimax_provider() -> ModelProviderInfo {
         credential_ref: Some(MINIMAX_PROVIDER_ID.to_string()),
         wire_api: WireApi::Chat,
         chat_completions_format: ChatCompletionsFormat::MiniMax,
+        query_params: None,
+        http_headers: None,
+        env_http_headers: None,
+        request_max_retries: None,
+        stream_max_retries: None,
+        stream_idle_timeout_ms: None,
+        websocket_connect_timeout_ms: None,
+        requires_openai_auth: false,
+        openrouter: None,
+    }
+}
+
+pub fn create_opencode_go_provider() -> ModelProviderInfo {
+    ModelProviderInfo {
+        name: "OpenCode Go".into(),
+        base_url: Some(OPENCODE_GO_DEFAULT_BASE_URL.to_string()),
+        env_key: Some("OPENCODE_GO_API_KEY".into()),
+        env_key_instructions: Some(
+            "Set OPENCODE_GO_API_KEY or run `code login --provider opencode-go --with-api-key`."
+                .to_string(),
+        ),
+        experimental_bearer_token: None,
+        auth: None,
+        credential_ref: Some(OPENCODE_GO_PROVIDER_ID.to_string()),
+        wire_api: WireApi::Chat,
+        chat_completions_format: ChatCompletionsFormat::OpenAi,
         query_params: None,
         http_headers: None,
         env_http_headers: None,
@@ -1174,6 +1203,31 @@ env_http_headers = { "X-Example-Env-Header" = "EXAMPLE_ENV_VAR" }
             ChatCompletionsFormat::MiniMax
         );
         assert!(!minimax.requires_openai_auth);
+    }
+
+    #[test]
+    fn built_in_opencode_go_provider_uses_chat_completions_and_provider_credentials() {
+        let providers = built_in_model_providers(None);
+        let opencode_go = providers
+            .get(OPENCODE_GO_PROVIDER_ID)
+            .expect("opencode-go provider should exist");
+
+        assert_eq!(opencode_go.name, "OpenCode Go");
+        assert_eq!(
+            opencode_go.base_url.as_deref(),
+            Some(OPENCODE_GO_DEFAULT_BASE_URL)
+        );
+        assert_eq!(opencode_go.env_key.as_deref(), Some("OPENCODE_GO_API_KEY"));
+        assert_eq!(
+            opencode_go.credential_ref.as_deref(),
+            Some(OPENCODE_GO_PROVIDER_ID)
+        );
+        assert_eq!(opencode_go.wire_api, WireApi::Chat);
+        assert_eq!(
+            opencode_go.chat_completions_format,
+            ChatCompletionsFormat::OpenAi
+        );
+        assert!(!opencode_go.requires_openai_auth);
     }
 
     #[tokio::test]
