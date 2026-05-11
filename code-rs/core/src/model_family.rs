@@ -36,6 +36,32 @@ const CONTEXT_WINDOW_16K: u64 = 16_385;
 const CONTEXT_WINDOW_1M: u64 = 1_047_576;
 const MAX_OUTPUT_DEFAULT: u64 = 128_000;
 
+/// How chat-completions requests should serialize instruction-bearing roles
+/// for a given model family.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ChatCompletionsRoleStrategy {
+    /// Preserve the standard OpenAI developer/system/user/tool role mix.
+    #[default]
+    OpenAi,
+
+    /// Normalize developer-like roles to `system` so providers that reject
+    /// the `developer` role can still receive the same instructions.
+    CollapseNonChatRolesToSystem,
+}
+
+/// How chat-completions requests should preserve reasoning content for a
+/// given model family.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ChatCompletionsReasoningStrategy {
+    /// Preserve the standard OpenAI behavior.
+    #[default]
+    OpenAi,
+
+    /// Include reasoning content explicitly on assistant/tool-call messages so
+    /// providers that require it can replay it across turns.
+    PreserveReasoningContent,
+}
+
 static UPSTREAM_MODELS: Lazy<Vec<ModelInfo>> = Lazy::new(|| {
     serde_json::from_str::<ModelsResponse>(include_str!("../../../codex-rs/models-manager/models.json"))
         .map(|response| response.models)
@@ -141,6 +167,14 @@ pub struct ModelFamily {
     /// Whether this model supports image generation via the native Responses tool.
     pub supports_image_generation: bool,
 
+    /// Chat-completions role handling for model families that need a
+    /// compatibility profile beyond the provider's default format.
+    pub chat_completions_role_strategy: ChatCompletionsRoleStrategy,
+
+    /// Chat-completions reasoning handling for model families that require
+    /// reasoning content to be replayed explicitly.
+    pub chat_completions_reasoning_strategy: ChatCompletionsReasoningStrategy,
+
     // Instructions to use for querying the model
     pub base_instructions: String,
 }
@@ -195,6 +229,8 @@ macro_rules! model_family {
             web_search_tool_type: WebSearchToolType::Text,
             supports_image_detail_original: false,
             supports_image_generation: false,
+            chat_completions_role_strategy: ChatCompletionsRoleStrategy::OpenAi,
+            chat_completions_reasoning_strategy: ChatCompletionsReasoningStrategy::OpenAi,
             base_instructions: BASE_INSTRUCTIONS.to_string(),
         };
         // apply overrides
@@ -477,6 +513,18 @@ pub fn find_family_for_model(slug: &str) -> Option<ModelFamily> {
             max_output_tokens: Some(MAX_OUTPUT_DEFAULT),
             truncation_policy: TruncationPolicy::Bytes(10_000),
         )
+    } else if slug.starts_with("qwen") {
+        model_family!(
+            slug, "qwen",
+            chat_completions_role_strategy: ChatCompletionsRoleStrategy::CollapseNonChatRolesToSystem,
+        )
+    } else if slug.starts_with("deepseek") {
+        model_family!(
+            slug, "deepseek",
+            chat_completions_role_strategy: ChatCompletionsRoleStrategy::CollapseNonChatRolesToSystem,
+            chat_completions_reasoning_strategy:
+                ChatCompletionsReasoningStrategy::PreserveReasoningContent,
+        )
     } else {
         None
     }
@@ -504,6 +552,8 @@ pub fn derive_default_model_family(model: &str) -> ModelFamily {
         web_search_tool_type: WebSearchToolType::Text,
         supports_image_detail_original: false,
         supports_image_generation: false,
+        chat_completions_role_strategy: ChatCompletionsRoleStrategy::OpenAi,
+        chat_completions_reasoning_strategy: ChatCompletionsReasoningStrategy::OpenAi,
         base_instructions: BASE_INSTRUCTIONS.to_string(),
     })
 }
@@ -517,7 +567,10 @@ mod tests {
     use crate::config_types::ReasoningEffort;
     use crate::tool_apply_patch::ApplyPatchToolType;
 
+    use super::ChatCompletionsRoleStrategy;
+    use super::ChatCompletionsReasoningStrategy;
     use super::find_family_for_model;
+    use super::provider_model_slug;
 
     #[test]
     fn image_generation_support_tracks_image_input_modality() {
@@ -562,6 +615,34 @@ mod tests {
 
         assert_eq!(family.slug, "opencode-go/gpt-5.1");
         assert_eq!(family.family, "gpt-5.1");
+    }
+
+    #[test]
+    fn qwen_and_deepseek_families_collapse_developer_roles_to_system() {
+        for (slug, family_name) in [
+            ("opencode-go/qwen3.6-plus", "qwen"),
+            ("opencode-go/deepseek-v4-pro", "deepseek"),
+        ] {
+            let family = find_family_for_model(slug).expect("namespaced model should resolve");
+
+            assert_eq!(family.slug, slug);
+            assert_eq!(family.family, family_name);
+            assert_eq!(
+                family.chat_completions_role_strategy,
+                ChatCompletionsRoleStrategy::CollapseNonChatRolesToSystem
+            );
+        }
+    }
+
+    #[test]
+    fn deepseek_family_preserves_reasoning_content_for_chat_completions() {
+        let family = find_family_for_model("opencode-go/deepseek-v4-pro")
+            .expect("namespaced model should resolve");
+
+        assert_eq!(
+            family.chat_completions_reasoning_strategy,
+            ChatCompletionsReasoningStrategy::PreserveReasoningContent
+        );
     }
 
     #[test]

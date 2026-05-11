@@ -1,11 +1,13 @@
 {
   "task_id": "silver-init",
   "task_granularity": 2,
-  "updated_at": "2026-05-11T10:37:29Z",
+  "updated_at": "2026-05-11T15:44:52Z",
   "_notes": [
     "This checklist records the docs that were created or refreshed during Silver Bullet init.",
     "Refreshed during the 2026-05-11 docs-scheme gate after the Phase 1 plan rewrite.",
-    "Updated again during the OpenCode Go provider and resume-compatibility review so the docs-scheme ledger reflects the current session."
+    "Updated again during the OpenCode Go provider and resume-compatibility review so the docs-scheme ledger reflects the current session.",
+    "Refreshed again during the release smoke checklist update for OpenCode Go provider/model parity.",
+    "Updated during the provider-model abstraction assessment and next-iteration sketch."
   ],
   "docs": {
     "docs/ARCHITECTURE.md": "updated",
@@ -23,7 +25,9 @@
   "sections": {
     "docs/ARCHITECTURE.md": {
       "System Shape": "updated",
-      "Data Flow": "updated"
+      "Data Flow": "updated",
+      "Provider-Model Abstractions": "updated",
+      "Next Iteration Sketch": "updated"
     },
     "docs/TESTING.md": {
       "Required Gate": "updated",
