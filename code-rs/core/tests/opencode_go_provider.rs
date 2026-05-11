@@ -4,7 +4,9 @@ use common::load_default_config_for_test;
 use common::wait_for_event;
 
 use code_core::config::{Config, ConfigOverrides, ConfigToml};
-use code_core::model_family::{derive_default_model_family, find_family_for_model};
+use code_core::model_family::{
+    derive_default_model_family, provider_model_slug, ChatCompletionsRoleStrategy,
+};
 use code_core::protocol::{AskForApproval, EventMsg, InputItem, Op, SandboxPolicy};
 use code_core::{
     built_in_model_providers, CodexAuth, ConversationManager, WireApi,
@@ -51,6 +53,21 @@ fn sse_response(body: String) -> ResponseTemplate {
         .set_body_string(body)
 }
 
+const PRIORITIZED_OPENCODE_GO_MODELS: &[&str] = &[
+    "glm-5.1",
+    "kimi-k2.6",
+    "mimo-v2.5-pro",
+    "mimo-v2.5",
+    "minimax-m2.7",
+    "qwen3.6-plus",
+    "deepseek-v4-pro",
+    "deepseek-v4-flash",
+];
+
+fn uses_collapsed_chat_roles(model: &str) -> bool {
+    model.starts_with("qwen") || model.starts_with("deepseek")
+}
+
 #[test]
 fn built_in_opencode_go_provider_uses_chat_completions_and_provider_credentials() {
     let providers = built_in_model_providers(None);
@@ -73,38 +90,51 @@ fn built_in_opencode_go_provider_uses_chat_completions_and_provider_credentials(
 }
 
 #[test]
-fn namespaced_model_with_hyphenated_provider_id_resolves() {
-    let family = find_family_for_model("opencode-go/gpt-5.1")
-        .expect("hyphenated provider namespace should resolve");
-
-    assert_eq!(family.slug, "opencode-go/gpt-5.1");
-    assert_eq!(family.family, "gpt-5.1");
+fn prioritized_opencode_go_model_slugs_strip_to_provider_local_names() {
+    for model in PRIORITIZED_OPENCODE_GO_MODELS {
+        let slug = format!("opencode-go/{model}");
+        assert_eq!(
+            provider_model_slug(OPENCODE_GO_PROVIDER_ID, &slug).as_ref(),
+            *model
+        );
+    }
 }
 
 #[test]
-fn opencode_go_builtin_provider_can_be_selected_without_custom_config() -> std::io::Result<()> {
+fn opencode_go_prioritized_models_can_be_selected_without_custom_config() -> std::io::Result<()> {
     let cwd = TempDir::new().unwrap();
     std::fs::write(cwd.path().join(".git"), "gitdir: nowhere")?;
     let code_home = TempDir::new().unwrap();
-    let cfg = ConfigToml {
-        model: Some("opencode-go/kimi-k2.6".to_string()),
-        model_provider: Some(OPENCODE_GO_PROVIDER_ID.to_string()),
-        ..Default::default()
-    };
 
-    let config = Config::load_from_base_config_with_overrides(
-        cfg,
-        ConfigOverrides {
-            cwd: Some(cwd.path().to_path_buf()),
+    for model in PRIORITIZED_OPENCODE_GO_MODELS {
+        let cfg = ConfigToml {
+            model: Some(format!("opencode-go/{model}")),
+            model_provider: Some(OPENCODE_GO_PROVIDER_ID.to_string()),
             ..Default::default()
-        },
-        code_home.path().to_path_buf(),
-    )?;
+        };
 
-    assert_eq!(config.model, "opencode-go/kimi-k2.6");
-    assert_eq!(config.model_provider_id, OPENCODE_GO_PROVIDER_ID);
-    assert_eq!(config.model_provider.wire_api, WireApi::Chat);
-    assert!(!config.model_provider.requires_openai_auth);
+        let config = Config::load_from_base_config_with_overrides(
+            cfg,
+            ConfigOverrides {
+                cwd: Some(cwd.path().to_path_buf()),
+                ..Default::default()
+            },
+            code_home.path().to_path_buf(),
+        )?;
+
+        assert_eq!(config.model, format!("opencode-go/{model}"));
+        assert_eq!(config.model_provider_id, OPENCODE_GO_PROVIDER_ID);
+        assert_eq!(config.model_provider.wire_api, WireApi::Chat);
+        assert!(!config.model_provider.requires_openai_auth);
+        assert_eq!(
+            config.model_family.chat_completions_role_strategy,
+            if uses_collapsed_chat_roles(model) {
+                ChatCompletionsRoleStrategy::CollapseNonChatRolesToSystem
+            } else {
+                ChatCompletionsRoleStrategy::OpenAi
+            }
+        );
+    }
     Ok(())
 }
 
