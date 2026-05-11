@@ -420,6 +420,23 @@ mod tests {
     }
 
     #[test]
+    fn opencode_go_provider_without_openai_auth_skips_login_onboarding() -> std::io::Result<()> {
+        let (config, _code_home, _cwd) = config_for_provider("opencode-go", "opencode-go/kimi-k2.6")?;
+
+        assert!(!should_show_login_screen(
+            crate::LoginStatus::NotAuthenticated,
+            &config
+        ));
+        assert!(!should_show_onboarding(
+            crate::LoginStatus::NotAuthenticated,
+            &config,
+            false
+        ));
+
+        Ok(())
+    }
+
+    #[test]
     fn openai_provider_without_auth_still_shows_login_onboarding() -> std::io::Result<()> {
         let (config, _code_home, _cwd) = config_for_provider("openai", "gpt-5.1")?;
 

@@ -27,3 +27,5 @@ This workflow covers infrastructure, release, and operations work.
 - Update docs and project state
 - Return to the feature workflow when the ops task is complete
 - Keep the release notes and verification artifacts current
+- If the change touches governed docs, refresh `docs/task-doc-checklist.json` in the same session before handing off
+- Treat provider-registration and config-compatibility changes as release-sensitive and document the migration path before promotion

@@ -256,6 +256,7 @@ experimental_use_freeform_apply_patch = false
 
 # Built-ins include:
 # - openai (Responses API; requires login or OPENAI_API_KEY via auth flow)
+# - opencode-go (Chat Completions API; requires login or OPENCODE_GO_API_KEY via auth flow)
 # - oss (Chat Completions API; defaults to http://localhost:11434/v1)
 
 [model_providers]
@@ -272,6 +273,14 @@ experimental_use_freeform_apply_patch = false
 # # experimental_bearer_token = "sk-example"      # optional dev-only direct bearer token
 # # http_headers = { "X-Example" = "value" }
 # # env_http_headers = { "OpenAI-Organization" = "OPENAI_ORGANIZATION", "OpenAI-Project" = "OPENAI_PROJECT" }
+
+# --- Example: OpenCode Go (OpenAI-compatible chat completions) ---
+# [model_providers.opencode-go]
+# name = "OpenCode Go"
+# base_url = "https://opencode.ai/zen/go/v1"
+# env_key = "OPENCODE_GO_API_KEY"
+# wire_api = "chat"
+# # requires_openai_auth = false
 
 # --- Example: Azure (Chat/Responses depending on endpoint) ---
 # [model_providers.azure]

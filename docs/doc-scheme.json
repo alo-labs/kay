@@ -1,5 +1,6 @@
 {
   "version": 1,
+  "updated_at": "2026-05-11T10:37:29Z",
   "sync": {
     "doc_scheme_md_path": "docs/doc-scheme.md",
     "task_checklist_path": "docs/task-doc-checklist.json"

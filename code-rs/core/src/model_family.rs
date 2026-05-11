@@ -11,6 +11,7 @@ use code_protocol::openai_models::TruncationMode;
 use code_protocol::openai_models::WebSearchToolType;
 use code_protocol::protocol::TruncationPolicy;
 use once_cell::sync::Lazy;
+use std::borrow::Cow;
 
 /// The `instructions` field in the payload sent to a model should always start
 /// with this content.
@@ -43,16 +44,25 @@ static UPSTREAM_MODELS: Lazy<Vec<ModelInfo>> = Lazy::new(|| {
 
 fn namespaced_model_suffix(model: &str) -> Option<&str> {
     let (namespace, suffix) = model.split_once('/')?;
+    if namespace.is_empty() || suffix.is_empty() {
+        return None;
+    }
     if suffix.contains('/') {
         return None;
     }
-    if !namespace
-        .chars()
-        .all(|ch| ch.is_ascii_alphanumeric() || ch == '_')
-    {
-        return None;
-    }
     Some(suffix)
+}
+
+pub fn provider_model_slug<'a>(provider_id: &str, model_slug: &'a str) -> Cow<'a, str> {
+    if let Some((namespace, suffix)) = model_slug.split_once('/')
+        && namespace.eq_ignore_ascii_case(provider_id)
+        && !suffix.is_empty()
+        && !suffix.contains('/')
+    {
+        return Cow::Borrowed(suffix);
+    }
+
+    Cow::Borrowed(model_slug)
 }
 
 pub const STANDARD_CONTEXT_WINDOW_272K: u64 = CONTEXT_WINDOW_272K;
@@ -543,6 +553,31 @@ mod tests {
         assert_eq!(family.family, "minimax-m2.7");
         assert_eq!(family.context_window, Some(204_800));
         assert!(family.needs_special_apply_patch_instructions);
+    }
+
+    #[test]
+    fn namespaced_model_with_hyphenated_provider_id_resolves() {
+        let family = find_family_for_model("opencode-go/gpt-5.1")
+            .expect("hyphenated provider namespace should resolve");
+
+        assert_eq!(family.slug, "opencode-go/gpt-5.1");
+        assert_eq!(family.family, "gpt-5.1");
+    }
+
+    #[test]
+    fn provider_model_slug_strips_matching_namespace() {
+        assert_eq!(
+            provider_model_slug("opencode-go", "opencode-go/kimi-k2.6").as_ref(),
+            "kimi-k2.6"
+        );
+        assert_eq!(
+            provider_model_slug("opencode-go", "kimi-k2.6").as_ref(),
+            "kimi-k2.6"
+        );
+        assert_eq!(
+            provider_model_slug("opencode-go", "other-provider/kimi-k2.6").as_ref(),
+            "other-provider/kimi-k2.6"
+        );
     }
 }
 

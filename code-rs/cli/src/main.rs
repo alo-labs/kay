@@ -325,7 +325,7 @@ struct LoginCommand {
 
     #[arg(
         long = "with-api-key",
-        help = "Read the API key from stdin (e.g. `printenv OPENAI_API_KEY | code login --with-api-key` or `printenv MINIMAX_API_KEY | code login --provider minimax --with-api-key`)"
+        help = "Read the API key from stdin (e.g. `printenv OPENAI_API_KEY | code login --with-api-key`, `printenv MINIMAX_API_KEY | code login --provider minimax --with-api-key`, or `printenv OPENCODE_GO_API_KEY | code login --provider opencode-go --with-api-key`)"
     )]
     with_api_key: bool,
 

@@ -67,7 +67,7 @@ use crate::error::RetryLimitReachedError;
 use crate::error::UnexpectedResponseError;
 use crate::error::UsageLimitReachedError;
 use crate::flags::CODEX_RS_SSE_FIXTURE;
-use crate::model_family::{find_family_for_model, ModelFamily};
+use crate::model_family::{find_family_for_model, provider_model_slug, ModelFamily};
 #[cfg(test)]
 use crate::model_provider_info::ChatCompletionsFormat;
 use crate::model_provider_info::ModelProviderInfo;
@@ -643,19 +643,22 @@ impl ModelClient {
                 }
             }
             WireApi::Chat => {
-                let effective_family = prompt
-                    .model_family_override
-                    .as_ref()
-                    .unwrap_or(&self.config.model_family);
-                let model_slug = prompt
+                let request_model = prompt
                     .model_override
                     .as_deref()
                     .unwrap_or(self.config.model.as_str());
+                let wire_model_slug = provider_model_slug(&self.config.model_provider_id, request_model);
+                let request_model = wire_model_slug.as_ref();
+                let effective_family = prompt
+                    .model_family_override
+                    .clone()
+                    .or_else(|| find_family_for_model(request_model))
+                    .unwrap_or_else(|| self.config.model_family.clone());
                 // Create the raw streaming connection first.
                 let response_stream = stream_chat_completions(
                     prompt,
-                    effective_family,
-                    model_slug,
+                    &effective_family,
+                    request_model,
                     &self.client,
                     &self.provider,
                     self.config.responses_originator_header.as_str(),
@@ -714,6 +717,8 @@ impl ModelClient {
             .model_override
             .as_deref()
             .unwrap_or(self.config.model.as_str());
+        let wire_model_slug = provider_model_slug(&self.config.model_provider_id, request_model);
+        let request_model = wire_model_slug.as_ref();
         let effective_effort = clamp_reasoning_effort_for_model(request_model, self.effort);
         let request_family = prompt
             .model_family_override
@@ -764,7 +769,6 @@ impl ModelClient {
             (_, None, None) => None,
         };
 
-        let model_slug = request_model;
         let session_id = prompt.session_id_override.unwrap_or(self.session_id);
         let session_id_str = session_id.to_string();
         let turn_state: Arc<OnceLock<String>> = Arc::new(OnceLock::new());
@@ -783,7 +787,7 @@ impl ModelClient {
             };
 
             let payload = ResponsesApiRequest {
-                model: model_slug,
+                model: request_model,
                 instructions: &full_instructions,
                 input: &input_with_instructions,
                 tools: &tools_json,
@@ -804,7 +808,7 @@ impl ModelClient {
 
             let mut payload_json = serde_json::to_value(&payload)?;
             if let Some(model_value) = payload_json.get_mut("model") {
-                *model_value = serde_json::Value::String(model_slug.to_string());
+                *model_value = serde_json::Value::String(request_model.to_string());
             }
             if self.provider.is_azure_responses_endpoint() {
                 attach_item_ids(&mut payload_json, &input_with_instructions);
@@ -1170,6 +1174,8 @@ impl ModelClient {
             .model_override
             .as_deref()
             .unwrap_or(self.config.model.as_str());
+        let wire_model_slug = provider_model_slug(&self.config.model_provider_id, request_model);
+        let request_model = wire_model_slug.as_ref();
         let effective_effort = clamp_reasoning_effort_for_model(request_model, self.effort);
         let request_family = prompt
             .model_family_override
@@ -1234,8 +1240,6 @@ impl ModelClient {
         // For Azure, we send `store: true` and preserve reasoning item IDs.
         let azure_workaround = self.provider.is_azure_responses_endpoint();
 
-        let model_slug = request_model;
-
         let session_id = prompt
             .session_id_override
             .unwrap_or(self.session_id);
@@ -1266,7 +1270,7 @@ impl ModelClient {
             let text = text_template.clone();
 
             let payload = ResponsesApiRequest {
-                model: model_slug,
+                model: request_model,
                 instructions: &full_instructions,
                 input: &input_with_instructions,
                 tools: &tools_json,
@@ -1288,7 +1292,7 @@ impl ModelClient {
 
             let mut payload_json = serde_json::to_value(&payload)?;
             if let Some(model_value) = payload_json.get_mut("model") {
-                *model_value = serde_json::Value::String(model_slug.to_string());
+                *model_value = serde_json::Value::String(request_model.to_string());
             }
             if azure_workaround {
                 attach_item_ids(&mut payload_json, &input_with_instructions);
@@ -1937,19 +1941,21 @@ impl ModelClient {
         let auth_manager = self.auth_manager.clone();
         let mut rate_limit_switch_state = crate::account_switching::RateLimitSwitchState::default();
 
-        let model_slug = prompt
+        let request_model = prompt
             .model_override
             .as_deref()
             .unwrap_or(self.config.model.as_str());
+        let wire_model_slug = provider_model_slug(&self.config.model_provider_id, request_model);
+        let request_model = wire_model_slug.as_ref();
         let family = prompt
             .model_family_override
             .clone()
-            .or_else(|| find_family_for_model(model_slug))
+            .or_else(|| find_family_for_model(request_model))
             .unwrap_or_else(|| self.config.model_family.clone());
         let session_id = prompt.session_id_override.unwrap_or(self.session_id);
         let instructions = prompt.get_full_instructions(&family).into_owned();
         let payload = CompactHistoryRequest {
-            model: model_slug,
+            model: request_model,
             input: &prompt.input,
             instructions: instructions.clone(),
         };
@@ -1972,7 +1978,7 @@ impl ModelClient {
                 .provider
                 .create_compact_request_builder_with_auth(&self.client, &auth)
                 .await?;
-            request = self.apply_requested_model_headers(request, model_slug);
+            request = self.apply_requested_model_headers(request, request_model);
 
             // Ensure Responses API beta header is present for compact calls. Mirror the
             // streaming path: use the public "responses=v1" header for the public OpenAI
