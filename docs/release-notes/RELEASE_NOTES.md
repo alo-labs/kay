@@ -1,13 +1,13 @@
-## @just-every/code v0.6.99
+## @just-every/code v0.6.100
 
-This release packages Kay as a standalone Every Code build, keeps MiniMax as the active provider, and hardens the release path around host-environment sharing and installer behavior.
+This release adds OpenCode Go as a built-in provider, normalizes provider-prefixed model slugs across request paths, and broadens model-adaptation seams so provider-specific plugins can stay configuration-driven.
 
 ### Changes
 
-- Kay: make `code` the canonical command, keep MiniMax provider support active, and treat the host `~/.codex` tree as a read-only environment overlay while keeping Kay auth/history local.
-- Installer: repoint Sidekick consumption to `alo-labs/kay`, keep the local `code` launcher canonical, and harden startup against upstream merge and publish-path surprises.
-- Release/CI: skip npm publish when the token is absent, skip Homebrew tap publishing when the PAT is absent, and keep the release checks from failing on missing external credentials.
-- Prompts/config: preserve local `~/.code` precedence while borrowing host prompts, instructions, skills, MCPs, and plugin roots by reference when available.
+- Core: add the built-in OpenCode Go provider, support `opencode-go/<model-id>` selection, and normalize provider-prefixed slugs before chat/completions, responses, and compaction requests are built.
+- Tests: add request-body coverage proving OpenCode Go sends the bare model slug over chat completions, plus live coverage for the OpenCode Go model matrix.
+- CLI/TUI: update login guidance for `OPENCODE_GO_API_KEY` and skip onboarding for non-OpenAI OpenCode Go sessions.
+- Docs: document OpenCode Go provider configuration and examples.
 
 ### Install
 
@@ -16,8 +16,4 @@ npm install -g @just-every/code@latest
 code
 ```
 
-### Thanks
-
-Thanks to @owenlin for contributions!
-
-Compare: https://github.com/just-every/code/compare/v0.6.98...v0.6.99
+Compare: https://github.com/just-every/code/compare/v0.6.99...v0.6.100
