@@ -2,6 +2,10 @@
 
 ## [0.7.1] — 2026-05-12
 
+## Bug Fixes
+- `fix(ci): fallback issue triage github token for all steps` (c56f269d2)
+- `fix(ci): fallback issue triage github token` (f94024ed1)
+
 ## Features
 - `feat(core): add provider-model acceptance coverage` (84cde4a10)
 
