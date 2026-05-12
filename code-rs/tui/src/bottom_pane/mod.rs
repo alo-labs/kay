@@ -50,6 +50,7 @@ pub mod resume_selection_view;
 pub mod agents_settings_view;
 pub mod mcp_settings_view;
 mod login_accounts_view;
+mod provider_credentials_view;
 // no direct use of list_selection_view or its items here
 mod textarea;
 pub mod form_text_field;
@@ -92,6 +93,7 @@ pub(crate) use login_accounts_view::{
     LoginAddAccountState,
     LoginAddAccountView,
 };
+pub(crate) use provider_credentials_view::ProviderCredentialsView;
 
 pub(crate) use update_settings_view::{UpdateSettingsView, UpdateSharedState};
 pub(crate) use notifications_settings_view::{NotificationsMode, NotificationsSettingsView};
@@ -282,6 +284,13 @@ impl BottomPane<'_> {
     }
 
     pub fn show_login_add_account(&mut self, view: LoginAddAccountView) {
+        self.active_view = Some(Box::new(view));
+        self.active_view_kind = ActiveViewKind::Other;
+        self.status_view_active = false;
+        self.request_redraw();
+    }
+
+    pub fn show_provider_credentials(&mut self, view: ProviderCredentialsView) {
         self.active_view = Some(Box::new(view));
         self.active_view_kind = ActiveViewKind::Other;
         self.status_view_active = false;
