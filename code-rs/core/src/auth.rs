@@ -444,6 +444,28 @@ pub fn save_provider_api_key(
     write_auth_json(&auth_file, &auth_dot_json)
 }
 
+/// Remove a provider credential from `auth.json.provider_credentials` while
+/// preserving the rest of the auth snapshot.
+///
+/// OpenAI auth remains on its dedicated `OPENAI_API_KEY` field and is not
+/// mutated by this helper.
+pub fn remove_provider_api_key(code_home: &Path, provider_ref: &str) -> std::io::Result<()> {
+    let provider_ref = normalize_provider_ref(provider_ref)?;
+    let auth_file = get_auth_file(code_home);
+
+    let mut auth_dot_json = match try_read_auth_json(&auth_file) {
+        Ok(auth) => auth,
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(err) => return Err(err),
+    };
+
+    if auth_dot_json.provider_credentials.remove(&provider_ref).is_none() {
+        return Ok(());
+    }
+
+    write_auth_json(&auth_file, &auth_dot_json)
+}
+
 pub fn login_with_chatgpt_auth_tokens(
     code_home: &Path,
     access_token: &str,
