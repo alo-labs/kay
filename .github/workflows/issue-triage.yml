@@ -135,7 +135,7 @@ jobs:
         continue-on-error: true
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.CODE_GH_PAT }}
+          github-token: ${{ secrets.CODE_GH_PAT || github.token }}
           script: |
             try {
               const { data: me } = await github.rest.users.getAuthenticated();
@@ -261,7 +261,7 @@ jobs:
         id: rate_limit
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.CODE_GH_PAT }}
+          github-token: ${{ secrets.CODE_GH_PAT || github.token }}
           script: |
             const windowHours = parseInt(process.env.RATE_WINDOW_HOURS || '24', 10);
             const perActor = parseInt(process.env.RATE_PER_ACTOR || '3', 10);
