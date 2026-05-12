@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.1
+milestone: v0.8.0
 milestone_name: Provider CRUD and Dynamic Model Selection
-status: planning
-last_updated: "2026-05-12T10:51:09.155Z"
-last_activity: 2026-05-12
+status: Defining requirements
+stopped_at: Phase 4 context gathered
+last_updated: "2026-05-12T11:25:21.421Z"
+last_activity: 2026-05-12 — Milestone v0.8.0 started
 progress:
   total_phases: 3
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
-  percent: 0
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 Phase: Not started (defining requirements)
 Plan: —
 Status: Defining requirements
-Last activity: 2026-05-12 — Milestone v1.1 started
+Last activity: 2026-05-12 — Milestone v0.8.0 started
 
 ## Performance Metrics
 
@@ -58,7 +58,7 @@ Last activity: 2026-05-12 — Milestone v1.1 started
 
 - [Init] issue_tracker=gsd, active_workflow=full-dev-cycle, permissions.auto enabled
 - [Milestone v1.0] OpenCode Go was treated as a first-class provider integration and validated with a representative `opencode-go/<model>` path before release.
-- [Milestone v1.1] `/provider` is the canonical provider CRUD surface; `/model` should filter by configured provider credentials; provider plugins and model plugins stay orthogonal.
+- [Milestone v0.8.0] `/provider` is the canonical provider CRUD surface; `/model` should filter by configured provider credentials; provider plugins and model plugins stay orthogonal.
 
 ### Pending Todos
 
@@ -76,6 +76,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-05-12 10:51 UTC
-Stopped at: Phase 4 context captured; ready for planning
-Resume file: None
+Last session: 2026-05-12T11:25:21.395Z
+Stopped at: Phase 4 context gathered
+Resume file: .planning/phases/04-provider-credential-crud/04-CONTEXT.md
