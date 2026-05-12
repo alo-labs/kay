@@ -1,12 +1,12 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: OpenCode Go Provider
+milestone: v1.1
+milestone_name: Provider CRUD and Dynamic Model Selection
 status: planning
-last_updated: "2026-05-11T08:35:51.001Z"
-last_activity: 2026-05-11
+last_updated: "2026-05-12T10:51:09.155Z"
+last_activity: 2026-05-12
 progress:
-  total_phases: 0
+  total_phases: 3
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -17,17 +17,17 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-11)
+See: .planning/PROJECT.md (updated 2026-05-12)
 
 **Core value:** Keep the CLI buildable, understandable, and safe to evolve without disturbing existing workflows.
-**Current focus:** OpenCode Go Provider
+**Current focus:** Provider CRUD and Dynamic Model Selection
 
 ## Current Position
 
 Phase: Not started (defining requirements)
 Plan: —
 Status: Defining requirements
-Last activity: 2026-05-11 — Milestone v1.0 started
+Last activity: 2026-05-12 — Milestone v1.1 started
 
 ## Performance Metrics
 
@@ -41,9 +41,9 @@ Last activity: 2026-05-11 — Milestone v1.0 started
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 1. OpenCode Provider Foundation | 0/TBD | Not started | - |
-| 2. Live Validation and Docs | 0/TBD | Not started | - |
-| 3. Release Kay | 0/TBD | Not started | - |
+| 4. Provider Credential CRUD | 0/TBD | Not started | - |
+| 5. Dynamic Model Selection | 0/TBD | Not started | - |
+| 6. Verification, Docs, and Release | 0/TBD | Not started | - |
 
 **Recent Trend:**
 
@@ -57,7 +57,8 @@ Last activity: 2026-05-11 — Milestone v1.0 started
 ### Decisions
 
 - [Init] issue_tracker=gsd, active_workflow=full-dev-cycle, permissions.auto enabled
-- [Milestone v1.0] OpenCode Go will be treated as a first-class provider integration and validated with a representative `opencode-go/<model>` path before release.
+- [Milestone v1.0] OpenCode Go was treated as a first-class provider integration and validated with a representative `opencode-go/<model>` path before release.
+- [Milestone v1.1] `/provider` is the canonical provider CRUD surface; `/model` should filter by configured provider credentials; provider plugins and model plugins stay orthogonal.
 
 ### Pending Todos
 
@@ -65,7 +66,7 @@ None yet.
 
 ### Blockers/Concerns
 
-- `gsd-sdk` currently errors on a missing `@anthropic-ai/claude-agent-sdk` dependency, so the lower-level `gsd-tools` CLI is the reliable local entrypoint.
+None currently.
 
 ## Deferred Items
 
@@ -75,6 +76,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-11 08:36 UTC
-Stopped at: OpenCode Go milestone planning started
+Last session: 2026-05-12 10:51 UTC
+Stopped at: Phase 4 context captured; ready for planning
 Resume file: None
