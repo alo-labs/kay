@@ -265,7 +265,7 @@ fn assert_provider_acceptance(spec: &ProviderAcceptanceSpec) {
             spec.provider_id,
             model,
             &format!(
-                "Return only the requested object with provider={provider}, model={model}, ok=true.",
+                "Please return a single JSON object with exactly these fields and values: provider={provider}, model={model}, ok=true. Do not include markdown or extra text.",
                 provider = spec.provider_id,
                 model = model
             ),
