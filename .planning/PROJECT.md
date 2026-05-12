@@ -8,7 +8,7 @@ A Rust/Node.js monorepo for the Codex CLI and its supporting workflows, docs, an
 
 Keep the CLI buildable, understandable, and safe to evolve without disturbing existing workflows.
 
-## Current Milestone: v1.1 Provider CRUD and Dynamic Model Selection
+## Current Milestone: v0.8.0 Provider CRUD and Dynamic Model Selection
 
 **Goal:** Let users manage supported providers from Kay itself, set provider API keys without editing config files, and make `/model` reflect only the models enabled by configured provider credentials.
 
@@ -85,4 +85,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-12 after Provider CRUD milestone start*
+*Last updated: 2026-05-12 after v0.8.0 semver realignment*
