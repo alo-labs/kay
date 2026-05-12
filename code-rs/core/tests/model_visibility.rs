@@ -63,12 +63,13 @@ fn visible_models(presets: &[TestPreset], auth: &AuthManager) -> Vec<&'static st
 }
 
 #[test]
-fn opencode_go_visibility_is_credential_driven_and_namespace_exact() {
+fn opencode_go_visibility_is_credential_driven_and_whitelist_based() {
     let code_home = TempDir::new().unwrap();
     let presets = vec![
         TestPreset::new("opencode-go/kimi-k2.6"),
         TestPreset::new("xopencode-go/kimi-k2.6"),
         TestPreset::new("opencode-go/minimax-m2.7"),
+        TestPreset::new("opencode-go/unsupported-model"),
     ];
 
     let auth = load_auth_manager(&code_home);
@@ -84,7 +85,10 @@ fn opencode_go_visibility_is_credential_driven_and_namespace_exact() {
             .collect::<Vec<_>>(),
         vec![VisibleProvider::OpenCodeGo]
     );
-    assert_eq!(visible_models(&presets, &auth), vec!["opencode-go/kimi-k2.6"]);
+    assert_eq!(
+        visible_models(&presets, &auth),
+        vec!["opencode-go/kimi-k2.6", "opencode-go/minimax-m2.7"]
+    );
 
     remove_provider_api_key(code_home.path(), "opencode-go")
         .expect("opencode key should be removed");

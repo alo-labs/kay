@@ -10,6 +10,7 @@ use ratatui::layout::Rect;
 use ratatui::widgets::WidgetRef;
 use std::sync::mpsc::{Receiver, Sender};
 use std::time::Duration;
+use std::time::Instant;
 
 use crate::app_event::AppEvent;
 use crate::app_event_sender::AppEventSender;
@@ -55,6 +56,18 @@ impl ComposerInput {
     /// Feed a key event into the composer and return a high-level action.
     pub fn input(&mut self, key: KeyEvent) -> ComposerAction {
         let action = match self.inner.handle_key_event(key).0 {
+            InputResult::Submitted(text) => ComposerAction::Submitted(text),
+            _ => ComposerAction::None,
+        };
+        self.drain_app_events();
+        action
+    }
+
+    /// Deterministic test helper that feeds a key event with an explicit
+    /// timestamp instead of `Instant::now()`.
+    #[doc(hidden)]
+    pub fn input_at(&mut self, key: KeyEvent, now: Instant) -> ComposerAction {
+        let action = match self.inner.handle_key_event_at(key, now).0 {
             InputResult::Submitted(text) => ComposerAction::Submitted(text),
             _ => ComposerAction::None,
         };
