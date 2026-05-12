@@ -6,7 +6,7 @@ This milestone adds provider CRUD and provider-aware model selection to Kay. Use
 
 ## Phases
 
-- [ ] **Phase 4: Provider Credential CRUD** - Add the `/provider` command, provider ordering, and CLI API-key entry for the supported providers.
+- [x] **Phase 4: Provider Credential CRUD** - Add the `/provider` command, provider ordering, and CLI API-key entry for the supported providers. (completed 2026-05-12)
 - [ ] **Phase 5: Dynamic Model Selection** - Make `/model` list only models enabled by configured provider credentials and keep model compatibility profiles reusable.
 - [ ] **Phase 6: Verification, Docs, and Release** - Prove the provider-management flow with tests, document it, and cut a release after verification.
 
@@ -21,7 +21,7 @@ This milestone adds provider CRUD and provider-aware model selection to Kay. Use
 - [x] 04-01-PLAN.md — Add provider auth CRUD helpers and tests
 - [x] 04-02-PLAN.md — Restore direct CLI API-key entry
 - [x] 04-03-PLAN.md — Add `/provider` command and provider pane shell
-- [ ] 04-04-PLAN.md — Finish delete action and TUI regressions
+- [x] 04-04-PLAN.md — Finish delete action and TUI regressions
 **Success Criteria** (what must be TRUE):
   1. `/provider` can manage the supported provider set in the required order: OpenCode Go, MiniMax, OpenAI.
   2. API keys can be supplied directly via CLI argument and saved without manual config-file edits.
@@ -49,6 +49,6 @@ This milestone adds provider CRUD and provider-aware model selection to Kay. Use
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 4. Provider Credential CRUD | 2/4 | In Progress|  |
+| 4. Provider Credential CRUD | 4/4 | Complete   | 2026-05-12 |
 | 5. Dynamic Model Selection | 0/TBD | Not started | - |
 | 6. Verification, Docs, and Release | 0/TBD | Not started | - |
