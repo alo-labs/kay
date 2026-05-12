@@ -4,15 +4,15 @@ milestone: v0.8.0
 milestone_name: Provider CRUD and Dynamic Model Selection
 current_plan: 1
 status: verifying
-stopped_at: Completed 04-03-PLAN.md
-last_updated: "2026-05-12T12:32:58.907Z"
+stopped_at: Completed 04-04-PLAN.md
+last_updated: "2026-05-12T12:55:27.362Z"
 last_activity: 2026-05-12
 progress:
   total_phases: 3
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 4
-  completed_plans: 3
-  percent: 75
+  completed_plans: 4
+  percent: 100
 ---
 
 # Project State
@@ -57,6 +57,7 @@ Last activity: 2026-05-12
 *Updated after each plan completion*
 | Phase 4 P1 | 30m | 2 tasks | 6 files |
 | Phase 04-provider-credential-crud P3 | 14m | 2 tasks | 6 files |
+| Phase 04-provider-credential-crud P4 | 18m | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -75,6 +76,9 @@ Last activity: 2026-05-12
 - [Phase 04-provider-credential-crud]: /provider stays separate from /login and /model — Keeping provider CRUD orthogonal avoids cross-flow regressions in existing account and model behavior.
 - [Phase 04-provider-credential-crud]: Provider order is explicit: OpenCode Go, MiniMax, OpenAI — A fixed order preserves the user-facing contract and avoids hash/map iteration drift.
 - [Phase 04-provider-credential-crud]: Provider add/update reuses existing auth save helpers and metadata hints — Reusing the existing auth path keeps config mutation consistent and avoids duplicate parsing or persistence logic.
+- [Phase 04-provider-credential-crud]: Keep provider deletion inside the provider pane with an explicit confirm/cancel state instead of routing it through /login. — Destructive actions stay explicit and localized to provider CRUD.
+- [Phase 04-provider-credential-crud]: Use a test-only harness helper to open the provider overlay directly because the VT100 harness does not dispatch slash commands the same way the live app does. — The snapshot test needs a deterministic way to reach the provider pane without relying on slash-command routing.
+- [Phase 04-provider-credential-crud]: Use a test-only harness helper to open the provider overlay directly because the VT100 harness does not dispatch slash commands the same way the live app does. — The snapshot test needs a deterministic way to reach the provider pane without relying on slash-command routing.
 
 ### Pending Todos
 
@@ -94,6 +98,6 @@ currently.
 
 ## Session Continuity
 
-Last session: 2026-05-12T12:32:58.897Z
-Stopped at: Completed 04-03-PLAN.md
+Last session: 2026-05-12T12:54:30.060Z
+Stopped at: Completed 04-04-PLAN.md
 Resume file: None
