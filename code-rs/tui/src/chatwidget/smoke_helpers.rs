@@ -365,6 +365,11 @@ impl ChatWidgetHarness {
         self.flush_into_widget();
     }
 
+    pub fn open_provider_credentials_overlay(&mut self) {
+        self.chat.show_provider_credentials_view();
+        self.flush_into_widget();
+    }
+
     pub fn review_auto_review_enabled(&mut self) -> bool {
         self.flush_into_widget();
         self.chat.config.tui.auto_review_enabled

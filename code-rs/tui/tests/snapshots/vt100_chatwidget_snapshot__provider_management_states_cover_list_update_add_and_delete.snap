@@ -1,0 +1,119 @@
+---
+source: tui/tests/vt100_chatwidget_snapshot.rs
+assertion_line: 2654
+expression: "frames.join(\"\\n---FRAME---\\n\")"
+---
+ +------------------------------------------------------------------------------------------------+
+ |                                               Kay                                              |
+ +------------------------------------------------------------------------------------------------+
+
+
+ ★   /kay - perform a coding task (multiple agents)
+
+
+ • Hello! How can I help you today?
+
+
+
+ • I can help with various tasks including:
+
+   - Writing code
+   - Reading files
+   - Running commands
+
+
+ +--------------------------------------- Manage Providers ---------------------------------------+
+ | Supported Providers                                                                            |
+ |                                                                                                |
+ | › OpenCode Go (configured)  Set OPENCODE_GO_API_KEY or run `code login --provider opencode-go  |
+ | --with-api-key`.                                                                               |
+ | MiniMax (missing)  Set MINIMAX_API_KEY or run `code login --provider minimax --with-api-key`.  |
+ | OpenAI (configured)                                                                            |
+ +------------------------------------------------------------------------------------------------+
+
+---FRAME---
+ +------------------------------------------------------------------------------------------------+
+ |                                               Kay                                              |
+ +------------------------------------------------------------------------------------------------+
+
+
+ ★   /kay - perform a coding task (multiple agents)
+
+
+ • Hello! How can I help you today?
+
+
+
+ • I can help with various tasks including:
+
+   - Writing code
+   - Reading files
+   - Running commands
+
+
+ +------------------------------------ Update OpenCode Go Key ------------------------------------+
+ | Editing OpenCode Go provider key                                                               |
+ |                                                                                                |
+ | Set OPENCODE_GO_API_KEY or run `code login --provider opencode-go --with-api-key`.             |
+ |                                                                                                |
+ | Paste the API key below and press Enter to save.                                               |
+ | _                                                                                              |
+ +------------------------------------------------------------------------------------------------+
+
+---FRAME---
+ +------------------------------------------------------------------------------------------------+
+ |                                               Kay                                              |
+ +------------------------------------------------------------------------------------------------+
+ ★   /kay - perform a coding task (multiple agents)
+
+
+ • Hello! How can I help you today?
+
+
+
+ • I can help with various tasks including:
+
+   - Writing code
+   - Reading files
+   - Running commands
+
+
+
+ +--------------------------------------- Add MiniMax Key ----------------------------------------+
+ | Cancelled OpenCode Go                                                                          |
+ |                                                                                                |
+ | Editing MiniMax provider key                                                                   |
+ |                                                                                                |
+ | Set MINIMAX_API_KEY or run `code login --provider minimax --with-api-key`.                     |
+ |                                                                                                |
+ | Paste the API key below and press Enter to save.                                               |
+ +------------------------------------------------------------------------------------------------+
+
+---FRAME---
+ +------------------------------------------------------------------------------------------------+
+ |                                               Kay                                              |
+ +------------------------------------------------------------------------------------------------+
+ • Hello! How can I help you today?
+
+
+
+ • I can help with various tasks including:
+
+   - Writing code
+   - Reading files
+   - Running commands
+
+
+ +-------------------------------------- Remove OpenAI Key ---------------------------------------+
+ | Cancelled MiniMax                                                                              |
+ |                                                                                                |
+ |                                                                                                |
+ | Remove OpenAI provider credential?                                                             |
+ | Press Enter to delete or Esc to cancel.                                                        |
+ |                                                                                                |
+ |                                                                                                |
+ |                                                                                                |
+ |                                                                                                |
+ |                                                                                                |
+ |                                                                                                |
+ +------------------------------------------------------------------------------------------------+
