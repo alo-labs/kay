@@ -89,6 +89,7 @@ jobs:
         id: resolve_issue
         uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.CODE_GH_PAT || github.token }}
           script: |
             const owner = context.repo.owner; const repo = context.repo.repo;
             const issue_number = Number((context.payload && context.payload.inputs && context.payload.inputs.issue_number) || '');
@@ -105,6 +106,7 @@ jobs:
         env:
           NOTE: ${{ inputs.note }}
         with:
+          github-token: ${{ secrets.CODE_GH_PAT || github.token }}
           script: |
             const owner = context.repo.owner; const repo = context.repo.repo; const issue_number = Number(process.env.ISSUE_NUMBER);
             const note = process.env.NOTE || '';
@@ -152,6 +154,7 @@ jobs:
         id: guard_self
         uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.CODE_GH_PAT || github.token }}
           script: |
             const actor = context.actor;
             const pat = process.env.BOT_LOGIN || '';
@@ -204,6 +207,7 @@ jobs:
         timeout-minutes: 5
         uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.CODE_GH_PAT || github.token }}
           script: |
             const fs = require('fs');
             const owner = context.repo.owner; const repo = context.repo.repo;
@@ -312,6 +316,7 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         with:
+          github-token: ${{ secrets.CODE_GH_PAT || github.token }}
           script: |
             const apiKey = process.env.OPENAI_API_KEY;
             if (!apiKey) {
@@ -538,6 +543,7 @@ jobs:
         id: slug
         uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.CODE_GH_PAT || github.token }}
           script: |
             const owner = context.repo.owner; const repo = context.repo.repo;
             const issue_number = Number(process.env.ISSUE_NUMBER);
@@ -582,6 +588,7 @@ jobs:
         env:
           SLUG: ${{ steps.slug.outputs.slug }}
         with:
+          github-token: ${{ secrets.CODE_GH_PAT || github.token }}
           script: |
             const owner = context.repo.owner; const repo = context.repo.repo; const issue_number = Number(process.env.ISSUE_NUMBER);
             const slug = process.env.SLUG || '';
@@ -605,6 +612,7 @@ jobs:
           ALLOW_AGENT: ${{ steps.gate.outputs.allow_agent }}
           AGENT_MODE: ${{ steps.gate.outputs.agent_mode }}
         with:
+          github-token: ${{ secrets.CODE_GH_PAT || github.token }}
           script: |
             const owner = context.repo.owner; const repo = context.repo.repo; const issue_number = Number(process.env.ISSUE_NUMBER);
             const allow = process.env.ALLOW_AGENT === 'true';
@@ -620,6 +628,7 @@ jobs:
           RATE_REASON: ${{ steps.rate_limit.outputs.reason }}
           SAFETY_REASON: ${{ steps.safety.outputs.reason }}
         with:
+          github-token: ${{ secrets.CODE_GH_PAT || github.token }}
           script: |
             const owner = context.repo.owner; const repo = context.repo.repo;
             const issue_number = Number(process.env.ISSUE_NUMBER);
@@ -640,6 +649,7 @@ jobs:
         env:
           SLUG: ${{ steps.slug.outputs.slug }}
         with:
+          github-token: ${{ secrets.CODE_GH_PAT || github.token }}
           script: |
             const owner = context.repo.owner; const repo = context.repo.repo;
             const issue_number = Number(process.env.ISSUE_NUMBER);
