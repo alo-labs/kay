@@ -325,7 +325,7 @@ struct LoginCommand {
 
     #[arg(
         long = "with-api-key",
-        help = "Read the API key from stdin (e.g. `printenv OPENAI_API_KEY | code login --with-api-key`, `printenv MINIMAX_API_KEY | code login --provider minimax --with-api-key`, or `printenv OPENCODE_GO_API_KEY | code login --provider opencode-go --with-api-key`)"
+        help = "Read the API key from stdin for shell-safe use (e.g. `printenv OPENAI_API_KEY | code login --with-api-key`, `printenv MINIMAX_API_KEY | code login --provider minimax --with-api-key`, or `printenv OPENCODE_GO_API_KEY | code login --provider opencode-go --with-api-key`)"
     )]
     with_api_key: bool,
 
@@ -333,15 +333,15 @@ struct LoginCommand {
         long = "provider",
         default_value = "openai",
         value_name = "PROVIDER",
-        help = "Provider id to save the API key for when using --with-api-key"
+        help = "Provider id to save the API key for (default: openai)"
     )]
     provider: String,
 
     #[arg(
         long = "api-key",
         value_name = "API_KEY",
-        help = "(deprecated) Previously accepted the API key directly; now exits with guidance to use --with-api-key",
-        hide = true
+        help = "Pass the API key directly on the command line for scripted onboarding (e.g. `code login --api-key <KEY>`)",
+        conflicts_with = "with_api_key"
     )]
     api_key: Option<String>,
 
@@ -554,11 +554,13 @@ async fn cli_main(code_linux_sandbox_exe: Option<PathBuf>) -> anyhow::Result<()>
                             login_cli.client_id,
                         )
                         .await;
-                    } else if login_cli.api_key.is_some() {
-                        eprintln!(
-                            "The --api-key flag is no longer supported. Pipe the key instead, e.g. `printenv OPENAI_API_KEY | code login --with-api-key`."
-                        );
-                        std::process::exit(1);
+                    } else if let Some(api_key) = login_cli.api_key {
+                        run_login_with_api_key(
+                            login_cli.config_overrides,
+                            login_cli.provider,
+                            api_key,
+                        )
+                        .await;
                     } else if login_cli.with_api_key {
                         let api_key = read_api_key_from_stdin();
                         run_login_with_api_key(

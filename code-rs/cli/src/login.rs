@@ -50,6 +50,12 @@ pub async fn run_login_with_api_key(
 ) -> ! {
     let config = load_config_or_exit(cli_config_overrides);
     let provider = provider.trim().to_ascii_lowercase();
+    let api_key = api_key.trim().to_string();
+
+    if api_key.is_empty() {
+        eprintln!("API key must not be empty.");
+        std::process::exit(1);
+    }
 
     let result = if provider == "openai" {
         login_with_api_key(&config.code_home, &api_key)
@@ -74,7 +80,7 @@ pub fn read_api_key_from_stdin() -> String {
 
     if stdin.is_terminal() {
         eprintln!(
-            "--with-api-key expects the API key on stdin. Try piping it, e.g. `printenv OPENAI_API_KEY | code login --with-api-key`, `printenv MINIMAX_API_KEY | code login --provider minimax --with-api-key`, or `printenv OPENCODE_GO_API_KEY | code login --provider opencode-go --with-api-key`."
+            "--with-api-key expects the API key on stdin. Try piping it, e.g. `printenv OPENAI_API_KEY | code login --with-api-key`, `printenv MINIMAX_API_KEY | code login --provider minimax --with-api-key`, or `printenv OPENCODE_GO_API_KEY | code login --provider opencode-go --with-api-key`. If you want to pass the key directly, use `code login --api-key <KEY>`."
         );
         std::process::exit(1);
     }
