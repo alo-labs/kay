@@ -18,12 +18,12 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Model Routing
 
-- [ ] **MODEL-01**: Kay’s `/model` command lists only models for providers with configured credentials.
+- [x] **MODEL-01**: Kay’s `/model` command lists only models for providers with configured credentials.
 - [ ] **MODEL-02**: `/model` exposes the expected model sets for OpenCode Go, MiniMax, and OpenAI.
 
 ### Plugin Seams
 
-- [ ] **PLUG-01**: Provider plugins and model plugins remain orthogonal, with reusable model-compatibility profiles shared across multiple models instead of hard-coded per SKU.
+- [x] **PLUG-01**: Provider plugins and model plugins remain orthogonal, with reusable model-compatibility profiles shared across multiple models instead of hard-coded per SKU.
 
 ### Verification
 
@@ -69,9 +69,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PROVIDER-01 | Phase 4 | Complete |
 | PROVIDER-02 | Phase 4 | Complete |
 | AUTH-01 | Phase 4 | Pending |
-| MODEL-01 | Phase 5 | Pending |
+| MODEL-01 | Phase 5 | Complete |
 | MODEL-02 | Phase 5 | Pending |
-| PLUG-01 | Phase 5 | Pending |
+| PLUG-01 | Phase 5 | Complete |
 | TEST-01 | Phase 6 | Pending |
 | DOCS-01 | Phase 6 | Pending |
 | REL-01 | Phase 6 | Pending |
