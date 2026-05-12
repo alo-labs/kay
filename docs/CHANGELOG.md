@@ -2,6 +2,20 @@
 
 Rolling task log for the documentation and workflow surface.
 
+## [0.9.0] — 2026-05-13
+
+- Added the isolated `~/.kay` runtime and stopped Kay from inheriting a local Codex environment by default.
+- Added the real `projects/test-notes-app` live validation harness for OpenCode Go model runs.
+- Added the transcript viewer and CLI transcript command for readable JSONL provenance review.
+- Hardened the OpenCode Go provider and model-family behavior used by the live notes-app workflow.
+
+---
+
+## 2026-05-13
+
+- Added the isolated test-notes-app live E2E harness for Kay provider-model acceptance runs
+- Reconciled the Silver Bullet session-marker path used by the docs gate during the harness work
+
 ## 2026-05-11
 
 - Rewrote the OpenCode Go Phase 1 plan to stay foundation-only and modular, with docs/live/release work deferred to later phases

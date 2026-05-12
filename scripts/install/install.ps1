@@ -602,12 +602,12 @@ switch ($architecture) {
     }
 }
 
-$codexHome = if ([string]::IsNullOrWhiteSpace($env:CODEX_HOME)) {
-    Join-Path $env:USERPROFILE ".codex"
+$kayHome = if ([string]::IsNullOrWhiteSpace($env:KAY_HOME)) {
+    Join-Path $env:USERPROFILE ".kay"
 } else {
-    $env:CODEX_HOME
+    $env:KAY_HOME
 }
-$standaloneRoot = Join-Path $codexHome "packages\standalone"
+$standaloneRoot = Join-Path $kayHome "packages\standalone"
 $releasesDir = Join-Path $standaloneRoot "releases"
 $currentDir = Join-Path $standaloneRoot "current"
 $lockPath = Join-Path $standaloneRoot "install.lock"

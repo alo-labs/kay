@@ -169,20 +169,24 @@ fn build_chat_completions_payload(
                         }
                     }
                     let mut message = json!({"role": role, "content": parts});
-                    if let Some(reasoning) = reasoning
-                        && let Some(field_name) = reasoning_field_name
+                    if let Some(field_name) = reasoning_field_name
                         && let Some(obj) = message.as_object_mut()
                     {
-                        obj.insert(field_name.to_string(), json!(reasoning));
+                        obj.insert(
+                            field_name.to_string(),
+                            json!(reasoning.unwrap_or_default()),
+                        );
                     }
                     messages.push(message);
                 } else {
                     let mut message = json!({"role": role, "content": content_text(content)});
-                    if let Some(reasoning) = reasoning
-                        && let Some(field_name) = reasoning_field_name
+                    if let Some(field_name) = reasoning_field_name
                         && let Some(obj) = message.as_object_mut()
                     {
-                        obj.insert(field_name.to_string(), json!(reasoning));
+                        obj.insert(
+                            field_name.to_string(),
+                            json!(reasoning.unwrap_or_default()),
+                        );
                     }
                     messages.push(message);
                 }
@@ -614,18 +618,19 @@ fn push_tool_call_message(
         && let Some(tool_calls) = obj.get_mut("tool_calls").and_then(Value::as_array_mut)
     {
         tool_calls.push(tool_call);
-        if let Some(reasoning) = reasoning
-            && let Some(field_name) = reasoning_field_name
-        {
+        if let Some(field_name) = reasoning_field_name {
+            let reasoning_text = reasoning.unwrap_or_default();
             if let Some(Value::String(existing)) = obj.get_mut(field_name) {
-                if !existing.is_empty() {
-                    existing.push('\n');
+                if !reasoning_text.is_empty() {
+                    if !existing.is_empty() {
+                        existing.push('\n');
+                    }
+                    existing.push_str(reasoning_text);
                 }
-                existing.push_str(reasoning);
             } else {
                 obj.insert(
                     field_name.to_string(),
-                    Value::String(reasoning.to_string()),
+                    Value::String(reasoning_text.to_string()),
                 );
             }
         }
@@ -637,11 +642,10 @@ fn push_tool_call_message(
         "content": null,
         "tool_calls": [tool_call],
     });
-    if let Some(reasoning) = reasoning
-        && let Some(field_name) = reasoning_field_name
+    if let Some(field_name) = reasoning_field_name
         && let Some(obj) = msg.as_object_mut()
     {
-        obj.insert(field_name.to_string(), json!(reasoning));
+        obj.insert(field_name.to_string(), json!(reasoning.unwrap_or_default()));
     }
     messages.push(msg);
 }
@@ -1569,6 +1573,72 @@ mod tests {
                 "{model} payload must not include unsupported developer role"
             );
         }
+    }
+
+    #[test]
+    fn kimi_chat_payload_preserves_reasoning_content_on_tool_call_message() {
+        let provider = crate::model_provider_info::create_opencode_go_provider();
+        let model_family = crate::model_family::find_family_for_model("opencode-go/kimi-k2.6")
+            .expect("known kimi model");
+        assert_eq!(
+            model_family.chat_completions_reasoning_strategy,
+            ChatCompletionsReasoningStrategy::PreserveReasoningContent
+        );
+
+        let prompt = Prompt {
+            input: vec![
+                ResponseItem::Message {
+                    id: None,
+                    role: "user".to_string(),
+                    content: vec![ContentItem::InputText {
+                        text: "please search".to_string(),
+                    }],
+                    end_turn: None,
+                    phase: None,
+                },
+                ResponseItem::Reasoning {
+                    id: "reasoning-1".to_string(),
+                    summary: Vec::new(),
+                    content: Some(vec![ReasoningItemContent::ReasoningText {
+                        text: "thinking".to_string(),
+                    }]),
+                    encrypted_content: None,
+                },
+                ResponseItem::FunctionCall {
+                    id: Some("assistant-1".to_string()),
+                    name: "search".to_string(),
+                    namespace: None,
+                    arguments: r#"{"query":"notes"}"#.to_string(),
+                    call_id: "call-1".to_string(),
+                },
+            ],
+            base_instructions_override: Some("base instructions".to_string()),
+            include_additional_instructions: false,
+            ..Default::default()
+        };
+
+        let payload = build_chat_completions_payload(
+            &prompt,
+            &model_family,
+            "opencode-go/kimi-k2.6",
+            &provider,
+        )
+        .expect("payload should build");
+
+        let messages = payload["messages"].as_array().expect("messages array");
+        let assistant = messages
+            .iter()
+            .find(|message| {
+                message["role"] == "assistant"
+                    && message["tool_calls"]
+                        .as_array()
+                        .is_some_and(|calls| !calls.is_empty())
+            })
+            .expect("assistant tool-call message should be present");
+
+        assert_eq!(assistant["content"], serde_json::Value::Null);
+        assert_eq!(assistant["reasoning_content"], "thinking");
+        assert_eq!(assistant["tool_calls"].as_array().unwrap().len(), 1);
     }
 
     #[test]

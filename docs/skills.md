@@ -8,7 +8,7 @@ Codex can automatically discover reusable "skills" you keep on disk. A skill is 
 
 Skills are behind the experimental `skills` feature flag and are enabled by default.
 
-- Disable in config (preferred): add the following to `$CODEX_HOME/config.toml` (usually `~/.code/config.toml` for Kay-local state) and restart Codex:
+- Disable in config (preferred): add the following to `$CODE_HOME/config.toml` (usually `~/.kay/config.toml` for Kay-local state) and restart Kay:
 
   ```toml
   [features]
@@ -23,8 +23,8 @@ Skills are behind the experimental `skills` feature flag and are enabled by defa
   - Repo: `.agents/skills/**/SKILL.md` from the current working directory up to the repo root.
   - Repo (legacy): `.codex/skills/**/SKILL.md` from the current working directory up to the repo root.
   - User: `$HOME/.agents/skills/**/SKILL.md`.
-  - User: `$CODEX_HOME/skills/**/SKILL.md` (Kay uses `~/.code/skills`; the host Codex overlay lives at `~/.codex/skills`).
-  - System: bundled skills under `$CODEX_HOME/skills/.system/**/SKILL.md`.
+- User: `$HOME/.kay/skills/**/SKILL.md`.
+  - System: bundled skills under `$HOME/.kay/skills/.system/**/SKILL.md`.
   - Admin (optional): `/etc/codex/skills/**/SKILL.md`.
 - Discovery is recursive and only files named exactly `SKILL.md` count.
 - Hidden entries are skipped.
@@ -57,7 +57,7 @@ Skills are behind the experimental `skills` feature flag and are enabled by defa
 
 ## Create a skill
 
-1. Create `~/.codex/skills/<skill-name>/`.
+1. Create `~/.kay/skills/<skill-name>/`.
 2. Add `SKILL.md`:
 
    ```
@@ -76,8 +76,8 @@ Skills are behind the experimental `skills` feature flag and are enabled by defa
 ## Example
 
 ```
-mkdir -p ~/.codex/skills/pdf-processing
-cat <<'SKILL_EXAMPLE' > ~/.codex/skills/pdf-processing/SKILL.md
+mkdir -p ~/.kay/skills/pdf-processing
+cat <<'SKILL_EXAMPLE' > ~/.kay/skills/pdf-processing/SKILL.md
 ---
 name: pdf-processing
 description: Extract text and tables from PDFs; use when PDFs, forms, or document extraction are mentioned.

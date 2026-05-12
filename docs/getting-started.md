@@ -44,7 +44,7 @@ Below are a few bite-size examples you can copy-paste. Replace the text in quote
 
 You can give Kay extra instructions and guidance using `AGENTS.md` files. Kay looks for `AGENTS.md` files in the following places, and merges them top-down:
 
-1. `~/.code/AGENTS.md` - personal global guidance (Kay will also read a legacy `~/.codex/AGENTS.md` if present)
+1. `~/.kay/AGENTS.md` - personal global guidance
 2. `AGENTS.md` at repo root - shared project notes
 3. `AGENTS.md` in the current working directory - sub-folder/feature specifics
 

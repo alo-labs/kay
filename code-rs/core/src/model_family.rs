@@ -518,6 +518,19 @@ pub fn find_family_for_model(slug: &str) -> Option<ModelFamily> {
             slug, "qwen",
             chat_completions_role_strategy: ChatCompletionsRoleStrategy::CollapseNonChatRolesToSystem,
         )
+    } else if slug.starts_with("kimi") {
+        model_family!(
+            slug, "kimi",
+            chat_completions_reasoning_strategy:
+                ChatCompletionsReasoningStrategy::PreserveReasoningContent,
+        )
+    } else if slug_lower.contains("glm") {
+        model_family!(
+            slug, "glm",
+            uses_local_shell_tool: true,
+            needs_special_apply_patch_instructions: true,
+            base_instructions: BASE_INSTRUCTIONS_WITH_APPLY_PATCH.to_string(),
+        )
     } else if slug.starts_with("deepseek") {
         model_family!(
             slug, "deepseek",
@@ -635,6 +648,19 @@ mod tests {
     }
 
     #[test]
+    fn kimi_family_preserves_reasoning_content_for_chat_completions() {
+        let family = find_family_for_model("opencode-go/kimi-k2.6")
+            .expect("namespaced model should resolve");
+
+        assert_eq!(family.slug, "opencode-go/kimi-k2.6");
+        assert_eq!(family.family, "kimi");
+        assert_eq!(
+            family.chat_completions_reasoning_strategy,
+            ChatCompletionsReasoningStrategy::PreserveReasoningContent
+        );
+    }
+
+    #[test]
     fn deepseek_family_preserves_reasoning_content_for_chat_completions() {
         let family = find_family_for_model("opencode-go/deepseek-v4-pro")
             .expect("namespaced model should resolve");
@@ -643,6 +669,17 @@ mod tests {
             family.chat_completions_reasoning_strategy,
             ChatCompletionsReasoningStrategy::PreserveReasoningContent
         );
+    }
+
+    #[test]
+    fn glm_family_uses_local_shell_tool() {
+        let family = find_family_for_model("opencode-go/glm-5.1")
+            .expect("namespaced model should resolve");
+
+        assert_eq!(family.slug, "opencode-go/glm-5.1");
+        assert_eq!(family.family, "glm");
+        assert!(family.needs_special_apply_patch_instructions);
+        assert!(family.uses_local_shell_tool);
     }
 
     #[test]

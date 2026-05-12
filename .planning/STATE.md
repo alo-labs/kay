@@ -1,37 +1,35 @@
 ---
 gsd_state_version: 1.0
-milestone: v0.8.0
-milestone_name: Provider CRUD and Dynamic Model Selection
-current_plan: 2
-status: verifying
-stopped_at: Completed 05-02-PLAN.md
-last_updated: "2026-05-12T14:19:27.337Z"
+milestone: v0.9.0
+milestone_name: Test Notes App and Kay OCG Validation
+status: planning
+last_updated: "2026-05-12T16:41:56.882Z"
 last_activity: 2026-05-12
 progress:
-  total_phases: 3
-  completed_phases: 2
-  total_plans: 6
-  completed_plans: 6
-  percent: 100
+  total_phases: 1
+  completed_phases: 0
+  total_plans: 3
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-12)
+See: .planning/PROJECT.md (updated 2026-05-13)
 
 **Core value:** Keep the CLI buildable, understandable, and safe to evolve without disturbing existing workflows.
-**Current focus:** Phase 05 — Dynamic Model Selection
+**Current focus:** Phase 07 — Bootstrap isolated test-notes-app note-taking project and Kay OCG live-testing harness
 
 ## Current Position
 
-Phase: 05 (Dynamic Model Selection) — EXECUTING
-Plan: 2 of 2
-Current Plan: 2
-Total Plans in Phase: 2
-Status: Phase complete — ready for verification
-Last activity: 2026-05-12
+Phase: 07 (Bootstrap isolated test-notes-app note-taking project and Kay OCG live-testing harness) — PLANNING
+Plan: 0 of 3
+Current Plan: —
+Total Plans in Phase: 3
+Status: Defining requirements
+Last activity: 2026-05-13 — Milestone v0.9.0 started
 
 ## Performance Metrics
 
@@ -45,9 +43,7 @@ Last activity: 2026-05-12
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 4. Provider Credential CRUD | 4/4 | Complete | 2026-05-12 |
-| 5. Dynamic Model Selection | 1/2 | In Progress | - |
-| 6. Verification, Docs, and Release | 0/TBD | Not started | - |
+| 7. Bootstrap isolated test-notes-app note-taking project and Kay OCG live-testing harness | 0/3 | In Progress | - |
 
 **Recent Trend:**
 

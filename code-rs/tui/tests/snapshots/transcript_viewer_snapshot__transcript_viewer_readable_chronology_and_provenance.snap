@@ -1,0 +1,35 @@
+---
+source: tui/tests/transcript_viewer_snapshot.rs
+assertion_line: 105
+expression: output
+---
+┌Kay transcript viewer  4 records──────────────────────────────────────────────────────────────────────────────┐
+│source: /Users/shafqat/projects/test-notes-app/transcripts/session-20260513.jsonl                             │
+│read-only transcript review • ↑↓ select • PgUp/PgDn page • Home/End • q/Esc quit                              │
+└──────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+┌Timeline────────────────────────────────────────────────────┐┌Selected record─────────────────────────────────┐
+│❯ 2026-05-13T10:00:00Z • [meta] • session_start             ││ts: 2026-05-13T10:00:00Z                        │
+│  session started in /Users/shafqat/projects/test-notes-app ││dir: meta                                       │
+│  2026-05-13T10:01:00Z • [to_tui] • key_event               ││kind: session_start                             │
+│  Char('n')                                                 ││                                                │
+│  2026-05-13T10:01:30Z • [from_tui] • assistant_message     ││summary: session started in                     │
+│  Create a notes sidebar and keyboard shortcuts             ││/Users/shafqat/projects/test-notes-app with     │
+│  2026-05-13T10:02:00Z • [to_tui] • slash_command           ││opencode-go/kimi-k2.6 via OpenCode Go           │
+│  transcript                                                ││                                                │
+│                                                            ││raw JSON:                                       │
+│                                                            ││{                                               │
+│                                                            ││  "ts": "2026-05-13T10:00:00Z",                 │
+│                                                            ││  "dir": "meta",                                │
+│                                                            ││  "kind": "session_start",                      │
+│                                                            ││  "cwd":                                        │
+│                                                            ││"/Users/shafqat/projects/test-notes-app",       │
+│                                                            ││  "model": "opencode-go/kimi-k2.6",             │
+│                                                            ││  "model_provider_name": "OpenCode Go"          │
+│                                                            ││}                                               │
+│                                                            ││                                                │
+│                                                            ││                                                │
+│                                                            ││                                                │
+└────────────────────────────────────────────────────────────┘└────────────────────────────────────────────────┘
+┌Status────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│selected 1 / 4 • session started in /Users/shafqat/projects/test-notes-app with opencode-go/kimi-k2.6 via     │
+└──────────────────────────────────────────────────────────────────────────────────────────────────────────────┘

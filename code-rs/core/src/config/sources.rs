@@ -25,7 +25,6 @@ use toml_edit::Item as TomlItem;
 use toml_edit::Table as TomlTable;
 use which::which;
 
-use crate::host::host_codex_path;
 use super::CONFIG_TOML_FILE;
 
 pub fn load_config_as_toml(code_home: &Path) -> std::io::Result<TomlValue> {
@@ -278,7 +277,7 @@ pub async fn persist_model_selection(
     Ok(())
 }
 
-/// Patch `CODEX_HOME/config.toml` project state.
+/// Patch `CODE_HOME/config.toml` project state.
 /// Use with caution.
 pub fn set_project_trusted(code_home: &Path, project_path: &Path) -> anyhow::Result<()> {
     let config_path = code_home.join(CONFIG_TOML_FILE);
@@ -365,7 +364,7 @@ fn set_project_trusted_inner(doc: &mut DocumentMut, project_path: &Path) -> anyh
     Ok(())
 }
 
-/// Persist the selected TUI theme into `CODEX_HOME/config.toml` at `[tui.theme].name`.
+/// Persist the selected TUI theme into `CODE_HOME/config.toml` at `[tui.theme].name`.
 pub fn set_tui_theme_name(code_home: &Path, theme: ThemeName) -> anyhow::Result<()> {
     let config_path = code_home.join(CONFIG_TOML_FILE);
 
@@ -469,7 +468,7 @@ pub fn set_cached_terminal_background(
     Ok(())
 }
 
-/// Persist the selected spinner into `CODEX_HOME/config.toml` at `[tui.spinner].name`.
+/// Persist the selected spinner into `CODE_HOME/config.toml` at `[tui.spinner].name`.
 pub fn set_tui_spinner_name(code_home: &Path, spinner_name: &str) -> anyhow::Result<()> {
     let config_path = code_home.join(CONFIG_TOML_FILE);
 
@@ -601,7 +600,7 @@ pub fn set_custom_theme(
     Ok(())
 }
 
-/// Persist the alternate screen preference into `CODEX_HOME/config.toml` at `[tui].alternate_screen`.
+/// Persist the alternate screen preference into `CODE_HOME/config.toml` at `[tui].alternate_screen`.
 pub fn set_tui_alternate_screen(code_home: &Path, enabled: bool) -> anyhow::Result<()> {
     let config_path = code_home.join(CONFIG_TOML_FILE);
 
@@ -629,7 +628,7 @@ pub fn set_tui_alternate_screen(code_home: &Path, enabled: bool) -> anyhow::Resu
     Ok(())
 }
 
-/// Persist the TUI notifications preference into `CODEX_HOME/config.toml` at `[tui].notifications`.
+/// Persist the TUI notifications preference into `CODE_HOME/config.toml` at `[tui].notifications`.
 pub fn set_tui_notifications(
     code_home: &Path,
     notifications: crate::config_types::Notifications,
@@ -665,7 +664,7 @@ pub fn set_tui_notifications(
     Ok(())
 }
 
-/// Persist the review auto-resolve preference into `CODEX_HOME/config.toml` at `[tui].review_auto_resolve`.
+/// Persist the review auto-resolve preference into `CODE_HOME/config.toml` at `[tui].review_auto_resolve`.
 pub fn set_tui_review_auto_resolve(code_home: &Path, enabled: bool) -> anyhow::Result<()> {
     let config_path = code_home.join(CONFIG_TOML_FILE);
     let read_path = resolve_code_path_for_read(code_home, Path::new(CONFIG_TOML_FILE));
@@ -686,7 +685,7 @@ pub fn set_tui_review_auto_resolve(code_home: &Path, enabled: bool) -> anyhow::R
     Ok(())
 }
 
-/// Persist the auto review preference into `CODEX_HOME/config.toml` at `[tui].auto_review_enabled`.
+/// Persist the auto review preference into `CODE_HOME/config.toml` at `[tui].auto_review_enabled`.
 pub fn set_tui_auto_review_enabled(code_home: &Path, enabled: bool) -> anyhow::Result<()> {
     let config_path = code_home.join(CONFIG_TOML_FILE);
     let read_path = resolve_code_path_for_read(code_home, Path::new(CONFIG_TOML_FILE));
@@ -707,7 +706,7 @@ pub fn set_tui_auto_review_enabled(code_home: &Path, enabled: bool) -> anyhow::R
     Ok(())
 }
 
-/// Persist the review model + reasoning effort into `CODEX_HOME/config.toml`.
+/// Persist the review model + reasoning effort into `CODE_HOME/config.toml`.
 pub fn set_review_model(
     code_home: &Path,
     model: &str,
@@ -777,7 +776,7 @@ pub fn set_review_resolve_model(
     Ok(())
 }
 
-/// Persist the planning model + reasoning effort into `CODEX_HOME/config.toml`.
+/// Persist the planning model + reasoning effort into `CODE_HOME/config.toml`.
 pub fn set_planning_model(
     code_home: &Path,
     model: &str,
@@ -1263,7 +1262,7 @@ pub fn add_project_allowed_command(
     Ok(())
 }
 
-/// List MCP servers from `CODEX_HOME/config.toml`.
+/// List MCP servers from `CODE_HOME/config.toml`.
 /// Returns `(enabled, disabled)` lists of `(name, McpServerConfig)`.
 pub fn list_mcp_servers(code_home: &Path) -> anyhow::Result<(
     Vec<(String, McpServerConfig)>,
@@ -1670,113 +1669,40 @@ fn env_path(var: &str) -> std::io::Result<Option<PathBuf>> {
     }
 }
 
-fn env_overrides_present() -> bool {
-    matches!(std::env::var("CODE_HOME"), Ok(ref v) if !v.trim().is_empty())
-        || matches!(std::env::var("CODEX_HOME"), Ok(ref v) if !v.trim().is_empty())
-}
-
 fn default_code_home_dir() -> Option<PathBuf> {
     let mut path = home_dir()?;
-    path.push(".code");
+    path.push(".kay");
     Some(path)
 }
 
-fn compute_legacy_code_home_dir() -> Option<PathBuf> {
-    if env_overrides_present() {
-        return None;
-    }
-    let Some(home) = home_dir() else {
-        return None;
-    };
-    let candidate = home.join(".codex");
-    if path_exists(&candidate) {
-        Some(candidate)
-    } else {
-        None
-    }
-}
-
-fn legacy_code_home_dir() -> Option<PathBuf> {
-    #[cfg(test)]
-    {
-        return compute_legacy_code_home_dir();
-    }
-
-    #[cfg(not(test))]
-    {
-        static LEGACY: std::sync::OnceLock<Option<PathBuf>> = std::sync::OnceLock::new();
-        LEGACY
-            .get_or_init(compute_legacy_code_home_dir)
-            .clone()
-    }
-}
-
-fn path_exists(path: &Path) -> bool {
-    std::fs::metadata(path).is_ok()
-}
-
-/// Resolve the filesystem path used for *reading* Codex state that may live in
-/// a legacy `~/.codex` directory. Writes should continue targeting `code_home`.
+/// Resolve the filesystem path used for reading Kay state. Writes always
+/// target `code_home`.
 pub fn resolve_code_path_for_read(code_home: &Path, relative: &Path) -> PathBuf {
-    let default_path = code_home.join(relative);
-
-    // `config.toml` is Kay-owned writable state and must not read through to
-    // the host Codex home, otherwise writes would silently copy host config
-    // into Kay's local state.
     if relative == Path::new(CONFIG_TOML_FILE) {
-        return default_path;
+        return code_home.join(relative);
     }
 
-    if env_overrides_present() {
-        return default_path;
-    }
-
-    if path_exists(&default_path) {
-        return default_path;
-    }
-
-    if let Some(default_home) = default_code_home_dir() {
-        if default_home != code_home {
-            return default_path;
-        }
-    }
-
-    if let Some(legacy) = legacy_code_home_dir() {
-        let candidate = legacy.join(relative);
-        if path_exists(&candidate) {
-            return candidate;
-        }
-    }
-
-    default_path
+    code_home.join(relative)
 }
 
-/// Returns the path to the Kay/Codex configuration directory, which can be
-/// specified by the `CODE_HOME` or `CODEX_HOME` environment variables. If not set,
-/// defaults to `~/.code` for the fork.
+/// Returns the path to the Kay configuration directory. Users can override it
+/// with the `CODE_HOME` environment variable; otherwise Kay defaults to
+/// `~/.kay`.
 ///
-/// - If `CODE_HOME` or `CODEX_HOME` is set, the value will be canonicalized and this
-///   function will Err if the path does not exist.
-/// - If neither is set, this function does not verify that the directory exists.
+/// The resolved path is canonicalized when `CODE_HOME` is set. If neither a
+/// user override nor a writable home directory is available, this function
+/// returns an error.
 pub fn find_code_home() -> std::io::Result<PathBuf> {
     if let Some(path) = env_path("CODE_HOME")? {
         return Ok(path);
     }
 
-    if let Some(path) = env_path("CODEX_HOME")? {
-        return Ok(path);
-    }
-
-    let home = home_dir().ok_or_else(|| {
+    default_code_home_dir().ok_or_else(|| {
         std::io::Error::new(
             std::io::ErrorKind::NotFound,
             "Could not find home directory",
         )
-    })?;
-
-    let mut write_path = home;
-    write_path.push(".code");
-    Ok(write_path)
+    })
 }
 
 pub(crate) fn load_instructions(code_dir: Option<&Path>) -> Option<String> {
@@ -1788,30 +1714,8 @@ pub(crate) fn load_instructions(code_dir: Option<&Path>) -> Option<String> {
         contents.push(local);
     }
 
-    if let Some(host_path) = host_codex_path(Path::new("AGENTS.md"))
-        && host_path != local_path
-        && let Ok(host) = std::fs::read_to_string(&host_path)
-    {
-        contents.insert(0, host);
-    }
-
     if contents.is_empty() {
-        if env_overrides_present() {
-            return None;
-        }
-        let Some(legacy_home) = legacy_code_home_dir() else {
-            return None;
-        };
-        let legacy_path = legacy_home.join("AGENTS.md");
-        let Ok(contents) = std::fs::read_to_string(&legacy_path) else {
-            return None;
-        };
-        let trimmed = contents.trim();
-        return if trimmed.is_empty() {
-            None
-        } else {
-            Some(trimmed.to_string())
-        };
+        return None;
     }
 
     let trimmed = contents.join("\n\n");

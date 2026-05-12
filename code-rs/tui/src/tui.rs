@@ -102,8 +102,23 @@ pub fn init(config: &Config) -> Result<(Tui, TerminalInfo)> {
     execute!(stdout(), crossterm::terminal::EnterAlternateScreen)?;
 
     // Query terminal capabilities and font size after entering alternate screen
-    // but before enabling raw mode
-    let terminal_info = query_terminal_info();
+    // but before enabling raw mode.
+    //
+    // Tests that run the real TUI inside a synthetic PTY can opt out of this
+    // probing path so the harness does not need to emulate terminal replies.
+    // The viewer and other read-only flows do not depend on the negotiated
+    // picker/font-size data.
+    let terminal_info = if std::env::var("CODE_SKIP_TUI_TERMINAL_QUERIES")
+        .map(|v| matches!(v.as_str(), "1" | "true" | "TRUE" | "yes" | "YES"))
+        .unwrap_or(false)
+    {
+        TerminalInfo {
+            picker: None,
+            font_size: (8, 16),
+        }
+    } else {
+        query_terminal_info()
+    };
 
     enable_raw_mode()?;
     // Enable keyboard enhancement flags only when supported *and* the current

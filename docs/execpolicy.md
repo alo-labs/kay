@@ -1,6 +1,6 @@
 # Execution policy
 
-Kay can enforce your own rules-based execution policy before it runs shell commands. Policies live in Starlark `.codexpolicy` files under `~/.code/policy` (Kay still reads `~/.codex/policy` for backward compatibility).
+Kay can enforce your own rules-based execution policy before it runs shell commands. Policies live in Starlark `.codexpolicy` files under `~/.kay/policy`.
 
 ## How to create and edit rules
 
@@ -12,11 +12,11 @@ Codex CLI will present the option to whitelist commands when a command causes a 
 
 Whitelisted commands will no longer require your permission to run in current and subsequent sessions.
 
-Under the hood, when you approve and whitelist a command, codex will edit `~/.codex/rules/default.rules`.
+Under the hood, when you approve and whitelist a command, Kay will edit `~/.kay/rules/default.rules`.
 
 ### Editing `.rules` files
 
-1. Create a policy directory: `mkdir -p ~/.code/policy`.
+1. Create a policy directory: `mkdir -p ~/.kay/policy`.
 2. Add one or more `.codexpolicy` files in that folder. Kay automatically loads every `.codexpolicy` file in there on startup.
 3. Write `prefix_rule` entries to describe the commands you want to allow, prompt, or block:
 
@@ -40,7 +40,7 @@ In this example rule, if Kay wants to run commands with the prefix `git push` or
 Use the `code execpolicy check` subcommand to preview decisions before you save a rule (see the [`codex-execpolicy` README](../code-rs/execpolicy/README.md) for syntax details):
 
 ```shell
-code execpolicy check --policy ~/.code/policy/default.codexpolicy git push origin main
+code execpolicy check --policy ~/.kay/policy/default.codexpolicy git push origin main
 ```
 
 Pass multiple `--policy` flags to test how several files combine, and use `--pretty` for formatted JSON output. See the [`code-rs/execpolicy` README](../code-rs/execpolicy/README.md) for a more detailed walkthrough of the available syntax.

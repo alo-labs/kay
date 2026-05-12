@@ -5,7 +5,8 @@ use common::wait_for_event;
 
 use code_core::config::{Config, ConfigOverrides, ConfigToml};
 use code_core::model_family::{
-    derive_default_model_family, provider_model_slug, ChatCompletionsRoleStrategy,
+    derive_default_model_family, provider_model_slug, ChatCompletionsReasoningStrategy,
+    ChatCompletionsRoleStrategy,
 };
 use code_core::protocol::{AskForApproval, EventMsg, InputItem, Op, SandboxPolicy};
 use code_core::{
@@ -66,6 +67,10 @@ const PRIORITIZED_OPENCODE_GO_MODELS: &[&str] = &[
 
 fn uses_collapsed_chat_roles(model: &str) -> bool {
     model.starts_with("qwen") || model.starts_with("deepseek")
+}
+
+fn preserves_reasoning_content(model: &str) -> bool {
+    model.starts_with("kimi") || model.starts_with("deepseek")
 }
 
 #[test]
@@ -132,6 +137,14 @@ fn opencode_go_prioritized_models_can_be_selected_without_custom_config() -> std
                 ChatCompletionsRoleStrategy::CollapseNonChatRolesToSystem
             } else {
                 ChatCompletionsRoleStrategy::OpenAi
+            }
+        );
+        assert_eq!(
+            config.model_family.chat_completions_reasoning_strategy,
+            if preserves_reasoning_content(model) {
+                ChatCompletionsReasoningStrategy::PreserveReasoningContent
+            } else {
+                ChatCompletionsReasoningStrategy::OpenAi
             }
         );
     }

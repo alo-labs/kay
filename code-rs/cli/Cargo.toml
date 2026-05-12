@@ -62,3 +62,6 @@ tracing-subscriber = { workspace = true, features = ["env-filter", "fmt"] }
 
 [dev-dependencies]
 filetime = { workspace = true }
+code-apply-patch = { workspace = true }
+portable-pty = { workspace = true }
+vt100 = "0.15.0"
