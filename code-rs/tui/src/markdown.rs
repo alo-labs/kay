@@ -391,4 +391,3 @@ fn split_text_and_fences(src: &str) -> Vec<Segment> {
 
     segments
 }
-

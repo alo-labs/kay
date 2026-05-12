@@ -1488,9 +1488,9 @@ pub fn create_bridge_tool() -> OpenAiTool {
     );
 
     OpenAiTool::Function(ResponsesApiTool {
-        name: "code_bridge".to_string(),
+        name: "kay_bridge".to_string(),
         description:
-            "Code Bridge = local Sentry-style event stream + two-way control (errors/console/pageviews/screenshots/control). Actions: subscribe (set level, persists, requests full capabilities), screenshot (ask bridges for a screenshot), javascript (send JS to execute and return result). Examples: {\"action\":\"subscribe\",\"level\":\"trace\"}, {\"action\":\"screenshot\"}, {\"action\":\"javascript\",\"code\":\"window.location.href\"}.".to_string(),
+            "Kay Bridge = local Sentry-style event stream + two-way control (errors/console/pageviews/screenshots/control). Actions: subscribe (set level, persists, requests full capabilities), screenshot (ask bridges for a screenshot), javascript (send JS to execute and return result). Examples: {\"action\":\"subscribe\",\"level\":\"trace\"}, {\"action\":\"screenshot\"}, {\"action\":\"javascript\",\"code\":\"window.location.href\"}.".to_string(),
         strict: false,
         parameters: JsonSchema::Object {
             properties,
@@ -1577,7 +1577,7 @@ mod tests {
                 "wait",
                 "kill",
                 "gh_run_wait",
-                "code_bridge",
+                "kay_bridge",
                 "web_search",
             ],
         );
@@ -1743,7 +1743,7 @@ mod tests {
                 "wait",
                 "kill",
                 "gh_run_wait",
-                "code_bridge",
+                "kay_bridge",
                 "web_search",
             ],
         );
@@ -1776,7 +1776,7 @@ mod tests {
                 "wait",
                 "kill",
                 "gh_run_wait",
-                "code_bridge",
+                "kay_bridge",
                 "web_search",
             ],
         );
@@ -1808,7 +1808,7 @@ mod tests {
                 "wait",
                 "kill",
                 "gh_run_wait",
-                "code_bridge",
+                "kay_bridge",
                 "web_search",
             ],
         );
@@ -1879,7 +1879,7 @@ mod tests {
                 "wait",
                 "kill",
                 "gh_run_wait",
-                "code_bridge",
+                "kay_bridge",
                 "web_search",
                 "test_server/do_something_cool",
             ],
@@ -2004,7 +2004,7 @@ mod tests {
                 "wait",
                 "kill",
                 "gh_run_wait",
-                "code_bridge",
+                "kay_bridge",
                 "web_search",
                 "test_server/do_something_cool",
             ],
@@ -2131,7 +2131,7 @@ mod tests {
                 "wait",
                 "kill",
                 "gh_run_wait",
-                "code_bridge",
+                "kay_bridge",
                 "web_search",
                 "dash/search",
             ],
@@ -2207,7 +2207,7 @@ mod tests {
                 "wait",
                 "kill",
                 "gh_run_wait",
-                "code_bridge",
+                "kay_bridge",
                 "web_search",
                 "dash/paginate",
             ],
@@ -2284,7 +2284,7 @@ mod tests {
                 "wait",
                 "kill",
                 "gh_run_wait",
-                "code_bridge",
+                "kay_bridge",
                 "web_search",
                 "dash/tags",
             ],
@@ -2359,7 +2359,7 @@ mod tests {
                 "wait",
                 "kill",
                 "gh_run_wait",
-                "code_bridge",
+                "kay_bridge",
                 "web_search",
                 "dash/value",
             ],

@@ -2,10 +2,10 @@
 set -euo pipefail
 
 # Generate a minimal Homebrew formula from the latest GitHub release.
-# Writes Formula/Code.rb into the repo root (not a tap); you can copy it
+# Writes Formula/Kay.rb into the repo root (not a tap); you can copy it
 # into a tap repo to publish.
 
-owner_repo="just-every/code"
+owner_repo="alo-labs/kay"
 version="${1:-}"
 
 # Helper to treat placeholder versions as unset
@@ -76,15 +76,15 @@ retry() {
 }
 
 mkdir -p Formula
-cat > Formula/Code.rb <<'RUBY'
-class Code < Formula
+cat > Formula/Kay.rb <<'RUBY'
+class Kay < Formula
   desc "Terminal coding agent"
-  homepage "https://github.com/just-every/code"
+  homepage "https://github.com/alo-labs/kay"
 RUBY
 
-echo "  version \"v${version}\"" >> Formula/Code.rb
+echo "  version \"v${version}\"" >> Formula/Kay.rb
 
-cat >> Formula/Code.rb <<'RUBY'
+cat >> Formula/Kay.rb <<'RUBY'
   on_macos do
     if Hardware::CPU.arm?
       url "__URL_ARM64__"
@@ -135,16 +135,16 @@ for a in "${assets[@]}"; do
 
   # Apply URL (always), and sha when available
   if [[ "${a}" == *"aarch64-apple-darwin"* ]]; then
-    sed -i.bak "s#__URL_ARM64__#${url}#" Formula/Code.rb
-    if [ -n "$sha" ]; then sed -i.bak "s#__SHA_ARM64__#${sha}#" Formula/Code.rb; fi
+    sed -i.bak "s#__URL_ARM64__#${url}#" Formula/Kay.rb
+    if [ -n "$sha" ]; then sed -i.bak "s#__SHA_ARM64__#${sha}#" Formula/Kay.rb; fi
   else
-    sed -i.bak "s#__URL_X64__#${url}#" Formula/Code.rb
-    if [ -n "$sha" ]; then sed -i.bak "s#__SHA_X64__#${sha}#" Formula/Code.rb; fi
+    sed -i.bak "s#__URL_X64__#${url}#" Formula/Kay.rb
+    if [ -n "$sha" ]; then sed -i.bak "s#__SHA_X64__#${sha}#" Formula/Kay.rb; fi
   fi
 done
 
-rm -f Formula/Code.rb.bak
-echo "Wrote Formula/Code.rb for v${version}" >&2
+rm -f Formula/Kay.rb.bak
+echo "Wrote Formula/Kay.rb for v${version}" >&2
 
 # Optional: best-effort HEAD check to surface propagation status without failing CI
 for a in "${assets[@]}"; do

@@ -186,12 +186,12 @@ jobs:
           set -euo pipefail
           CURRENT_VERSION=$(node -p "require('./package.json').version")
           PKGS=(
-            "@just-every/code"
-            "@just-every/code-darwin-arm64"
-            "@just-every/code-darwin-x64"
-            "@just-every/code-linux-x64-musl"
-            "@just-every/code-linux-arm64-musl"
-            "@just-every/code-win32-x64"
+            "@alo-labs/kay"
+            "@alo-labs/kay-darwin-arm64"
+            "@alo-labs/kay-darwin-x64"
+            "@alo-labs/kay-linux-x64-musl"
+            "@alo-labs/kay-linux-arm64-musl"
+            "@alo-labs/kay-win32-x64"
           )
           # Find the highest published version across all packages
           MAX_PUBLISHED="0.0.0"
@@ -555,11 +555,11 @@ jobs:
 
           map_target() {
             case "$1" in
-              aarch64-apple-darwin) echo "os=darwin cpu=arm64 pkg=@just-every/code-darwin-arm64" ;;
-              x86_64-apple-darwin) echo "os=darwin cpu=x64 pkg=@just-every/code-darwin-x64" ;;
-              x86_64-unknown-linux-musl) echo "os=linux cpu=x64 pkg=@just-every/code-linux-x64-musl" ;;
-              aarch64-unknown-linux-musl) echo "os=linux cpu=arm64 pkg=@just-every/code-linux-arm64-musl" ;;
-              x86_64-pc-windows-msvc.exe) echo "os=win32 cpu=x64 pkg=@just-every/code-win32-x64" ;;
+              aarch64-apple-darwin) echo "os=darwin cpu=arm64 pkg=@alo-labs/kay-darwin-arm64" ;;
+              x86_64-apple-darwin) echo "os=darwin cpu=x64 pkg=@alo-labs/kay-darwin-x64" ;;
+              x86_64-unknown-linux-musl) echo "os=linux cpu=x64 pkg=@alo-labs/kay-linux-x64-musl" ;;
+              aarch64-unknown-linux-musl) echo "os=linux cpu=arm64 pkg=@alo-labs/kay-linux-arm64-musl" ;;
+              x86_64-pc-windows-msvc.exe) echo "os=win32 cpu=x64 pkg=@alo-labs/kay-win32-x64" ;;
               *) echo "" ;;
             esac
           }
@@ -613,7 +613,7 @@ jobs:
             rawbin="$(decompress_to "$f" "$workdir/bin")"
             chmod +x "$rawbin" || true
             # package.json
-            printf '{\n  "name": "%s",\n  "version": "%s",\n  "license": "Apache-2.0",\n  "description": "Platform binary for @just-every/code (%s)",\n  "os": ["%s"],\n  "cpu": ["%s"],\n  "files": ["bin/"],\n  "private": false\n}\n' \
+            printf '{\n  "name": "%s",\n  "version": "%s",\n  "license": "Apache-2.0",\n  "description": "Platform binary for @alo-labs/kay (%s)",\n  "os": ["%s"],\n  "cpu": ["%s"],\n  "files": ["bin/"],\n  "private": false\n}\n' \
               "$pkg" "$NEW_VERSION" "$t" "$os" "$cpu" > "$workdir/package.json"
           done
 
@@ -649,11 +649,11 @@ jobs:
           # Note: These are platform-filtered in the target packages, so npm will fetch only one.
           tmp=$(mktemp)
           jq '.optionalDependencies = {
-            "@just-every/code-darwin-arm64": "'"$NEW_VERSION"'",
-            "@just-every/code-darwin-x64": "'"$NEW_VERSION"'",
-            "@just-every/code-linux-x64-musl": "'"$NEW_VERSION"'",
-            "@just-every/code-linux-arm64-musl": "'"$NEW_VERSION"'",
-            "@just-every/code-win32-x64": "'"$NEW_VERSION"'"
+            "@alo-labs/kay-darwin-arm64": "'"$NEW_VERSION"'",
+            "@alo-labs/kay-darwin-x64": "'"$NEW_VERSION"'",
+            "@alo-labs/kay-linux-x64-musl": "'"$NEW_VERSION"'",
+            "@alo-labs/kay-linux-arm64-musl": "'"$NEW_VERSION"'",
+            "@alo-labs/kay-win32-x64": "'"$NEW_VERSION"'"
           }' package.json > "$tmp" && mv "$tmp" package.json
           git add package.json
           if git diff --staged --quiet; then
@@ -699,7 +699,7 @@ jobs:
         shell: bash
         run: sudo apt-get update -qq && sudo apt-get install -y zstd
 
-      - name: Generate CHANGELOG + release notes (Code)
+      - name: Generate CHANGELOG + release notes (Kay)
         if: env.OPENAI_API_KEY != ''
         shell: bash
         env:
@@ -723,17 +723,17 @@ jobs:
 
           if [ -f CHANGELOG.md ] && [ -f docs/release-notes/RELEASE_NOTES.md ] \
              && grep -qF "## [${NEW_VERSION}]" CHANGELOG.md 2>/dev/null \
-             && grep -qF "## @just-every/code v${NEW_VERSION}" docs/release-notes/RELEASE_NOTES.md 2>/dev/null; then
+             && grep -qF "## @alo-labs/kay v${NEW_VERSION}" docs/release-notes/RELEASE_NOTES.md 2>/dev/null; then
             echo "CHANGELOG.md and docs/release-notes/RELEASE_NOTES.md already contain v${NEW_VERSION}; skipping regeneration."
             exit 0
           fi
 
-          # Extract a Linux x86_64 Code binary from artifacts and make it runnable.
+          # Extract a Linux x86_64 Kay binary from artifacts and make it runnable.
           mkdir -p .code-bin docs/release-notes
           : > docs/release-notes/RELEASE_NOTES.md
           LNX_ZST=$(ls -1 release-assets/code-x86_64-unknown-linux-musl.* 2>/dev/null | head -n1 || true)
           if [ -z "$LNX_ZST" ]; then
-            echo "Could not find linux x86_64 Code artifact in release-assets/" >&2
+            echo "Could not find linux x86_64 Kay artifact in release-assets/" >&2
             exit 1
           fi
           case "$LNX_ZST" in
@@ -755,7 +755,7 @@ jobs:
 
           # Build the task prompt (with variables expanded by bash).
           cat > docs/release-notes/prompt.expanded.txt <<PROMPT
-          You are Code running headless in CI to prepare a new release.
+          You are Kay running headless in CI to prepare a new release.
 
           Inputs
           - Version: v${NEW_VERSION}
@@ -783,13 +783,13 @@ jobs:
 
           Release Notes (docs/release-notes/RELEASE_NOTES.md)
           - Write exactly these sections in order; include the optional Thanks section only when applicable:
-            1) Title: ## @just-every/code v${NEW_VERSION}
+            1) Title: ## @alo-labs/kay v${NEW_VERSION}
             2) One brief intro sentence (1–2 lines max).
             3) Section header: ### Changes
                - The same 2–5 bullets as in the changelog (you may omit SHAs).
             4) Section header: ### Install
                Code block with exactly:
-               npm install -g @just-every/code@latest
+               npm install -g @alo-labs/kay@latest
                code
             5) Optional section header: ### Thanks
                - Include ONE line like: "Thanks to @alice and @bob for contributions!"
@@ -812,11 +812,11 @@ jobs:
           PROMPT
           cat docs/release-notes/context.md >> docs/release-notes/prompt.expanded.txt
 
-          # Run Code in fully automated exec mode against the repo root.
+          # Run Kay in fully automated exec mode against the repo root.
           # Note: the working-directory flag is `--cd` on the `exec` subcommand.
           OPENAI_BASE_URL="http://127.0.0.1:5058/v1" \
           ./.code-bin/code exec --cd "$GITHUB_WORKSPACE" --full-auto --skip-git-repo-check < docs/release-notes/prompt.expanded.txt | tee .github/auto/RELEASE_AGENT_OUT.txt || {
-            echo "Code exec returned non-zero; continuing to check for outputs..." >&2
+            echo "Kay exec returned non-zero; continuing to check for outputs..." >&2
           }
 
           # Assert no fatal streaming/server errors if proxy in use
@@ -872,7 +872,7 @@ jobs:
             awk -v v="${NEW_VERSION}" '/^## /{p=($2==("v"v)||$2==v)} p{print}' CHANGELOG.md > docs/release-notes/RELEASE_NOTES.md || true
           fi
           if [ ! -s docs/release-notes/RELEASE_NOTES.md ]; then
-            printf "## @just-every/code v%s\n\nSee CHANGELOG.md for details." "${NEW_VERSION}" > docs/release-notes/RELEASE_NOTES.md
+            printf "## @alo-labs/kay v%s\n\nSee CHANGELOG.md for details." "${NEW_VERSION}" > docs/release-notes/RELEASE_NOTES.md
           fi
 
           # Commit CHANGELOG changes if any.
@@ -915,7 +915,7 @@ jobs:
             awk -v v="${NEW_VERSION}" '/^## /{p=($2==("v"v)||$2==v)} p{print}' CHANGELOG.md > docs/release-notes/RELEASE_NOTES.md || true
           fi
           if [ ! -s docs/release-notes/RELEASE_NOTES.md ]; then
-            printf "## @just-every/code v%s\n\nSee CHANGELOG.md for details." "${NEW_VERSION}" > docs/release-notes/RELEASE_NOTES.md
+            printf "## @alo-labs/kay v%s\n\nSee CHANGELOG.md for details." "${NEW_VERSION}" > docs/release-notes/RELEASE_NOTES.md
           fi
 
       - name: Assert release notes exist
@@ -997,12 +997,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
 
       # --- Homebrew Tap Update -------------------------------------------------
-      - name: Generate Homebrew formula (Code.rb)
+      - name: Generate Homebrew formula (Kay.rb)
         shell: bash
         run: |
           set -euo pipefail
           bash scripts/generate-homebrew-formula.sh
-          test -s Formula/Code.rb || { echo "Formula/Code.rb missing" >&2; exit 1; }
+          test -s Formula/Kay.rb || { echo "Formula/Kay.rb missing" >&2; exit 1; }
 
       - name: Publish Homebrew formula to just-every/homebrew-tap
         shell: bash
@@ -1017,7 +1017,7 @@ jobs:
           tmpdir=$(mktemp -d)
           git clone "https://x-access-token:${GH_PAT}@github.com/just-every/homebrew-tap.git" "$tmpdir"
           mkdir -p "$tmpdir/Formula"
-          cp -f Formula/Code.rb "$tmpdir/Formula/Code.rb"
+          cp -f Formula/Kay.rb "$tmpdir/Formula/Kay.rb"
           cd "$tmpdir"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git config user.name  "github-actions[bot]"
@@ -1027,7 +1027,7 @@ jobs:
             exit 0
           fi
           ver="${{ steps.version.outputs.version }}"
-          git commit -m "chore(homebrew): bump Code formula to v${ver}"
+          git commit -m "chore(homebrew): bump Kay formula to v${ver}"
           # Ensure default branch exists
           if ! git rev-parse --abbrev-ref --symbolic-full-name @{u} >/dev/null 2>&1; then
             git branch -M main || true
@@ -1080,7 +1080,7 @@ jobs:
           mkdir -p "$(dirname "$config_path")"
           echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > "$config_path"
           npm whoami >/dev/null 2>&1 || { echo "npm auth failed (npm whoami). Ensure NPM_TOKEN is a granular/automation token with publish rights to @just-every/* and bypass 2FA enabled; update the secret via npmjs.com." >&2; exit 1; }
-          name="@just-every/code"
+          name="@alo-labs/kay"
           version=$(jq -r '.version' package.json)
           echo "Preparing to publish $name@$version"
           existing=$(npm view "$name@$version" version 2>/dev/null || true)

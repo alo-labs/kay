@@ -1,6 +1,6 @@
 # Execution policy
 
-Every Code can enforce your own rules-based execution policy before it runs shell commands. Policies live in Starlark `.codexpolicy` files under `~/.code/policy` (Code still reads `~/.codex/policy` for backward compatibility).
+Kay can enforce your own rules-based execution policy before it runs shell commands. Policies live in Starlark `.codexpolicy` files under `~/.code/policy` (Kay still reads `~/.codex/policy` for backward compatibility).
 
 ## How to create and edit rules
 
@@ -17,7 +17,7 @@ Under the hood, when you approve and whitelist a command, codex will edit `~/.co
 ### Editing `.rules` files
 
 1. Create a policy directory: `mkdir -p ~/.code/policy`.
-2. Add one or more `.codexpolicy` files in that folder. Code automatically loads every `.codexpolicy` file in there on startup.
+2. Add one or more `.codexpolicy` files in that folder. Kay automatically loads every `.codexpolicy` file in there on startup.
 3. Write `prefix_rule` entries to describe the commands you want to allow, prompt, or block:
 
 ```starlark
@@ -30,10 +30,10 @@ prefix_rule(
 ```
 
 - `pattern` is a list of shell tokens, evaluated from left to right; wrap tokens in a nested list to express alternatives (for example, match both `push` and `fetch`).
-- `decision` sets the severity; Code picks the strictest decision when multiple rules match (forbidden > prompt > allow).
-- `match` and `not_match` act as optional unit tests. Code validates them when it loads your policy, so you get feedback if an example has unexpected behavior.
+- `decision` sets the severity; Kay picks the strictest decision when multiple rules match (forbidden > prompt > allow).
+- `match` and `not_match` act as optional unit tests. Kay validates them when it loads your policy, so you get feedback if an example has unexpected behavior.
 
-In this example rule, if Code wants to run commands with the prefix `git push` or `git fetch`, it will first ask for user approval.
+In this example rule, if Kay wants to run commands with the prefix `git push` or `git fetch`, it will first ask for user approval.
 
 ## Preview decisions
 

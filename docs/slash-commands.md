@@ -1,6 +1,6 @@
 # Slash Commands
 
-The Code CLI supports a set of slash commands you can type at the start of the
+The Kay CLI supports a set of slash commands you can type at the start of the
 composer input. These commands provide quick actions, toggles, or expand into
 full prompts. This document lists all built‑in commands and what they do.
 
@@ -18,19 +18,19 @@ Notes
 - `/new`: start a new chat during a conversation.
 - `/resume`: resume a past session for this folder.
 - `/rename <name>`: rename the current session (shown in the resume list).
-- `/quit`: exit Code.
-- `/logout`: log out of Code.
-- `/login`: manage Code sign-ins (select, add, or disconnect accounts).
+- `/quit`: exit Kay.
+- `/logout`: log out of Kay.
+- `/login`: manage Kay sign-ins (select, add, or disconnect accounts).
 - `/settings [section]`: open the settings panel. Optional section argument
   jumps directly to `model`, `theme`, `agents`, `skills`, `auto`, `review`,
   `validation`, `limits`, `chrome`, `mcp`, or `notifications`.
 
 ## Workspace & Git
 
-- `/init`: create an `AGENTS.md` file with instructions for Code.
+- `/init`: create an `AGENTS.md` file with instructions for Kay.
 - `/diff`: show `git diff` (including untracked files).
 - `/undo`: open a snapshot picker so you can restore workspace files to a
-  previous Code snapshot and optionally rewind the conversation to that point.
+  previous Kay snapshot and optionally rewind the conversation to that point.
 - `/branch [task]`: create a worktree branch and switch to it. If a
   task/description is provided, it is used when naming the branch. Must be run
   from the repository root (not inside another branch worktree). Set
@@ -39,7 +39,7 @@ Notes
   directories are copied automatically.
 - `/merge`: merge the current worktree branch back into the default branch and
   remove the worktree. Run this from inside the worktree created by `/branch`.
-- `/push`: tell Code to commit, push, and monitor workflows with guarded
+- `/push`: tell Kay to commit, push, and monitor workflows with guarded
   instructions. If no workflows appear right away, wait briefly and check again
   before concluding none were triggered. Skips cleanup or GitHub monitoring
   steps automatically when the workspace is already clean or required
@@ -48,9 +48,9 @@ Notes
   the workspace, a specific commit, compare against another branch, or enter
   custom instructions. With a focus argument, skips the picker and uses your
   text directly. Configure Auto Resolve and the max re-reviews (defaults to 5)
-  from `/settings review` when you want Code to rerun fixes and follow-up
+  from `/settings review` when you want Kay to rerun fixes and follow-up
   checks automatically.
-- `/cloud`: browse Code Cloud tasks, view details, apply patches, and create
+- `/cloud`: browse Kay Cloud tasks, view details, apply patches, and create
   new tasks from the TUI.
 - `/cmd <name>`: run a project command defined for the current workspace.
 
@@ -98,7 +98,7 @@ typically start multiple agents. They require a task/problem description.
 
 - `/plan <task>`: create a comprehensive plan (multiple agents). Prompt‑expanding.
 - `/solve <problem>`: solve a challenging problem (multiple agents). Prompt‑expanding.
-- `/code <task>`: perform a coding task (multiple agents). Prompt‑expanding.
+- `/kay <task>`: perform a coding task (multiple agents). Prompt‑expanding.
 
 ## Development‑Only
 
@@ -113,8 +113,10 @@ Implementation Notes
 - The authoritative list of commands is defined in
   `code-rs/tui/src/slash_command.rs` (the `SlashCommand` enum). When adding a
   new command, please update this document to keep the UI and docs in sync.
-- Prompt formatting for `/plan`, `/solve`, and `/code` lives in
-  `code-rs/core/src/slash_commands.rs`.
+- Prompt formatting for `/plan`, `/solve`, and `/kay` lives in
+  `code-rs/core/src/slash_commands.rs`. `/kay` is the canonical prompt-expanding
+  command in the Kay UI.
+  The retired `/code` alias should not appear in user-facing docs, snapshots, or TUI help.
   When no `[[agents]]` are configured, the orchestrator advertises the
   following model slugs to the LLM for multi-agent runs: `code-gpt-5.4`,
   `code-gpt-5.3-codex`, `claude-opus-4.6`, `gemini-3-pro`,

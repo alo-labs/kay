@@ -328,10 +328,10 @@ fn run_guided_loop(
             (
                 "Upgrade helper",
                 format!(
-                    "You are helping the user upgrade Code to the latest available version. The preferred upgrade command is `{initial_command}`. Prioritize resolving permission prompts (including sudo password requests) and confirm the upgrade succeeds."
+                    "You are helping the user upgrade Kay to the latest available version. The preferred upgrade command is `{initial_command}`. Prioritize resolving permission prompts (including sudo password requests) and confirm the upgrade succeeds."
                 ),
                 format!(
-                    "Upgrade target: Code (latest version: {latest}).\nPrimary command: {initial_command}.\nPlatform: {platform}.\nSandbox: {sandbox}.\nWorking directory: {cwd_text}.\nRun the command, diagnose any failures (especially permissions), and guide the user until the upgrade completes."
+                    "Upgrade target: Kay (latest version: {latest}).\nPrimary command: {initial_command}.\nPlatform: {platform}.\nSandbox: {sandbox}.\nWorking directory: {cwd_text}.\nRun the command, diagnose any failures (especially permissions), and guide the user until the upgrade completes."
                 ),
                 "upgrade_terminal_flow",
             )

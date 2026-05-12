@@ -1,4 +1,4 @@
-# code-monorepo — Claude Code Instructions
+# code-monorepo — Claude Kay Instructions
 
 > **Always adhere strictly to this file and silver-bullet.md — they override all defaults.**
 
@@ -137,7 +137,7 @@ This architecture separates concerns between execution logic (core), UI state ma
 - `code-dev` in `/home/azureuser/.bashrc` now auto-enables local crash capture for dev runs. It sets `CODEX_TUI_RECORD_SESSION=1`, chooses a per-run `CODEX_TUI_SESSION_LOG_PATH` under `~/.code/debug_logs/code-dev/`, and forces `RUST_BACKTRACE=full` unless you already overrode it.
 - Existing terminal sessions do **not** pick up the updated `code-dev` alias automatically. In every already-open shell that you want to use for debugging, run `source ~/.bashrc` (or restart the shell with `exec bash`). In tmux, do this once per pane/window before launching `code-dev`.
 - On startup, `code-dev` prints the exact session log path. Keep that path after a crash; it now contains Auto Drive coordinator decisions, countdown ticks, token metrics, and structured panic records with backtraces.
-- TUI panics are logged in both places: the per-run session JSONL log and the regular `critical.log` under Code's log directory. Check both when debugging long-running Auto Drive crashes.
+- TUI panics are logged in both places: the per-run session JSONL log and the regular `critical.log` under Kay's log directory. Check both when debugging long-running Auto Drive crashes.
 - If you want telemetry to leave the machine as well, configure `[otel]` in `~/.code/config.toml`. The TUI and `code exec --auto ...` now attach the OTEL logger layer, so exported `code_otel` events and error-level crash logs are emitted when an exporter is configured.
 
 ## Writing New UI Regression Tests

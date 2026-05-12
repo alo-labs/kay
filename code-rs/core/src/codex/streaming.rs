@@ -61,7 +61,7 @@ const AUTO_CONTEXT_MAX_PROJECTED_TURN_GROWTH_TOKENS: u64 = 180_000;
 const AUTO_CONTEXT_JUDGE_PRIMARY_MODEL: &str = "gpt-5.3-codex-spark";
 const AUTO_CONTEXT_JUDGE_FALLBACK_MODEL: &str = "codex-mini-latest";
 const AUTO_CONTEXT_JUDGE_DEVELOPER_MESSAGE: &str = concat!(
-    "You decide whether Code should compact conversation history before the next user turn. ",
+    "You decide whether Kay should compact conversation history before the next user turn. ",
     "Return strict JSON only that matches the provided schema. ",
     "The provided tokens_in_context already includes the new user turn before assistant/tool work begins. ",
     "Strongly prefer should_compact_now=false when the new user message is clearly continuing the same thread ",
@@ -4880,7 +4880,7 @@ async fn handle_function_call(
         "wait" => handle_wait(sess, &ctx, arguments).await,
         "gh_run_wait" => handle_gh_run_wait(sess, &ctx, arguments).await,
         "kill" => handle_kill(sess, &ctx, arguments).await,
-        "code_bridge" | "code_bridge_subscription" => handle_code_bridge(sess, &ctx, arguments).await,
+        "kay_bridge" | "kay_bridge_subscription" => handle_kay_bridge(sess, &ctx, arguments).await,
         TOOL_SEARCH_TOOL_NAME | LEGACY_SEARCH_TOOL_BM25_TOOL_NAME => {
             let arguments = match serde_json::from_str::<serde_json::Value>(&arguments) {
                 Ok(arguments) => arguments,
@@ -5425,15 +5425,15 @@ fn full_capabilities() -> Vec<String> {
     ]
 }
 
-async fn handle_code_bridge(
+async fn handle_kay_bridge(
     sess: &Session,
     ctx: &ToolCallCtx,
     arguments: String,
 ) -> ResponseInputItem {
-    handle_code_bridge_with_cwd(sess.get_cwd(), ctx, arguments).await
+    handle_kay_bridge_with_cwd(sess.get_cwd(), ctx, arguments).await
 }
 
-async fn handle_code_bridge_with_cwd(
+async fn handle_kay_bridge_with_cwd(
     cwd: &Path,
     ctx: &ToolCallCtx,
     arguments: String,
@@ -5540,7 +5540,7 @@ mod bridge_tool_tests {
         let ctx = ToolCallCtx::new("sub".into(), "call".into(), None, None);
         tokio::runtime::Runtime::new()
             .unwrap()
-            .block_on(async { handle_code_bridge_with_cwd(cwd, &ctx, args.to_string()).await })
+            .block_on(async { handle_kay_bridge_with_cwd(cwd, &ctx, args.to_string()).await })
     }
 
     #[test]

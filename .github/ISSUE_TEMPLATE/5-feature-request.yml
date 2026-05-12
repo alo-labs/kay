@@ -1,12 +1,12 @@
 name: 🎁 Feature Request
-description: Propose a new feature for Code
+description: Propose a new feature for Kay
 labels:
   - enhancement
 body:
   - type: markdown
     attributes:
       value: |
-        Is Code missing a feature that you'd like to see? Feel free to propose it here.
+        Is Kay missing a feature that you'd like to see? Feel free to propose it here.
 
         Before you submit a feature:
         1. Search existing issues for similar features. If you find one, 👍 it rather than opening a new one.

@@ -11,7 +11,7 @@ you can generate and publish the formula like so:
 scripts/generate-homebrew-formula.sh
 ```
 
-2) Copy the generated `Code.rb` into your tap repo under `Formula/Code.rb`
+2) Copy the generated `Kay.rb` into your tap repo under `Formula/Kay.rb`
 and update the `url`/`sha256` if needed.
 
 3) Users can then install with:
@@ -27,4 +27,3 @@ Notes
   - `code-aarch64-apple-darwin.tar.gz`
   - `code-x86_64-apple-darwin.tar.gz`
 - The CLI is installed as `code` and `coder` shims for compatibility.
-

@@ -535,7 +535,7 @@ jobs:
               core.notice(`Closed PR #${pr.number} targeting ${base}.`);
             }
 
-      - name: Run Code agent to perform upstream merge
+      - name: Run Kay agent to perform upstream merge
         id: agent
         if: steps.check_upstream.outputs.skip != 'true'
         env:
@@ -645,7 +645,7 @@ jobs:
             OPENAI_API_BASE="http://127.0.0.1:5055/v1" \
             GH_TOKEN="$GH_TOKEN" \
             npm_config_cache="$SAFE_HOME/.npm" \
-            npx -y @just-every/code@latest \
+            npx -y @alo-labs/kay@latest \
             auto \
             --goal-file .github/auto/AUTO_GOAL.md \
             --max-attempts 3 \
@@ -707,7 +707,7 @@ jobs:
           cat .github/auto/VERIFY.json || true
           if jq -e '.build_fast=="ok" and .api_check=="ok"' .github/auto/VERIFY.json >/dev/null 2>&1; then echo "failed=false" >> "$GITHUB_OUTPUT"; else echo "failed=true" >> "$GITHUB_OUTPUT"; fi
 
-      - name: Remediate verification failures with Code agent (loop)
+      - name: Remediate verification failures with Kay agent (loop)
         id: remediation_loop
         if: steps.check_upstream.outputs.skip != 'true' && steps.verify.outputs.failed == 'true'
         env:
@@ -762,7 +762,7 @@ jobs:
               GH_TOKEN="$GH_TOKEN" \
               RUSTC_WRAPPER="sccache" SCCACHE_GHA_ENABLED="true" SCCACHE_IDLE_TIMEOUT="1800" SCCACHE_CACHE_SIZE="5G" \
               npm_config_cache="$SAFE_HOME/.npm" \
-              npx -y @just-every/code@latest \
+              npx -y @alo-labs/kay@latest \
               exec \
               -s workspace-write \
               -c sandbox_workspace_write.allow_git_writes=true \

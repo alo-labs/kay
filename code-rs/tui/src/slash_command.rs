@@ -89,7 +89,7 @@ pub enum SlashCommand {
     // Prompt-expanding commands
     Plan,
     Solve,
-    Code,
+    Kay,
     Logout,
     Quit,
     #[cfg(debug_assertions)]
@@ -106,16 +106,16 @@ impl SlashCommand {
             SlashCommand::Rename => "rename the current session",
             SlashCommand::Plan => "create a comprehensive plan (multiple agents)",
             SlashCommand::Solve => "solve a challenging problem (multiple agents)",
-            SlashCommand::Code => "perform a coding task (multiple agents)",
+            SlashCommand::Kay => "perform a coding task (multiple agents)",
             SlashCommand::Reasoning => "change reasoning effort (minimal/low/medium/high)",
             SlashCommand::Verbosity => "change text verbosity (high/medium/low)",
             SlashCommand::New => "start a new chat during a conversation",
-            SlashCommand::Init => "create an AGENTS.md file with instructions for Code",
+            SlashCommand::Init => "create an AGENTS.md file with instructions for Kay",
             SlashCommand::Compact => "summarize conversation to prevent hitting the context limit",
-            SlashCommand::Undo => "restore the workspace to the last Code snapshot",
+            SlashCommand::Undo => "restore the workspace to the last Kay snapshot",
             SlashCommand::Review => "review your changes for potential issues",
             SlashCommand::Cloud => "browse, apply, and create cloud tasks",
-            SlashCommand::Quit => "exit Code",
+            SlashCommand::Quit => "exit Kay",
             SlashCommand::Diff => "show git diff (including untracked files)",
             SlashCommand::Mention => "mention a file",
             SlashCommand::Cmd => "run a project command",
@@ -140,8 +140,8 @@ impl SlashCommand {
             SlashCommand::Mcp => "manage MCP servers",
             SlashCommand::Perf => "performance tracing (on/off/show/reset)",
             SlashCommand::Demo => "populate history with demo cells (dev/perf only)",
-            SlashCommand::Login => "manage Code sign-ins (add/select/disconnect)",
-            SlashCommand::Logout => "log out of Code",
+            SlashCommand::Login => "manage Kay sign-ins (add/select/disconnect)",
+            SlashCommand::Logout => "log out of Kay",
             #[cfg(debug_assertions)]
             SlashCommand::TestApproval => "test approval request",
         }
@@ -157,7 +157,7 @@ impl SlashCommand {
     pub fn is_prompt_expanding(self) -> bool {
         matches!(
             self,
-            SlashCommand::Plan | SlashCommand::Solve | SlashCommand::Code
+            SlashCommand::Plan | SlashCommand::Solve | SlashCommand::Kay
         )
     }
 
@@ -177,7 +177,7 @@ impl SlashCommand {
     pub fn requires_arguments(self) -> bool {
         matches!(
             self,
-            SlashCommand::Plan | SlashCommand::Solve | SlashCommand::Code
+            SlashCommand::Plan | SlashCommand::Solve | SlashCommand::Kay
         )
     }
 
@@ -205,7 +205,7 @@ impl SlashCommand {
             SlashCommand::Solve => Some(code_core::slash_commands::format_solve_command(
                 args, None, None,
             )),
-            SlashCommand::Code => Some(code_core::slash_commands::format_code_command(
+            SlashCommand::Kay => Some(code_core::slash_commands::format_kay_command(
                 args, None, None,
             )),
             _ => None,
@@ -335,6 +335,17 @@ mod tests {
                 assert!(command_text.contains("inspect the failing build"));
             }
             other => panic!("expected RegularCommand, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn slash_command_kay_with_newline_arguments_is_recognized() {
+        let msg = "/kay\ninspect the failing build";
+        match process_slash_command_message(msg) {
+            ProcessedCommand::ExpandedPrompt(prompt) => {
+                assert!(prompt.contains("inspect the failing build"));
+            }
+            other => panic!("expected ExpandedPrompt, got {:?}", other),
         }
     }
 

@@ -12,7 +12,7 @@ TERM_GRACE_SEC=${TERM_GRACE_SEC:-10}
 
 log() {
     local message=$1
-    logger -t code-memory-guard -- "$message" || true
+    logger -t kay-memory-guard -- "$message" || true
     printf '%s %s\n' "$(date -Is)" "$message" >&2
 }
 
