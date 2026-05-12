@@ -1,19 +1,13 @@
 # Changelog
 
-## [0.7.1] — 2026-05-12
+## [0.7.2] — 2026-05-12
 
 ## Bug Fixes
 - `fix(ci): fallback issue triage github token for all steps` (c56f269d2)
 - `fix(ci): fallback issue triage github token` (f94024ed1)
 
-## Features
-- `feat(core): add provider-model acceptance coverage` (84cde4a10)
-
-## Tests
-- `test(cli): harden provider acceptance JSON prompt` (32a8b23d4)
-
 ## Chores
-- `chore(branding): rename Every Code to Kay across repo` (d50706c81)
+- `chore(release): update CHANGELOG for v0.7.1 with ci fixes` (c2c423d76)
 
 ---
 
