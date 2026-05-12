@@ -3,7 +3,7 @@
 **Defined:** 2026-05-12
 **Core Value:** Keep the CLI buildable, understandable, and safe to evolve without disturbing existing workflows.
 
-## v1 Requirements
+## v0.8.0 Requirements
 
 Requirements for this milestone. Each maps to roadmap phases.
 
@@ -77,10 +77,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | REL-01 | Phase 6 | Pending |
 
 **Coverage:**
-- v1 requirements: 9 total
+- v0.8.0 requirements: 9 total
 - Mapped to phases: 9
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-05-12*
-*Last updated: 2026-05-12 after Provider CRUD milestone start*
+*Last updated: 2026-05-12 after v0.8.0 semver realignment*
