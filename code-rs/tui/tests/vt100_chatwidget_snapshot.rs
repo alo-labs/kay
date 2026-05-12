@@ -27,6 +27,9 @@ use code_core::protocol::{
     WebSearchCompleteEvent,
 };
 use code_core::auth;
+use code_core::config_types::{ReasoningEffort, TextVerbosity};
+use code_common::model_presets::{ModelPreset, ReasoningEffortPreset};
+use code_login::AuthMode;
 use code_core::OPENCODE_GO_PROVIDER_ID;
 use code_tui::test_helpers::{
     force_scroll_offset as harness_force_scroll_offset,
@@ -150,6 +153,41 @@ fn make_key(code: KeyCode, modifiers: KeyModifiers) -> KeyEvent {
         modifiers,
         kind: KeyEventKind::Press,
         state: KeyEventState::empty(),
+    }
+}
+
+const TEST_VERBOSITY: [TextVerbosity; 1] = [TextVerbosity::Low];
+
+fn make_model_preset(
+    id: &str,
+    model: &str,
+    display_name: &str,
+    description: &str,
+    efforts: Vec<(ReasoningEffort, &'static str)>,
+) -> ModelPreset {
+    let default_reasoning_effort = efforts
+        .first()
+        .map(|(effort, _)| *effort)
+        .unwrap_or(ReasoningEffort::Low);
+
+    ModelPreset {
+        id: id.to_string(),
+        model: model.to_string(),
+        display_name: display_name.to_string(),
+        description: description.to_string(),
+        default_reasoning_effort: default_reasoning_effort.into(),
+        supported_reasoning_efforts: efforts
+            .into_iter()
+            .map(|(effort, description)| ReasoningEffortPreset {
+                effort: effort.into(),
+                description: description.to_string(),
+            })
+            .collect(),
+        supported_text_verbosity: &TEST_VERBOSITY,
+        is_default: false,
+        upgrade: None,
+        pro_only: false,
+        show_in_picker: true,
     }
 }
 
@@ -2607,6 +2645,118 @@ fn agents_toggle_claude_opus_persists_via_slash_command() {
     let reopen_lower = overlay_reopen.to_lowercase();
     assert!(reopen_lower.contains("claude-opus-4.6"));
     assert!(reopen_lower.contains("disabled"));
+}
+
+#[test]
+fn model_selection_visibility() {
+    let seeded_presets = vec![
+        make_model_preset(
+            "opencode-go/kimi-k2.6",
+            "opencode-go/kimi-k2.6",
+            "OpenCode Go Kimi K2.6",
+            "OpenCode Go model",
+            vec![
+                (ReasoningEffort::Low, "opencode low reasoning"),
+                (ReasoningEffort::High, "opencode high reasoning"),
+            ],
+        ),
+        make_model_preset(
+            "MiniMax-M2.7",
+            "MiniMax-M2.7",
+            "MiniMax M2.7",
+            "MiniMax model",
+            vec![(ReasoningEffort::Low, "minimax reasoning")],
+        ),
+        make_model_preset(
+            "gpt-5.4",
+            "gpt-5.4",
+            "GPT-5.4",
+            "OpenAI model",
+            vec![
+                (ReasoningEffort::Low, "openai low reasoning"),
+                (ReasoningEffort::Medium, "openai medium reasoning"),
+            ],
+        ),
+    ];
+
+    let credentialed_home = TempDir::new().expect("credentialed code home");
+    auth::login_with_api_key(credentialed_home.path(), "sk-openai")
+        .expect("openai login should write auth");
+    auth::save_provider_api_key(
+        credentialed_home.path(),
+        OPENCODE_GO_PROVIDER_ID,
+        "sk-opencode-go",
+    )
+    .expect("opencode provider key should be saved");
+    auth::save_provider_api_key(credentialed_home.path(), "minimax", "sk-minimax")
+        .expect("minimax provider key should be saved");
+
+    let mut credentialed_harness = ChatWidgetHarness::new();
+    credentialed_harness.configure_model_selection_test_context(
+        credentialed_home.path().to_path_buf(),
+        "opencode-go/kimi-k2.6".to_string(),
+        ReasoningEffort::Low,
+        auth::AuthManager::shared_with_mode_and_originator(
+            credentialed_home.path().to_path_buf(),
+            AuthMode::ApiKey,
+            "code_cli_rs".to_string(),
+        ),
+    );
+    credentialed_harness.open_model_selection_overlay_with_presets(seeded_presets.clone());
+
+    let credentialed_frame =
+        normalize_output(render_chat_widget_to_vt100(&mut credentialed_harness, 100, 80));
+    let credentialed_visible = credentialed_frame.clone();
+    let opencode_idx = credentialed_visible
+        .find("OpenCode Go")
+        .expect("OpenCode Go header");
+    let minimax_idx = credentialed_visible
+        .find("MiniMax")
+        .expect("MiniMax header");
+    let openai_idx = credentialed_visible
+        .find("OpenAI")
+        .expect("OpenAI header");
+
+    assert!(
+        opencode_idx < minimax_idx && minimax_idx < openai_idx,
+        "provider headers should stay in locked order:\n{}",
+        credentialed_visible
+    );
+    assert!(credentialed_visible.contains("KIMI-K2.6"));
+    assert!(credentialed_visible.contains("opencode high reasoning"));
+    assert!(credentialed_visible.contains("opencode low reasoning"));
+    assert!(credentialed_visible.contains("MINIMAX-M2.7"));
+    assert!(credentialed_visible.contains("minimax reasoning"));
+    assert!(credentialed_visible.contains("GPT-5.4"));
+    assert!(credentialed_visible.contains("openai medium reasoning"));
+    assert!(credentialed_visible.contains("Low (current)"));
+
+    insta::assert_snapshot!(
+        "model_selection_visibility__credentialed_provider_list",
+        credentialed_frame
+    );
+
+    let empty_home = TempDir::new().expect("empty code home");
+    let mut empty_harness = ChatWidgetHarness::new();
+    empty_harness.configure_model_selection_test_context(
+        empty_home.path().to_path_buf(),
+        "gpt-5.4".to_string(),
+        ReasoningEffort::Low,
+        auth::AuthManager::shared_with_mode_and_originator(
+            empty_home.path().to_path_buf(),
+            AuthMode::ApiKey,
+            "code_cli_rs".to_string(),
+        ),
+    );
+    empty_harness.open_model_selection_overlay_with_presets(seeded_presets);
+
+    let empty_frame = normalize_output(render_chat_widget_to_vt100(&mut empty_harness, 100, 32));
+    assert!(empty_frame.contains("No models are unlocked yet."));
+    assert!(!empty_frame.contains("OpenCode Go"));
+    assert!(!empty_frame.contains("MiniMax"));
+    assert!(!empty_frame.contains("OpenAI"));
+
+    insta::assert_snapshot!("model_selection_visibility__empty_credentials_hint", empty_frame);
 }
 
 #[test]

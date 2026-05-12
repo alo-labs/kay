@@ -10,14 +10,18 @@ use crate::bottom_pane::SettingsSection;
 use crossterm::event::KeyEvent;
 use code_auto_drive_core::AutoRunPhase;
 use code_core::config::{Config, ConfigOverrides, ConfigToml};
+use code_core::config_types::ReasoningEffort;
 use code_core::history::state::HistoryRecord;
 use code_core::history::state::ExecStatus;
 use code_core::protocol::{BackgroundEventEvent, Event, EventMsg, OrderMeta};
+use code_common::model_presets::ModelPreset;
+use code_login::AuthManager;
 use once_cell::sync::Lazy;
 use chrono::Utc;
 use ratatui::text::Line;
 use std::collections::VecDeque;
 use std::sync::mpsc::{self, Receiver};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::runtime::Runtime;
 
@@ -336,6 +340,25 @@ impl ChatWidgetHarness {
     }
 
     #[cfg(any(test, feature = "test-helpers"))]
+    pub fn configure_model_selection_test_context(
+        &mut self,
+        code_home: std::path::PathBuf,
+        model: String,
+        effort: ReasoningEffort,
+        auth_manager: Arc<AuthManager>,
+    ) {
+        let runtime = &*TEST_RUNTIME;
+        let _guard = runtime.enter();
+        self.chat.config.code_home = code_home;
+        self.chat.config.model = model;
+        self.chat.config.model_reasoning_effort = effort;
+        self.chat.config.model_explicit = false;
+        self.chat.allow_remote_default_at_startup = true;
+        self.chat.chat_model_selected_explicitly = false;
+        self.chat.auth_manager = auth_manager;
+    }
+
+    #[cfg(any(test, feature = "test-helpers"))]
     pub fn enable_context_ui(&mut self) {
         let runtime = &*TEST_RUNTIME;
         let _guard = runtime.enter();
@@ -367,6 +390,15 @@ impl ChatWidgetHarness {
 
     pub fn open_provider_credentials_overlay(&mut self) {
         self.chat.show_provider_credentials_view();
+        self.flush_into_widget();
+    }
+
+    #[cfg(any(test, feature = "test-helpers"))]
+    pub fn open_model_selection_overlay_with_presets(&mut self, presets: Vec<ModelPreset>) {
+        let runtime = &*TEST_RUNTIME;
+        let _guard = runtime.enter();
+        self.chat.update_model_presets(presets, None);
+        self.chat.handle_model_command(String::new());
         self.flush_into_widget();
     }
 
