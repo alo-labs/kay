@@ -49,6 +49,12 @@ use code_core::model_family::derive_default_model_family;
 use code_core::model_family::find_family_for_model;
 use code_core::model_family::resolve_context_mode_limits;
 use code_core::model_family::supports_extended_context;
+use code_core::model_visibility::{
+    visible_model_groups,
+    VisibleModelPreset,
+    VisibleProvider,
+    VisibleProviderModels,
+};
 use code_core::account_usage::{
     self,
     RateLimitWarningScope,
@@ -1846,6 +1852,31 @@ struct RenderRequestSeed {
     use_cache: bool,
     fallback_lines: Option<Rc<Vec<Line<'static>>>>,
     kind: RenderRequestKind,
+}
+
+#[derive(Clone, Copy)]
+struct PickerVisibleModelPreset<'a> {
+    preset: &'a ModelPreset,
+}
+
+impl<'a> PickerVisibleModelPreset<'a> {
+    fn new(preset: &'a ModelPreset) -> Self {
+        Self { preset }
+    }
+}
+
+impl VisibleModelPreset for PickerVisibleModelPreset<'_> {
+    fn visibility_model(&self) -> &str {
+        &self.preset.model
+    }
+
+    fn visibility_show_in_picker(&self) -> bool {
+        self.preset.show_in_picker
+    }
+
+    fn visibility_pro_only(&self) -> bool {
+        self.preset.pro_only
+    }
 }
 
 pub(crate) struct ChatWidget<'a> {
@@ -23074,6 +23105,33 @@ Have we met every part of this goal and is there no further work to do?"#
         if curated.is_empty() { presets } else { curated }
     }
 
+    fn visible_model_groups_for_picker(
+        &self,
+        presets: &[ModelPreset],
+    ) -> Vec<VisibleProviderModels<ModelPreset>> {
+        let wrapped_presets: Vec<PickerVisibleModelPreset<'_>> =
+            presets.iter().map(PickerVisibleModelPreset::new).collect();
+
+        visible_model_groups(&self.auth_manager, &wrapped_presets)
+            .into_iter()
+            .map(|group| VisibleProviderModels {
+                provider: group.provider,
+                label: group.label,
+                presets: group.presets.into_iter().map(|preset| preset.preset.clone()).collect(),
+            })
+            .collect()
+    }
+
+    fn visible_model_presets_for_picker(&self, presets: &[ModelPreset]) -> Vec<ModelPreset> {
+        self.visible_model_groups_for_picker(presets)
+            .into_iter()
+            .flat_map(|group| match group.provider {
+                VisibleProvider::OpenAI => Self::curated_model_presets(group.presets),
+                _ => group.presets,
+            })
+            .collect()
+    }
+
     fn all_model_presets(&self) -> Vec<ModelPreset> {
         if let Some(presets) = self.remote_model_presets.as_ref() {
             return presets.clone();
@@ -23090,7 +23148,7 @@ Have we met every part of this goal and is there no further work to do?"#
     }
 
     fn available_model_presets(&self) -> Vec<ModelPreset> {
-        Self::curated_model_presets(self.all_model_presets())
+        self.visible_model_presets_for_picker(&self.all_model_presets())
     }
 
     pub(crate) fn update_model_presets(
@@ -23102,11 +23160,7 @@ Have we met every part of this goal and is there no further work to do?"#
             return;
         }
 
-        let curated_presets = Self::curated_model_presets(presets.clone());
-        if curated_presets.is_empty() {
-            return;
-        }
-
+        let curated_presets = self.visible_model_presets_for_picker(&presets);
         self.remote_model_presets = Some(presets);
         self.bottom_pane.update_model_selection_presets(curated_presets);
 
@@ -23224,10 +23278,11 @@ Have we met every part of this goal and is there no further work to do?"#
             self.history_push_plain_state(history_cell::new_error_event(message));
             return;
         }
+        let visible_presets = self.available_model_presets();
 
         let trimmed = command_args.trim();
         if !trimmed.is_empty() {
-            if let Some(preset) = self.find_model_preset(trimmed, &all_presets) {
+            if let Some(preset) = self.find_model_preset(trimmed, &visible_presets) {
                 let effort = Self::preset_effort_for_model(&preset);
                 self.apply_model_selection(preset.model.to_string(), Some(effort));
             } else {
@@ -23240,9 +23295,8 @@ Have we met every part of this goal and is there no further work to do?"#
             return;
         }
 
-        let presets = self.available_model_presets();
         self.bottom_pane.show_model_selection(
-            presets,
+            visible_presets,
             self.config.model.clone(),
             self.config.model_reasoning_effort,
             self.config.service_tier,
@@ -30915,6 +30969,8 @@ impl Drop for AutoReviewStubGuard {
     use crate::chatwidget::message::UserMessage;
     use crate::chatwidget::smoke_helpers::{enter_test_runtime_guard, ChatWidgetHarness};
     use crate::history_cell::{self, ExploreAggregationCell, HistoryCellType};
+    use code_core::auth;
+    use code_core::OPENCODE_GO_PROVIDER_ID;
     use code_common::model_presets::ReasoningEffortPreset;
     use code_auto_drive_core::{
         AutoContinueMode,
@@ -31286,6 +31342,79 @@ use code_core::protocol::OrderMeta;
         let mut harness = ChatWidgetHarness::new();
         let formatted = harness.chat().format_model_name("gpt-5.1-codex-mini");
         assert_eq!(formatted, "GPT-5.1-Codex-Mini");
+    }
+
+    #[test]
+    fn available_model_presets_filters_provider_visibility() {
+        fn preset(model: &str) -> ModelPreset {
+            ModelPreset {
+                id: model.to_string(),
+                model: model.to_string(),
+                display_name: model.to_string(),
+                description: format!("{model} model"),
+                default_reasoning_effort: ReasoningEffort::Low.into(),
+                supported_reasoning_efforts: vec![ReasoningEffortPreset {
+                    effort: ReasoningEffort::Low.into(),
+                    description: "low".to_string(),
+                }],
+                supported_text_verbosity: &[TextVerbosity::Low],
+                is_default: false,
+                upgrade: None,
+                pro_only: false,
+                show_in_picker: true,
+            }
+        }
+
+        let code_home = tempdir().expect("temp code home");
+        auth::login_with_api_key(code_home.path(), "sk-openai")
+            .expect("openai login should write auth");
+        auth::save_provider_api_key(code_home.path(), OPENCODE_GO_PROVIDER_ID, "sk-opencode-go")
+            .expect("opencode provider key should be saved");
+        auth::save_provider_api_key(code_home.path(), "minimax", "sk-minimax")
+            .expect("minimax provider key should be saved");
+
+        let remote_presets = vec![
+            preset("foo/bar"),
+            preset("MiniMax-M2.7"),
+            preset("gpt-5.4"),
+            preset("opencode-go/kimi-k2.6"),
+            preset("gpt-5.5"),
+        ];
+
+        let _runtime_guard = enter_test_runtime_guard();
+        let mut harness = ChatWidgetHarness::new();
+        harness.with_chat(|chat| {
+            chat.config.code_home = code_home.path().to_path_buf();
+            chat.config.model = "gpt-5.4".to_string();
+            chat.config.model_reasoning_effort = ReasoningEffort::Low;
+            chat.config.model_explicit = false;
+            chat.allow_remote_default_at_startup = true;
+            chat.chat_model_selected_explicitly = false;
+            chat.auth_manager = auth::AuthManager::shared_with_mode_and_originator(
+                code_home.path().to_path_buf(),
+                AuthMode::ApiKey,
+                "code_cli_rs".to_string(),
+            );
+
+            chat.update_model_presets(remote_presets, Some("gpt-5.5".to_string()));
+
+            assert_eq!(chat.config.model, "gpt-5.5");
+
+            let models: Vec<String> = chat
+                .available_model_presets()
+                .into_iter()
+                .map(|preset| preset.model)
+                .collect();
+            assert_eq!(
+                models,
+                vec![
+                    "opencode-go/kimi-k2.6".to_string(),
+                    "MiniMax-M2.7".to_string(),
+                    "gpt-5.5".to_string(),
+                    "gpt-5.4".to_string(),
+                ]
+            );
+        });
     }
 
     #[test]
