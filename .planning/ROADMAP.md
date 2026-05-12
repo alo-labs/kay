@@ -34,7 +34,7 @@ This milestone adds provider CRUD and provider-aware model selection to Kay. Use
 **Plans**: 2 plans
 **Plan list**:
 - [x] 05-01-PLAN.md — reusable provider-aware visibility helper and regression tests
-- [ ] 05-02-PLAN.md — `/model` filtering, provider grouping, and VT100 coverage
+- [x] 05-02-PLAN.md — `/model` filtering, provider grouping, and VT100 coverage
 **Success Criteria** (what must be TRUE):
   1. `/model` shows only models for providers with configured credentials.
   2. OpenCode Go shows the supported OpenCode Go list, MiniMax shows M2.7, and OpenAI shows the upstream-supported OpenAI models.
