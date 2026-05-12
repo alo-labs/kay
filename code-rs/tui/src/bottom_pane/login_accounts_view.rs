@@ -902,7 +902,7 @@ impl LoginAddAccountState {
                     DeviceCodeStatus::WaitingForApproval => {
                         if let Some(code) = &state.user_code {
                             lines.push(Line::from(vec![
-                                Span::styled("Code: ", Style::default().fg(crate::colors::text_dim())),
+                                Span::styled("Kay: ", Style::default().fg(crate::colors::text_dim())),
                                 Span::styled(
                                     code.clone(),
                                     Style::default().fg(crate::colors::primary()).add_modifier(Modifier::BOLD),

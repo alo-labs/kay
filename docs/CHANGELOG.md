@@ -10,3 +10,5 @@ Rolling task log for the documentation and workflow surface.
 - Restored the shared GSD model catalog compatibility file
 - Added canonical docs placeholders, workflow docs, and the docs governance contract
 - Added the built-in `opencode-go` provider, login guidance, and provider-slug normalization for matching namespaced model requests
+- Completed the Kay slash-command rename path so `/kay` is the canonical prompt-expanding command across the UI, formatter, and docs
+- Refreshed the docs-scheme ledger and governed docs together after the final Kay slash-command review so the completion gate sees current-session updates

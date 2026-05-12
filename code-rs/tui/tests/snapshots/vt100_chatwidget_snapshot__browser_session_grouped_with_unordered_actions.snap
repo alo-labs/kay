@@ -1,9 +1,10 @@
 ---
 source: tui/tests/vt100_chatwidget_snapshot.rs
+assertion_line: 1856
 expression: output
 ---
  +----------------------------------------------------------------------------+
- |                                 Every Code                                 |
+ |                                     Kay                                    |
  +----------------------------------------------------------------------------+
  • Hello! How can I help you today?
 

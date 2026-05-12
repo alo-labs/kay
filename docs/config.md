@@ -2,7 +2,7 @@
 
 <!-- markdownlint-disable MD012 MD013 MD028 MD033 -->
 
-Every Code supports several mechanisms for setting config values:
+Kay supports several mechanisms for setting config values:
 
 - Config-specific command-line flags, such as `--model o3` (highest precedence).
 - A generic `-c`/`--config` flag that takes a `key=value` pair, such as `--config model="o3"`.
@@ -13,13 +13,13 @@ Every Code supports several mechanisms for setting config values:
   - If `value` cannot be parsed as a valid TOML value, it is treated as a string value. This means that `-c model='"o3"'` and `-c model=o3` are equivalent.
     - In the first case, the value is the TOML string `"o3"`, while in the second the value is `o3`, which is not valid TOML and therefore treated as the TOML string `"o3"`.
     - Because quotes are interpreted by one's shell, `-c key="true"` will be correctly interpreted in TOML as `key = true` (a boolean) and not `key = "true"` (a string). If for some reason you needed the string `"true"`, you would need to use `-c key='"true"'` (note the two sets of quotes).
-- The `$CODE_HOME/config.toml` configuration file. `CODE_HOME` defaults to `~/.code`; Every Code (Code) keeps `~/.code` writable and reads the host Codex environment rooted at `~/.codex` by reference for shared config overlays and tool settings.
+- The `$CODE_HOME/config.toml` configuration file. `CODE_HOME` defaults to `~/.code`; Kay keeps `~/.code` writable and reads the host Codex environment rooted at `~/.codex` by reference for shared config overlays and tool settings.
 
 - https://developers.openai.com/codex/config-reference
 
 ## model
 
-The model that Code should use.
+The model that Kay should use.
 
 ```toml
 model = "o3"  # overrides the default of "gpt-5.1-codex"
@@ -27,7 +27,7 @@ model = "o3"  # overrides the default of "gpt-5.1-codex"
 
 ## model_providers
 
-This option lets you override and amend the default set of model providers bundled with Code. This value is a map where the key is the value to use with `model_provider` to select the corresponding provider. Providers must expose an OpenAI-compatible HTTP API (Chat Completions or Responses); native Anthropic/Gemini APIs are not supported directly without a proxy.
+This option lets you override and amend the default set of model providers bundled with Kay. This value is a map where the key is the value to use with `model_provider` to select the corresponding provider. Providers must expose an OpenAI-compatible HTTP API (Chat Completions or Responses); native Anthropic/Gemini APIs are not supported directly without a proxy.
 
 For example, if you wanted to add a provider that uses the OpenAI 4o model via the chat completions API, then you could add the following configuration:
 
@@ -37,13 +37,13 @@ model = "gpt-4o"
 model_provider = "openai-chat-completions"
 
 [model_providers.openai-chat-completions]
-# Name of the provider that will be displayed in the Code UI.
+# Name of the provider that will be displayed in the Kay UI.
 name = "OpenAI using Chat Completions"
 # The path `/chat/completions` will be amended to this URL to make the POST
 # request for the chat completions.
 base_url = "https://api.openai.com/v1"
 # If `env_key` is set, identifies an environment variable that must be set when
-# using Code with this provider. The value of the environment variable must be
+# using Kay with this provider. The value of the environment variable must be
 # non-empty and will be used in the `Bearer TOKEN` HTTP header for the POST request.
 env_key = "OPENAI_API_KEY"
 # Valid values for wire_api are "chat" and "responses". Defaults to "chat" if omitted.
@@ -67,7 +67,7 @@ requires_openai_auth = false
 OpenCode Go model ids use the `opencode-go/<model-id>` format, for example
 `opencode-go/kimi-k2.6`.
 
-Note this makes it possible to use the Code CLI with non-OpenAI models, so long as they use a wire API that is compatible with the OpenAI chat completions API. For example, you could define the following provider to use Code CLI with Ollama running locally:
+Note this makes it possible to use the Kay CLI with non-OpenAI models, so long as they use a wire API that is compatible with the OpenAI chat completions API. For example, you could define the following provider to use Kay CLI with Ollama running locally:
 
 ```toml
 [model_providers.ollama]
@@ -128,7 +128,7 @@ query_params = { api-version = "2025-04-01-preview" }
 wire_api = "responses"
 ```
 
-Export your key before launching Code: `export AZURE_OPENAI_API_KEY=…`
+Export your key before launching Kay: `export AZURE_OPENAI_API_KEY=…`
 
 ### Per-provider network tuning
 
@@ -149,15 +149,15 @@ stream_idle_timeout_ms = 300000    # 5m idle timeout
 
 #### request_max_retries
 
-How many times Code will retry a failed HTTP request to the model provider. Defaults to `4`.
+How many times Kay will retry a failed HTTP request to the model provider. Defaults to `4`.
 
 #### stream_max_retries
 
-Number of times Code will attempt to reconnect when a streaming response is interrupted. Defaults to `5`.
+Number of times Kay will attempt to reconnect when a streaming response is interrupted. Defaults to `5`.
 
 #### stream_idle_timeout_ms
 
-How long Code will wait for activity on a streaming response before treating the connection as lost. Defaults to `300_000` (5 minutes).
+How long Kay will wait for activity on a streaming response before treating the connection as lost. Defaults to `300_000` (5 minutes).
 
 ## model_provider
 
@@ -174,11 +174,11 @@ model = "mistral"
 
 ## approval_policy
 
-Determines when the user should be prompted to approve whether Code can execute a command:
+Determines when the user should be prompted to approve whether Kay can execute a command:
 
 ```toml
-# Code has hardcoded logic that defines a set of "trusted" commands.
-# Setting the approval_policy to `untrusted` means that Code will prompt the
+# Kay has hardcoded logic that defines a set of "trusted" commands.
+# Setting the approval_policy to `untrusted` means that Kay will prompt the
 # user before running a command not in the "trusted" set.
 #
 # A configurable trusted-command list is planned; for now the built-in set is fixed.
@@ -188,7 +188,7 @@ approval_policy = "untrusted"
 If you want to be notified whenever a command fails, use "on-failure":
 
 ```toml
-# If the command fails when run in the sandbox, Code asks for permission to
+# If the command fails when run in the sandbox, Kay asks for permission to
 # retry the command outside the sandbox.
 approval_policy = "on-failure"
 ```
@@ -203,16 +203,16 @@ approval_policy = "on-request"
 Alternatively, you can have the model run until it is done, and never ask to run a command with escalated permissions:
 
 ```toml
-# User is never prompted: if the command fails, Code will automatically try
+# User is never prompted: if the command fails, Kay will automatically try
 # something out. Note the `exec` subcommand always uses this mode.
 approval_policy = "never"
 ```
 
 ## agents
 
-Use `[[agents]]` blocks to register additional CLI programs that Code can launch as peers. Each block maps a short `name` (referenced elsewhere in the config) to the command to execute, optional default flags, and environment variables.
+Use `[[agents]]` blocks to register additional CLI programs that Kay can launch as peers. Each block maps a short `name` (referenced elsewhere in the config) to the command to execute, optional default flags, and environment variables.
 
-> **Note:** Built-in model slugs (for example `code-gpt-5.4`, `claude-sonnet-4.5`) automatically inject the correct `--model` or `-m` flag. To avoid conflicting arguments, Code strips any `--model`/`-m` flags you place in `args`, `args_read_only`, or `args_write` before launching the agent. If you need a new model variant, add a slug in `code-rs/core/src/agent_defaults.rs` (or set an environment variable consumed by the CLI) rather than pinning the flag here.
+> **Note:** Built-in model slugs (for example `code-gpt-5.4`, `claude-sonnet-4.5`) automatically inject the correct `--model` or `-m` flag. To avoid conflicting arguments, Kay strips any `--model`/`-m` flags you place in `args`, `args_read_only`, or `args_write` before launching the agent. If you need a new model variant, add a slug in `code-rs/core/src/agent_defaults.rs` (or set an environment variable consumed by the CLI) rather than pinning the flag here.
 
 ```toml
 [[agents]]
@@ -227,9 +227,9 @@ env = { GEMINI_API_KEY = "..." }
 
 ## notice
 
-Code stores acknowledgement flags for one-time upgrade prompts inside a `[notice]`
+Kay stores acknowledgement flags for one-time upgrade prompts inside a `[notice]`
 table. These booleans allow you to suppress specific dialogs globally. When set
-to `true`, Code will no longer prompt about that migration.
+to `true`, Kay will no longer prompt about that migration.
 
 ```toml
 [notice]
@@ -284,7 +284,7 @@ Users can specify config values at multiple levels. Order of precedence is as fo
 1. custom command-line argument, e.g., `--model o3`
 2. as part of a profile, where the `--profile` is specified via a CLI (or in the config file itself)
 3. as an entry in `config.toml`, e.g., `model = "o3"`
-4. the default value that comes with Code CLI (i.e., Code CLI defaults to `gpt-5.1-codex`)
+4. the default value that comes with Kay CLI (i.e., Kay CLI defaults to `gpt-5.1-codex`)
 
 ## model_reasoning_effort
 
@@ -319,7 +319,7 @@ Controls output length/detail on GPT‑5 family models when using the Responses 
 - `"medium"` (default when omitted)
 - `"high"`
 
-When set, Code includes a `text` object in the request payload with the configured verbosity, for example: `"text": { "verbosity": "low" }`.
+When set, Kay includes a `text` object in the request payload with the configured verbosity, for example: `"text": { "verbosity": "low" }`.
 
 Example:
 
@@ -340,7 +340,7 @@ model_supports_reasoning_summaries = true
 
 ## sandbox_mode
 
-Code executes model-generated shell commands inside an OS-level sandbox.
+Kay executes model-generated shell commands inside an OS-level sandbox.
 
 In most cases you can pick the desired behaviour with a single option:
 
@@ -352,9 +352,9 @@ sandbox_mode = "read-only"
 The default policy is `read-only`, which means commands can read any file on
 disk, but attempts to write a file or access the network will be blocked.
 
-A more relaxed policy is `workspace-write`. When specified, the current working directory for the Code task will be writable (as well as `$TMPDIR` on macOS). Note that the CLI defaults to using the directory where it was spawned as `cwd`, though this can be overridden using `--cwd/-C`.
+A more relaxed policy is `workspace-write`. When specified, the current working directory for the Kay task will be writable (as well as `$TMPDIR` on macOS). Note that the CLI defaults to using the directory where it was spawned as `cwd`, though this can be overridden using `--cwd/-C`.
 
-Historically, Code allowed writes inside the top‑level `.git/` folder when using `workspace-write`. That permissive behavior is the default again. If you want to protect `.git` under `workspace-write`, you can opt out via `[sandbox_workspace_write].allow_git_writes = false`.
+Historically, Kay allowed writes inside the top‑level `.git/` folder when using `workspace-write`. That permissive behavior is the default again. If you want to protect `.git` under `workspace-write`, you can opt out via `[sandbox_workspace_write].allow_git_writes = false`.
 
 ```toml
 # same as `--sandbox workspace-write`
@@ -362,7 +362,7 @@ sandbox_mode = "workspace-write"
 
 # Extra settings that only apply when `sandbox = "workspace-write"`.
 [sandbox_workspace_write]
-# By default, the cwd for the Code session will be writable as well as $TMPDIR
+# By default, the cwd for the Kay session will be writable as well as $TMPDIR
 # (if set) and /tmp (if it exists). Setting the respective options to `true`
 # will override those defaults.
 exclude_tmpdir_env_var = false
@@ -386,30 +386,30 @@ To disable sandboxing altogether, specify `danger-full-access` like so:
 sandbox_mode = "danger-full-access"
 ```
 
-This is reasonable to use if Code is running in an environment that provides its own sandboxing (such as a Docker container) such that further sandboxing is unnecessary.
+This is reasonable to use if Kay is running in an environment that provides its own sandboxing (such as a Docker container) such that further sandboxing is unnecessary.
 
-Though using this option may also be necessary if you try to use Code in environments where its native sandboxing mechanisms are unsupported, such as older Linux kernels or on Windows.
+Though using this option may also be necessary if you try to use Kay in environments where its native sandboxing mechanisms are unsupported, such as older Linux kernels or on Windows.
 
 ## Approval presets
 
-Code provides three main Approval Presets:
+Kay provides three main Approval Presets:
 
-- Read Only: Code can read files and answer questions; edits, running commands, and network access require approval.
-- Auto: Code can read files, make edits, and run commands in the workspace without approval; asks for approval outside the workspace or for network access.
+- Read Only: Kay can read files and answer questions; edits, running commands, and network access require approval.
+- Auto: Kay can read files, make edits, and run commands in the workspace without approval; asks for approval outside the workspace or for network access.
 - Full Access: Full disk and network access without prompts; extremely risky.
 
-You can further customize how Code runs at the command line using the `--ask-for-approval` and `--sandbox` options.
+You can further customize how Kay runs at the command line using the `--ask-for-approval` and `--sandbox` options.
 
 ## MCP Servers
 
-You can configure Code to use [MCP servers](https://modelcontextprotocol.io/about) to give Code access to external applications, resources, or services such as [Playwright](https://github.com/microsoft/playwright-mcp), [Figma](https://www.figma.com/blog/design-context-everywhere-you-build/), [documentation](https://context7.com/), and [more](https://github.com/mcp?utm_source=blog-source&utm_campaign=mcp-registry-server-launch-2025).
+You can configure Kay to use [MCP servers](https://modelcontextprotocol.io/about) to give Kay access to external applications, resources, or services such as [Playwright](https://github.com/microsoft/playwright-mcp), [Figma](https://www.figma.com/blog/design-context-everywhere-you-build/), [documentation](https://context7.com/), and [more](https://github.com/mcp?utm_source=blog-source&utm_campaign=mcp-registry-server-launch-2025).
 
 ### Server transport configuration
 
-Each server may set `startup_timeout_sec` to adjust how long Code waits for it to start and respond to a tools listing. The default is `10` seconds.
-Similarly, `tool_timeout_sec` limits how long individual tool calls may run (default: `60` seconds), and Code will fall back to the default when this value is omitted.
+Each server may set `startup_timeout_sec` to adjust how long Kay waits for it to start and respond to a tools listing. The default is `10` seconds.
+Similarly, `tool_timeout_sec` limits how long individual tool calls may run (default: `60` seconds), and Kay will fall back to the default when this value is omitted.
 
-This config option is comparable to how Claude and Cursor define `mcpServers` in their respective JSON config files, though because Code uses TOML for its config language, the format is slightly different. For example, the following config in JSON:
+This config option is comparable to how Claude and Cursor define `mcpServers` in their respective JSON config files, though because Kay uses TOML for its config language, the format is slightly different. For example, the following config in JSON:
 
 ```json
 {
@@ -425,7 +425,7 @@ This config option is comparable to how Claude and Cursor define `mcpServers` in
 }
 ```
 
-Should be represented as follows in `~/.code/config.toml` (Code also reads the host `~/.codex/config.toml` overlay if it exists):
+Should be represented as follows in `~/.code/config.toml` (Kay also reads the host `~/.codex/config.toml` overlay if it exists):
 
 ```toml
 # The top-level table name must be `mcp_servers`
@@ -436,7 +436,7 @@ command = "npx"
 args = ["-y", "mcp-server"]
 # Optional: propagate additional env vars to the MCP server.
 # A default whitelist of env vars will be propagated to the MCP server.
-# https://github.com/just-every/code/blob/main/code-rs/rmcp-client/src/utils.rs#L82
+# https://github.com/alo-labs/kay/blob/main/code-rs/rmcp-client/src/utils.rs#L82
 env = { "API_KEY" = "value" }
 ```
 
@@ -461,9 +461,9 @@ tool_timeout_sec = 30
 
 ## subagents
 
-Sub-agents are orchestrated helper workflows you can trigger with slash commands (for example `/plan`, `/solve`, `/code`). Each entry under `[[subagents.commands]]` defines the slash command name, whether spawned agents run in read-only mode, which `agents` to launch, and extra guidance for both the orchestrator (Code) and the individual agents.
+Sub-agents are orchestrated helper workflows you can trigger with slash commands (for example `/plan`, `/solve`, `/kay`). Each entry under `[[subagents.commands]]` defines the slash command name, whether spawned agents run in read-only mode, which `agents` to launch, and extra guidance for both the orchestrator (Kay) and the individual agents.
 
-By default (when no `[[agents]]` are configured) Code advertises these model slugs for multi-agent runs: `code-gpt-5.4`, `code-gpt-5.3-codex`, `claude-opus-4.6`, `gemini-3-pro`, `code-gpt-5.1-codex-mini`, `claude-sonnet-4.5`, `gemini-3-flash`, `claude-haiku-4.5`, and `qwen-3-coder`. The cloud counterpart, `cloud-gpt-5.1-codex-max`, only appears when `CODE_ENABLE_CLOUD_AGENT_MODEL=1` is set. (`gemini` resolves to `gemini-3-flash`.) You can override the list by defining `[[agents]]` entries or by specifying `agents = [ … ]` on a given `[[subagents.commands]]` entry.
+By default (when no `[[agents]]` are configured) Kay advertises these model slugs for multi-agent runs: `code-gpt-5.4`, `code-gpt-5.3-codex`, `claude-opus-4.6`, `gemini-3-pro`, `code-gpt-5.1-codex-mini`, `claude-sonnet-4.5`, `gemini-3-flash`, `claude-haiku-4.5`, and `qwen-3-coder`. The cloud counterpart, `cloud-gpt-5.1-codex-max`, only appears when `CODE_ENABLE_CLOUD_AGENT_MODEL=1` is set. (`gemini` resolves to `gemini-3-flash`.) You can override the list by defining `[[agents]]` entries or by specifying `agents = [ … ]` on a given `[[subagents.commands]]` entry.
 
 ```toml
 [[subagents.commands]]
@@ -474,7 +474,7 @@ orchestrator-instructions = "Coordinate a context sweep before coding. Ask each 
 agent-instructions = "Summarize the repository areas most relevant to the user's request. List file paths, rationale, and suggested follow-up scripts to run. Keep the reply under 2,000 tokens."
 ```
 
-With the example above you can run `/context` inside the TUI to create a summary cell that the main `/code` turn can reference later. Because `context-collector` is an ordinary agent, any command-line static analysis utilities it invokes (such as your blast radius tool) should be described in the `agent-instructions` so the orchestrator launches the right workflow. You can also customise the built-in commands by providing an entry with the same `name` (`plan`, `solve`, or `code`) and pointing their `agents` list at your long-context helper.
+With the example above you can run `/context` inside the TUI to create a summary cell that the main `/kay` turn can reference later. Because `context-collector` is an ordinary agent, any command-line static analysis utilities it invokes (such as your blast radius tool) should be described in the `agent-instructions` so the orchestrator launches the right workflow. You can also customise the built-in commands by providing an entry with the same `name` (`plan`, `solve`, or `kay`) and pointing their `agents` list at your long-context helper.
 
 ## validation
 
@@ -509,7 +509,7 @@ Functional checks stay enabled by default to catch regressions in the touched
 code, while stylistic linters default to off so teams can opt in when they want
 formatting feedback.
 
-With functional checks enabled, Code automatically detects the languages
+With functional checks enabled, Kay automatically detects the languages
 affected by a patch and schedules the appropriate tools:
 
 - `cargo-check` for Rust workspaces (scoped to touched manifests)
@@ -522,7 +522,7 @@ affected by a patch and schedules the appropriate tools:
 Each entry under `[validation.tools]` can be toggled to disable a specific tool
 or to opt particular checks back in after disabling the entire group.
 
-When enabled, Code can also run `actionlint` against modified workflows. This
+When enabled, Kay can also run `actionlint` against modified workflows. This
 is configured under `[github]`:
 
 ```toml
@@ -534,7 +534,7 @@ actionlint_path = "/usr/local/bin/actionlint"
 
 ## disable_response_storage
 
-Currently, customers whose accounts are set to use Zero Data Retention (ZDR) must set `disable_response_storage` to `true` so that Code uses an alternative to the Responses API that works with ZDR:
+Currently, customers whose accounts are set to use Zero Data Retention (ZDR) must set `disable_response_storage` to `true` so that Kay uses an alternative to the Responses API that works with ZDR:
 
 ```toml
 disable_response_storage = true
@@ -568,7 +568,7 @@ code mcp logout SERVER_NAME
 
 ## shell_environment_policy
 
-Code spawns subprocesses (e.g. when executing a `local_shell` tool-call suggested by the assistant). By default it now passes **your full environment** to those subprocesses. You can tune this behavior via the **`shell_environment_policy`** block in `config.toml`:
+Kay spawns subprocesses (e.g. when executing a `local_shell` tool-call suggested by the assistant). By default it now passes **your full environment** to those subprocesses. You can tune this behavior via the **`shell_environment_policy`** block in `config.toml`:
 
 ```toml
 [shell_environment_policy]
@@ -587,7 +587,7 @@ include_only = ["PATH", "HOME"]
 | Field                     | Type                 | Default | Description                                                                                                                                     |
 | ------------------------- | -------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | `inherit`                 | string               | `all`   | Starting template for the environment:<br>`all` (clone full parent env), `core` (`HOME`, `PATH`, `USER`, …), or `none` (start empty).           |
-| `ignore_default_excludes` | boolean              | `true`  | When `false`, Code removes any var whose **name** contains `KEY`, `SECRET`, or `TOKEN` (case-insensitive) before other rules run; defaults to `true` so this filter is disabled by default.              |
+| `ignore_default_excludes` | boolean              | `true`  | When `false`, Kay removes any var whose **name** contains `KEY`, `SECRET`, or `TOKEN` (case-insensitive) before other rules run; defaults to `true` so this filter is disabled by default.              |
 | `exclude`                 | array<string>        | `[]`    | Case-insensitive glob patterns to drop after the default filter.<br>Examples: `"AWS_*"`, `"AZURE_*"`.                                           |
 | `set`                     | table<string,string> | `{}`    | Explicit key/value overrides or additions – always win over inherited values.                                                                   |
 | `include_only`            | array<string>        | `[]`    | If non-empty, a whitelist of patterns; only variables that match _one_ pattern survive the final step. (Generally used with `inherit = "all"`.) |
@@ -610,7 +610,7 @@ Currently, `CODEX_SANDBOX_NETWORK_DISABLED=1` is also added to the environment, 
 
 ## otel
 
-Code can emit [OpenTelemetry](https://opentelemetry.io/) **log events** that
+Kay can emit [OpenTelemetry](https://opentelemetry.io/) **log events** that
 describe each run: outbound API requests, streamed responses, user input,
 tool-approval decisions, and the result of every tool invocation. Export is
 **disabled by default** so local runs remain self-contained. Opt in by adding an
@@ -623,7 +623,7 @@ exporter = "none"          # defaults to "none"; set to otlp-http or otlp-grpc t
 log_user_prompt = false    # defaults to false; redact prompt text unless explicitly enabled
 ```
 
-Code tags every exported event with `service.name = $ORIGINATOR` (the same
+Kay tags every exported event with `service.name = $ORIGINATOR` (the same
 value sent in the `originator` header, `code_cli_rs` by default), the CLI
 version, and an `env` attribute so downstream collectors can distinguish
 dev/staging/prod traffic. Only telemetry produced inside the `code_otel`
@@ -636,7 +636,7 @@ Every event shares a common set of metadata fields: `event.timestamp`,
 `conversation.id`, `app.version`, `auth_mode` (when available),
 `user.account_id` (when available), `terminal.type`, `model`, and `slug`.
 
-With OTEL enabled Code emits the following event types (in addition to the
+With OTEL enabled Kay emits the following event types (in addition to the
 metadata above):
 
 - `codex.conversation_starts`
@@ -730,14 +730,14 @@ If the exporter is `none` nothing is written anywhere; otherwise you must run or
 own collector. All exporters run on a background batch worker that is flushed on
 shutdown.
 
-If you build Code from source the OTEL crate is still behind an `otel` feature
+If you build Kay from source the OTEL crate is still behind an `otel` feature
 flag; the official prebuilt binaries ship with the feature enabled. When the
 feature is disabled the telemetry hooks become no-ops so the CLI continues to
 function without the extra dependencies.
 
 ## notify
 
-Specify a program that will be executed to get notified about events generated by Code. Note that the program will receive the notification argument as a string of JSON, e.g.:
+Specify a program that will be executed to get notified about events generated by Kay. Note that the program will receive the notification argument as a string of JSON, e.g.:
 
 ```json
 {
@@ -774,9 +774,9 @@ def main() -> int:
         case "agent-turn-complete":
             assistant_message = notification.get("last-assistant-message")
             if assistant_message:
-                title = f"Code: {assistant_message}"
+                title = f"Kay: {assistant_message}"
             else:
-                title = "Code: Turn Complete!"
+                title = "Kay: Turn Complete!"
             input_messages = notification.get("input_messages", [])
             message = " ".join(input_messages)
             title += message
@@ -806,18 +806,18 @@ if __name__ == "__main__":
     sys.exit(main())
 ```
 
-To have Code use this script for notifications, you would configure it via `notify` in `~/.code/config.toml` (Code also reads the host `~/.codex/config.toml` overlay) using the appropriate path to `notify.py` on your computer:
+To have Kay use this script for notifications, you would configure it via `notify` in `~/.code/config.toml` (Kay also reads the host `~/.codex/config.toml` overlay) using the appropriate path to `notify.py` on your computer:
 
 ```toml
 notify = ["python3", "/Users/mbolin/.code/notify.py"]
 ```
 
 > [!NOTE]
-> Use `notify` for automation and integrations: Code invokes your external program with a single JSON argument for each event, independent of the TUI. If you only want lightweight desktop notifications while using the TUI, prefer `tui.notifications`, which uses terminal escape codes and requires no external program. You can enable both; `tui.notifications` covers in‑TUI alerts (e.g., approval prompts), while `notify` is best for system‑level hooks or custom notifiers. Currently, `notify` emits only `agent-turn-complete`, whereas `tui.notifications` supports `agent-turn-complete` and `approval-requested` with optional filtering.
+> Use `notify` for automation and integrations: Kay invokes your external program with a single JSON argument for each event, independent of the TUI. If you only want lightweight desktop notifications while using the TUI, prefer `tui.notifications`, which uses terminal escape codes and requires no external program. You can enable both; `tui.notifications` covers in‑TUI alerts (e.g., approval prompts), while `notify` is best for system‑level hooks or custom notifiers. Currently, `notify` emits only `agent-turn-complete`, whereas `tui.notifications` supports `agent-turn-complete` and `approval-requested` with optional filtering.
 
 ## history
 
-By default, the Code CLI records messages sent to the model in `$CODE_HOME/history.jsonl` (legacy `$CODEX_HOME/history.jsonl` is also read). On UNIX, the file permissions are set to `o600`, so it should only be readable and writable by the owner.
+By default, the Kay CLI records messages sent to the model in `$CODE_HOME/history.jsonl` (legacy `$CODEX_HOME/history.jsonl` is also read). On UNIX, the file permissions are set to `o600`, so it should only be readable and writable by the owner.
 
 To disable this behavior, configure `[history]` as follows:
 
@@ -830,7 +830,7 @@ persistence = "none"  # "save-all" is the default value
 
 The structured environment context timeline (baseline + deltas + browser
 snapshots) is gated behind the `CTX_UI` environment flag. Set `CTX_UI=1`
-before launching Code to exercise the preview flow. Outside of this
+before launching Kay to exercise the preview flow. Outside of this
 developer flag the classic `== System Status ==` payload remains in place.
 
 ## file_opener
@@ -847,11 +847,11 @@ Note this is **not** a general editor setting (like `$EDITOR`), as it only accep
 - `"cursor"`
 - `"none"` to explicitly disable this feature
 
-Currently, `"vscode"` is the default, though Code does not verify VS Code is installed. As such, `file_opener` may default to `"none"` or something else in the future.
+Currently, `"vscode"` is the default, though Kay does not verify VS Code is installed. As such, `file_opener` may default to `"none"` or something else in the future.
 
 ## hide_agent_reasoning
 
-Code intermittently emits "reasoning" events that show the model's internal "thinking" before it produces a final answer. Some users may find these events distracting, especially in CI logs or minimal terminal output.
+Kay intermittently emits "reasoning" events that show the model's internal "thinking" before it produces a final answer. Some users may find these events distracting, especially in CI logs or minimal terminal output.
 
 Setting `hide_agent_reasoning` to `true` suppresses these events in **both** the TUI as well as the headless `exec` sub-command:
 
@@ -878,7 +878,7 @@ show_raw_agent_reasoning = true  # defaults to false
 
 The size of the context window for the model, in tokens.
 
-In general, Code knows the context window for the most common OpenAI models, but if you are using a new model with an old version of the Code CLI, then you can use `model_context_window` to tell Code what value to use to determine how much context is left during a conversation.
+In general, Kay knows the context window for the most common OpenAI models, but if you are using a new model with an old version of the Kay CLI, then you can use `model_context_window` to tell Kay what value to use to determine how much context is left during a conversation.
 
 ## model_max_output_tokens
 
@@ -921,14 +921,14 @@ notifications = [ "approval-requested" ]
 ```
 
 > [!NOTE]
-> Code emits desktop notifications using terminal escape codes. Not all terminals support these (notably, macOS Terminal.app and VS Code's terminal do not support custom notifications. iTerm2, Ghostty and WezTerm do support these notifications).
+> Kay emits desktop notifications using terminal escape codes. Not all terminals support these (notably, macOS Terminal.app and VS Code's terminal do not support custom notifications. iTerm2, Ghostty and WezTerm do support these notifications).
 
 > [!NOTE]
 > `tui.notifications` is built‑in and limited to the TUI session. For programmatic or cross‑environment notifications—or to integrate with OS‑specific notifiers—use the top-level `notify` option to run an external program that receives event JSON. The two settings are independent and can be used together.
 
 ### Auto Drive Observer
 
-Code keeps long-running Auto Drive sessions in check with a lightweight observer thread. Configure its cadence with the top-level `auto_drive_observer_cadence` key (default `5`). After every *n* completed requests the observer reviews the coordinator/CLI transcript, emits telemetry, and—if necessary—suggests a corrected prompt or follow-up guidance. Setting the value to `0` disables the observer entirely.
+Kay keeps long-running Auto Drive sessions in check with a lightweight observer thread. Configure its cadence with the top-level `auto_drive_observer_cadence` key (default `5`). After every *n* completed requests the observer reviews the coordinator/CLI transcript, emits telemetry, and—if necessary—suggests a corrected prompt or follow-up guidance. Setting the value to `0` disables the observer entirely.
 
 ```toml
 # Run the observer after every third Auto Drive request
@@ -998,7 +998,7 @@ name = "unit"
 run = "cargo test --lib"
 ```
 
-Project commands appear in the TUI via `/cmd <name>` and run through the standard execution pipeline. During execution Code sets `CODE_PROJECT_COMMAND_NAME`, `CODE_PROJECT_COMMAND_DESCRIPTION` (when provided), and `CODE_SESSION_CWD` so scripts can tailor their behaviour.
+Project commands appear in the TUI via `/cmd <name>` and run through the standard execution pipeline. During execution Kay sets `CODE_PROJECT_COMMAND_NAME`, `CODE_PROJECT_COMMAND_DESCRIPTION` (when provided), and `CODE_SESSION_CWD` so scripts can tailor their behaviour.
 
 ## Config reference
 

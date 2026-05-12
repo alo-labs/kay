@@ -1,9 +1,10 @@
 ---
 source: tui/tests/vt100_chatwidget_snapshot.rs
+assertion_line: 781
 expression: "frames.join(\"\\n---FRAME---\\n\")"
 ---
  +----------------------------------------------------------------------------+
- |                                 Every Code                                 |
+ |                                     Kay                                    |
  +----------------------------------------------------------------------------+
 
  • I can help with various tasks including:
@@ -22,7 +23,7 @@ expression: "frames.join(\"\\n---FRAME---\\n\")"
 
 ---FRAME---
  +----------------------------------------------------------------------------+
- |                                 Every Code                                 |
+ |                                     Kay                                    |
  +----------------------------------------------------------------------------+
 
  • I can help with various tasks including:
@@ -41,7 +42,7 @@ expression: "frames.join(\"\\n---FRAME---\\n\")"
 
 ---FRAME---
  +----------------------------------------------------------------------------+
- |                                 Every Code                                 |
+ |                                     Kay                                    |
  +----------------------------------------------------------------------------+
 
  • I can help with various tasks including:

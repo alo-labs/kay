@@ -419,7 +419,7 @@ impl MessageProcessor {
 
         let auth_methods = serde_json::json!([{
             "id": "code-login",
-            "name": "Use Code login",
+            "name": "Use Kay login",
             "description": "Run `code login` (ChatGPT or API key) before connecting."
         }]);
 
@@ -1667,7 +1667,7 @@ fn default_session_modes() -> acp::SessionModeState {
     let mode = acp::SessionMode {
         id: mode_id.clone(),
         name: "Default".to_string(),
-        description: Some("Code prompts before executing tools or applying patches.".to_string()),
+        description: Some("Kay prompts before executing tools or applying patches.".to_string()),
         meta: None,
     };
 

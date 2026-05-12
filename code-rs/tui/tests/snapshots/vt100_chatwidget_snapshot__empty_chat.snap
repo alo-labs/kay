@@ -1,13 +1,14 @@
 ---
 source: tui/tests/vt100_chatwidget_snapshot.rs
+assertion_line: 494
 expression: output
 ---
  +----------------------------------------------------------------------------+
- |                                 Every Code                                 |
+ |                                     Kay                                    |
  +----------------------------------------------------------------------------+
 
 
- ★   /code - perform a coding task (multiple agents)
+ ★   /kay - perform a coding task (multiple agents)
 
 
  • Hello! How can I help you today?

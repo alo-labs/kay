@@ -448,7 +448,7 @@ fn create_log_file(
     config: &Config,
     conversation_id: ConversationId,
 ) -> std::io::Result<LogFileInfo> {
-    // Resolve ~/.code/sessions/YYYY/MM/DD and create it if missing (Code still
+    // Resolve ~/.code/sessions/YYYY/MM/DD and create it if missing (Kay still
     // reads legacy ~/.codex/sessions/ paths).
     let timestamp = OffsetDateTime::now_local()
         .map_err(|e| IoError::other(format!("failed to get local time: {e}")))?;

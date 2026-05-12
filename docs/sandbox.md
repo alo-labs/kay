@@ -2,16 +2,16 @@
 
 ### Approval modes
 
-We've chosen a powerful default for how Code works on your computer: `Auto`. In this approval mode, Code can read files, make edits, and run commands in the working directory automatically. However, Code will need your approval to work outside the working directory or access network.
+We've chosen a powerful default for how Kay works on your computer: `Auto`. In this approval mode, Kay can read files, make edits, and run commands in the working directory automatically. However, Kay will need your approval to work outside the working directory or access network.
 
 When you just want to chat, or if you want to plan before diving in, you can switch to `Read Only` mode with the `/approvals` command.
 
-If you need Code to read files, make edits, and run commands with network access, without approval, you can use `Full Access`. Exercise caution before doing so.
+If you need Kay to read files, make edits, and run commands with network access, without approval, you can use `Full Access`. Exercise caution before doing so.
 
 #### Defaults and recommendations
 
-- Code runs in a sandbox by default with strong guardrails: it prevents editing files outside the workspace and blocks network access unless enabled.
-- On launch, Code detects whether the folder is version-controlled and recommends:
+- Kay runs in a sandbox by default with strong guardrails: it prevents editing files outside the workspace and blocks network access unless enabled.
+- On launch, Kay detects whether the folder is version-controlled and recommends:
   - Version-controlled folders: `Auto` (workspace write + on-request approvals)
   - Non-version-controlled folders: `Read Only`
 - The workspace includes the current directory and temporary directories like `/tmp`. Use the `/status` command to see which directories are in the workspace.
@@ -21,16 +21,16 @@ If you need Code to read files, make edits, and run commands with network access
 
 ### Can I run without ANY approvals?
 
-Yes, you can disable all approval prompts with `--ask-for-approval never`. This option works with all `--sandbox` modes, so you still have full control over Code's level of autonomy. It will make its best attempt with whatever constraints you provide.
+Yes, you can disable all approval prompts with `--ask-for-approval never`. This option works with all `--sandbox` modes, so you still have full control over Kay's level of autonomy. It will make its best attempt with whatever constraints you provide.
 
 ### Common sandbox + approvals combinations
 
 | Intent                             | Flags                                                                                       | Effect                                                                                                                                                |
 | ---------------------------------- | ------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Safe read-only browsing            | `--sandbox read-only --ask-for-approval on-request`                                         | Code can read files and answer questions. Code requires approval to make edits, run commands, or access network.                                      |
+| Safe read-only browsing            | `--sandbox read-only --ask-for-approval on-request`                                         | Kay can read files and answer questions. Kay requires approval to make edits, run commands, or access network.                                      |
 | Read-only non-interactive (CI)     | `--sandbox read-only --ask-for-approval never`                                              | Reads only; never escalates                                                                                                                           |
-| Let it edit the repo, ask if risky | `--sandbox workspace-write --ask-for-approval on-request`                                   | Code can read files, make edits, and run commands in the workspace. Code requires approval for actions outside the workspace or for network access.   |
-| Auto (preset)                      | `--full-auto` (equivalent to `--sandbox workspace-write` + `--ask-for-approval on-failure`) | Code can read files, make edits, and run commands in the workspace. Code requires approval when a sandboxed command fails or needs escalation.        |
+| Let it edit the repo, ask if risky | `--sandbox workspace-write --ask-for-approval on-request`                                   | Kay can read files, make edits, and run commands in the workspace. Kay requires approval for actions outside the workspace or for network access.   |
+| Auto (preset)                      | `--full-auto` (equivalent to `--sandbox workspace-write` + `--ask-for-approval on-failure`) | Kay can read files, make edits, and run commands in the workspace. Kay requires approval when a sandboxed command fails or needs escalation.        |
 | YOLO (not recommended)             | `--dangerously-bypass-approvals-and-sandbox` (alias: `--yolo`)                              | No sandbox; no prompts                                                                                                                                |
 
 > Note: In `workspace-write`, network is disabled by default unless enabled in config (`[sandbox_workspace_write].network_access = true`).
@@ -63,9 +63,9 @@ approval_policy = "never"
 sandbox_mode    = "read-only"
 ```
 
-### Experimenting with the Code Sandbox
+### Experimenting with the Kay Sandbox
 
-To test to see what happens when a command is run under the sandbox provided by Code, we provide the following subcommands in the CLI:
+To test to see what happens when a command is run under the sandbox provided by Kay, we provide the following subcommands in the CLI:
 
 ```
 # macOS
@@ -81,7 +81,7 @@ code debug landlock [--full-auto] [COMMAND]...
 
 ### Platform sandboxing details
 
-The mechanism Code uses to implement the sandbox policy depends on your OS:
+The mechanism Kay uses to implement the sandbox policy depends on your OS:
 
 - **macOS 12+** uses **Apple Seatbelt** and runs commands using `sandbox-exec` with a profile (`-p`) that corresponds to the `--sandbox` that was specified.
 - **Linux** uses a combination of Landlock/seccomp APIs to enforce the `sandbox` configuration.

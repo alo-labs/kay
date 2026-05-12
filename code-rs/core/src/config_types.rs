@@ -482,15 +482,15 @@ pub struct AllowedCommand {
     pub match_kind: AllowedCommandMatchKind,
 }
 
-/// Configuration for a subagent slash command (e.g., plan/solve/code or custom)
+/// Configuration for a subagent slash command (e.g., plan/solve/kay or custom)
 #[derive(Deserialize, Debug, Clone, PartialEq, Default)]
 #[serde(rename_all = "kebab-case")]
 pub struct SubagentCommandConfig {
-    /// Name of the command (e.g., "plan", "solve", "code", or custom)
+    /// Name of the command (e.g., "plan", "solve", "kay", or custom)
     pub name: String,
 
     /// Whether agents launched for this command should run in read-only mode
-    /// Defaults: plan/solve=true, code=false (applied if not specified here)
+    /// Defaults: plan/solve=true, kay=false (applied if not specified here)
     #[serde(default)]
     pub read_only: bool,
 
@@ -499,7 +499,7 @@ pub struct SubagentCommandConfig {
     #[serde(default)]
     pub agents: Vec<String>,
 
-    /// Extra instructions to append to the orchestrator (Code) prompt.
+    /// Extra instructions to append to the orchestrator (Kay) prompt.
     #[serde(default)]
     pub orchestrator_instructions: Option<String>,
 
@@ -761,7 +761,7 @@ impl UriBasedFileOpener {
 }
 
 /// Settings that govern if and what will be written to `~/.code/history.jsonl`
-/// (Code still reads legacy `~/.codex/history.jsonl`).
+/// (Kay still reads legacy `~/.codex/history.jsonl`).
 #[derive(Deserialize, Debug, Clone, PartialEq, Default)]
 pub struct History {
     /// If true, history entries will not be written to disk.

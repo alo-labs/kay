@@ -7,8 +7,9 @@ Silver Bullet uses this file as the human-readable policy companion to `docs/doc
 - Canonical docs for this repo live under `docs/`
 - Brownfield docs that already exist are preserved
 - New SB-scaffolded docs are added alongside the existing docs tree instead of replacing it
-- `docs/task-doc-checklist.json` is the freshness ledger: `updated` means the file was touched in the current session
-- For task-driven code changes, the freshness ledger should reflect any governed doc that documents the affected surface, such as provider registration or resume compatibility
+- `docs/task-doc-checklist.json` is the freshness ledger: `updated` means the file was touched in the current session, and the ledger itself must be refreshed in the same session as any governed docs it covers
+- For narrow runtime work, the freshness ledger should reflect the docs that were actually refreshed in the current session, plus any directly affected governed docs
+- Bootstrap inventory docs remain governed, but they should not block unrelated runtime work unless the change touches their documented behavior
 
 ## Governed Documents
 
@@ -24,6 +25,7 @@ The initial SB docs set for this init includes:
 - `docs/workflows/devops-cycle.md`
 - `docs/doc-scheme.md`
 - `docs/doc-scheme.json`
+- `docs/slash-commands.md`
 - `docs/task-doc-checklist.json`
 
 ## Maintenance Rules

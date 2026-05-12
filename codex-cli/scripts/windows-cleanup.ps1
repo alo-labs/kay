@@ -9,7 +9,7 @@ Usage (PowerShell):
 
 $ErrorActionPreference = 'SilentlyContinue'
 
-Write-Host "Stopping running Code/Coder processes..."
+Write-Host "Stopping running Kay/Coder processes..."
 taskkill /IM code-x86_64-pc-windows-msvc.exe /F 2>$null | Out-Null
 taskkill /IM code.exe /F 2>$null | Out-Null
 taskkill /IM coder.exe /F 2>$null | Out-Null
@@ -28,5 +28,5 @@ Get-ChildItem -LiteralPath (Join-Path $npmRoot "@just-every") -Force -ErrorActio
     try { Remove-Item -LiteralPath $_.FullName -Recurse -Force -ErrorAction Stop } catch {}
   }
 
-Write-Host "Cleanup complete. You can now run: npm install -g @just-every/code@latest"
+Write-Host "Cleanup complete. You can now run: npm install -g @alo-labs/kay@latest"
 

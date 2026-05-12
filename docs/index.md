@@ -1,6 +1,6 @@
-# Every Code Documentation
+# Kay Documentation
 
-Use these docs to install, configure, and operate Every Code (Code).
+Use these docs to install, configure, and operate Kay.
 
 ## Start Here
 - [Getting started](getting-started.md)
@@ -8,7 +8,7 @@ Use these docs to install, configure, and operate Every Code (Code).
 - [Authentication](authentication.md)
 - [FAQ](faq.md)
 
-## Using Code
+## Using Kay
 - [Executing commands](exec.md)
 - [Execution policy](execpolicy.md)
 - [Slash commands](slash-commands.md)

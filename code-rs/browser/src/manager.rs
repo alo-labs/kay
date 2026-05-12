@@ -54,7 +54,7 @@ impl BrowserLaunchLockFile {
                 Err(err) if err.kind() == std::io::ErrorKind::WouldBlock => {
                     if start.elapsed() >= timeout {
                         return Err(BrowserError::CdpError(format!(
-                            "Timed out waiting for browser launch lock at {} (another Code instance may be launching a browser).",
+                            "Timed out waiting for browser launch lock at {} (another Kay instance may be launching a browser).",
                             lock_path.display()
                         )));
                     }
@@ -854,7 +854,7 @@ impl BrowserManager {
         info!("Launching new browser instance");
         // Prevent redundant browser launches within the same process.
         let _launch_guard = INTERNAL_BROWSER_LAUNCH_GUARD.lock().await;
-        // Also serialize launches across Code processes; concurrent Chromium spawns
+        // Also serialize launches across Kay processes; concurrent Chromium spawns
         // are a common source of transient EAGAIN/ENOMEM failures on macOS.
         let _launch_lock = BrowserLaunchLockFile::acquire(Duration::from_secs(30)).await?;
 

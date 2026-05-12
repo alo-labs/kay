@@ -1,4 +1,4 @@
-## @just-every/code v0.6.100
+## @alo-labs/kay v0.6.100
 
 This release adds OpenCode Go as a built-in provider, normalizes provider-prefixed model slugs across request paths, and broadens model-adaptation seams so provider-specific plugins can stay configuration-driven.
 
@@ -12,8 +12,8 @@ This release adds OpenCode Go as a built-in provider, normalizes provider-prefix
 ### Install
 
 ```bash
-npm install -g @just-every/code@latest
+npm install -g @alo-labs/kay@latest
 code
 ```
 
-Compare: https://github.com/just-every/code/compare/v0.6.99...v0.6.100
+Compare: https://github.com/alo-labs/kay/compare/v0.6.99...v0.6.100

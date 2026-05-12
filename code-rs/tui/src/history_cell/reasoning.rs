@@ -429,7 +429,7 @@ fn sections_from_entries(lines: &[ReasoningLineEntry]) -> Vec<ReasoningSection> 
             idx = next_idx;
             if let Some(block) = block_opt {
                 if !summary_set {
-                    if let ReasoningBlock::Code { content, .. } = &block {
+                    if let ReasoningBlock::Kay { content, .. } = &block {
                         if let Some(first_line) = content.lines().find(|l| !l.trim().is_empty()) {
                             current.summary = Some(vec![InlineSpan {
                                 text: first_line.trim().to_string(),
@@ -748,7 +748,7 @@ fn extract_code_block(
     }
 
     (
-        Some(ReasoningBlock::Code {
+        Some(ReasoningBlock::Kay {
             language: lang_label,
             content,
         }),
@@ -814,7 +814,7 @@ fn sections_to_ratatui_lines(
                     }
                     out.push(Line::from(line_spans));
                 }
-                ReasoningBlock::Code { content, .. } => {
+                ReasoningBlock::Kay { content, .. } => {
                     for line in content.lines() {
                         out.push(Line::from(Span::styled(
                             line.to_string(),

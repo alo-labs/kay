@@ -88,7 +88,7 @@ download_file() {
     return
   fi
 
-  echo "curl or wget is required to install Code." >&2
+  echo "curl or wget is required to install Kay." >&2
   exit 1
 }
 
@@ -105,7 +105,7 @@ download_text() {
     return
   fi
 
-  echo "curl or wget is required to install Code." >&2
+  echo "curl or wget is required to install Kay." >&2
   exit 1
 }
 
@@ -185,7 +185,7 @@ file_sha256() {
     return
   fi
 
-  echo "sha256sum, shasum, or openssl is required to verify the Code download." >&2
+  echo "sha256sum, shasum, or openssl is required to verify the Kay download." >&2
   exit 1
 }
 
@@ -195,7 +195,7 @@ verify_archive_digest() {
   actual_digest="$(file_sha256 "$archive_path")"
 
   if [ "$actual_digest" != "$expected_digest" ]; then
-    echo "Downloaded Code archive checksum did not match release metadata." >&2
+    echo "Downloaded Kay archive checksum did not match release metadata." >&2
     echo "expected: $expected_digest" >&2
     echo "actual:   $actual_digest" >&2
     exit 1
@@ -204,7 +204,7 @@ verify_archive_digest() {
 
 require_command() {
   if ! command -v "$1" >/dev/null 2>&1; then
-    echo "$1 is required to install Code." >&2
+    echo "$1 is required to install Kay." >&2
     exit 1
   fi
 }
@@ -221,7 +221,7 @@ resolve_version() {
   resolved="$(printf '%s\n' "$release_json" | sed -n 's/.*"tag_name":[[:space:]]*"v\([^"]*\)".*/\1/p' | head -n 1)"
 
   if [ -z "$resolved" ]; then
-    echo "Failed to resolve the latest Code release version." >&2
+    echo "Failed to resolve the latest Kay release version." >&2
     exit 1
   fi
 
@@ -262,8 +262,8 @@ add_to_path() {
 
   profile="$(pick_profile)"
   path_profile="$profile"
-  begin_marker="# >>> Code installer >>>"
-  end_marker="# <<< Code installer <<<"
+  begin_marker="# >>> Kay installer >>>"
+  end_marker="# <<< Kay installer <<<"
   path_line="export PATH=\"$BIN_DIR:\$PATH\""
 
   if [ -f "$profile" ] && grep -F "$begin_marker" "$profile" >/dev/null 2>&1; then
@@ -539,8 +539,8 @@ print_launch_instructions() {
 }
 
 maybe_launch_codex_now() {
-  if prompt_yes_no "Start Code now?"; then
-    step "Launching Code"
+  if prompt_yes_no "Start Kay now?"; then
+    step "Launching Kay"
     "$BIN_PATH"
   fi
 }
@@ -555,8 +555,8 @@ detect_conflicting_install() {
 
   conflict_manager="$manager"
   conflict_path="$existing_path"
-  step "Detected existing $manager-managed Code at $existing_path"
-  warn "Multiple managed Code installs can be ambiguous because PATH order decides which one runs."
+  step "Detected existing $manager-managed Kay at $existing_path"
+  warn "Multiple managed Kay installs can be ambiguous because PATH order decides which one runs."
 }
 
 handle_conflicting_install() {
@@ -569,20 +569,20 @@ handle_conflicting_install() {
       uninstall_cmd="brew uninstall --cask code"
       ;;
     bun)
-      uninstall_cmd="bun remove -g @just-every/code"
+      uninstall_cmd="bun remove -g @alo-labs/kay"
       ;;
     *)
-      uninstall_cmd="npm uninstall -g @just-every/code"
+      uninstall_cmd="npm uninstall -g @alo-labs/kay"
       ;;
   esac
 
-  if prompt_yes_no "Uninstall the existing $conflict_manager-managed Code now?"; then
+  if prompt_yes_no "Uninstall the existing $conflict_manager-managed Kay now?"; then
     step "Running: $uninstall_cmd"
     if ! sh -c "$uninstall_cmd"; then
-      warn "Failed to uninstall the existing $conflict_manager-managed Code. Continuing with the standalone install."
+      warn "Failed to uninstall the existing $conflict_manager-managed Kay. Continuing with the standalone install."
     fi
   else
-    warn "Leaving the existing $conflict_manager-managed Code installed. PATH order will determine which code runs."
+    warn "Leaving the existing $conflict_manager-managed Kay installed. PATH order will determine which code runs."
   fi
 }
 
@@ -597,7 +597,7 @@ install_release() {
 
   package_bin="$(find "$extracted_root" -maxdepth 1 -type f -name 'code-*' | head -n 1)"
   if [ -z "$package_bin" ]; then
-    echo "Could not find a release binary in the extracted Code archive." >&2
+    echo "Could not find a release binary in the extracted Kay archive." >&2
     exit 1
   fi
 
@@ -711,11 +711,11 @@ release_dir="$RELEASES_DIR/$release_name"
 current_version="$(current_installed_version)"
 
 if [ -n "$current_version" ] && [ "$current_version" != "$resolved_version" ]; then
-  step "Updating Code CLI from $current_version to $resolved_version"
+  step "Updating Kay CLI from $current_version to $resolved_version"
 elif [ -n "$current_version" ]; then
-  step "Updating Code CLI"
+  step "Updating Kay CLI"
 else
-  step "Installing Code CLI"
+  step "Installing Kay CLI"
 fi
 step "Detected platform: $platform_label"
 step "Resolved version: $resolved_version"
@@ -742,7 +742,7 @@ if ! release_dir_is_complete "$release_dir" "$resolved_version" "$vendor_target"
   archive_path="$tmp_dir/$asset"
   extract_dir="$tmp_dir/extract"
 
-  step "Downloading Code CLI"
+  step "Downloading Kay CLI"
   expected_digest="$(release_asset_digest "$asset" "$resolved_version")"
   download_file "$download_url" "$archive_path"
   verify_archive_digest "$archive_path" "$expected_digest"
@@ -777,5 +777,5 @@ case "$path_action" in
     ;;
 esac
 
-printf 'Code CLI %s installed successfully.\n' "$resolved_version"
+printf 'Kay CLI %s installed successfully.\n' "$resolved_version"
 maybe_launch_codex_now

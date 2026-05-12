@@ -12,7 +12,7 @@ You interact with the user through a terminal. You are producing plain text that
 - Never use nested bullets. Keep lists flat (single level). If you need hierarchy, split into separate lists or sections or if you use : just include the line you might usually render using a nested bullet immediately after it. For numbered lists, only use the `1. 2. 3.` style markers (with a period), never `1)`.
 - Headers are optional, only use them when you think they are necessary. If you do use them, use short Title Case (1-3 words) wrapped in **…**. Don't add a blank line.
 - Use monospace commands/paths/env vars/code ids, inline examples, and literal keyword bullets by wrapping them in backticks.
-- Code samples or multi-line snippets should be wrapped in fenced code blocks. Include an info string as often as possible.
+- Kay samples or multi-line snippets should be wrapped in fenced code blocks. Include an info string as often as possible.
 - File References: When referencing files in your response follow the below rules:
   * Use inline code to make file paths clickable.
   * Each reference should have a stand alone path. Even if it's the same file.

@@ -1,4 +1,4 @@
-name: Issue Code
+name: Issue Kay
 
 on:
   # Triggered by triage via repository_dispatch
@@ -235,7 +235,7 @@ jobs:
           for i in {1..30}; do if nc -z 127.0.0.1 5057; then break; else sleep 0.2; fi; done || true
 
 
-      - name: Run Code agent (workspace-write)
+      - name: Run Kay agent (workspace-write)
         id: run_agent
         continue-on-error: true
         shell: bash
@@ -273,7 +273,7 @@ jobs:
               STRICT_CARGO_HOME="1" \
               GIT_TERMINAL_PROMPT="0" \
               GIT_ASKPASS="/bin/false" \
-              npx -y @just-every/code@latest \
+              npx -y @alo-labs/kay@latest \
               exec \
               -s workspace-write \
               -c sandbox_workspace_write.network_access=true \

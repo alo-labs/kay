@@ -675,9 +675,9 @@ impl ChatWidget<'_> {
         }
         false
     }
-    fn format_code_bridge_call(&self, args: &JsonValue) -> Option<String> {
+    fn format_kay_bridge_call(&self, args: &JsonValue) -> Option<String> {
         let action = args.get("action")?.as_str()?.to_lowercase();
-        let mut out = String::from("Code Bridge\n");
+        let mut out = String::from("Kay Bridge\n");
         match action.as_str() {
             "subscribe" => {
                 out.push_str("└ Subscribe");
@@ -715,7 +715,7 @@ impl ChatWidget<'_> {
     fn format_tool_call_preview(&self, name: &str, arguments: &str) -> Option<String> {
         let parsed: JsonValue = serde_json::from_str(arguments).ok()?;
         match name {
-            "code_bridge" => self.format_code_bridge_call(&parsed),
+            "kay_bridge" => self.format_kay_bridge_call(&parsed),
             "kill" => self.format_kill_call(&parsed),
             _ => None,
         }
@@ -11989,7 +11989,7 @@ impl ChatWidget<'_> {
         let original_trimmed = original_text.trim();
         if original_trimmed.starts_with("/plan ")
             || original_trimmed.starts_with("/solve ")
-            || original_trimmed.starts_with("/code ")
+            || original_trimmed.starts_with("/kay ")
         {
             self.last_agent_prompt = Some(original_text.clone());
         }
@@ -12012,7 +12012,7 @@ impl ChatWidget<'_> {
                 // but allow any other saved subagent command to be executed here.
                 let is_builtin = matches!(
                     cmd_name.to_ascii_lowercase().as_str(),
-                    "plan" | "solve" | "code"
+                    "plan" | "solve" | "kay"
                 );
                 if has_custom && !is_builtin {
                     let res = code_core::slash_commands::format_subagent_command(
@@ -12068,8 +12068,8 @@ impl ChatWidget<'_> {
                     ("plan", Some(rest.trim().to_string()))
                 } else if let Some(rest) = trimmed.strip_prefix("/solve ") {
                     ("solve", Some(rest.trim().to_string()))
-                } else if let Some(rest) = trimmed.strip_prefix("/code ") {
-                    ("code", Some(rest.trim().to_string()))
+                } else if let Some(rest) = trimmed.strip_prefix("/kay ") {
+                    ("kay", Some(rest.trim().to_string()))
                 } else {
                     ("", None)
                 };
@@ -12728,7 +12728,7 @@ impl ChatWidget<'_> {
                     _ => (
                         format!("Snapshots disabled after Git error: {err}"),
                         Some(
-                            "Restart Code after resolving the issue to re-enable snapshots.".to_string(),
+                            "Restart Kay after resolving the issue to re-enable snapshots.".to_string(),
                         ),
                     ),
                 };
@@ -12925,7 +12925,7 @@ impl ChatWidget<'_> {
             }
         } else {
             lines.push(
-                "Snapshots are currently disabled. Resolve the Git issue and restart Code to re-enable them.".to_string(),
+                "Snapshots are currently disabled. Resolve the Git issue and restart Kay to re-enable them.".to_string(),
             );
         }
 
@@ -12945,7 +12945,7 @@ impl ChatWidget<'_> {
             Some(
                 "Restores workspace files only. Conversation history remains unchanged.".to_string(),
             ),
-            Some("Snapshots appear once Code captures a Git checkpoint.".to_string()),
+            Some("Snapshots appear once Kay captures a Git checkpoint.".to_string()),
             vec![
                 "No snapshot is available to restore.".to_string(),
                 "Run a command that modifies files to create the first snapshot.".to_string(),
@@ -13147,7 +13147,7 @@ impl ChatWidget<'_> {
     fn conversation_line(role: UndoPreviewRole, text: &str) -> Line<'static> {
         let (label, color) = match role {
             UndoPreviewRole::User => ("You", crate::colors::text_bright()),
-            UndoPreviewRole::Assistant => ("Code", crate::colors::primary()),
+            UndoPreviewRole::Assistant => ("Kay", crate::colors::primary()),
         };
         let label_span = Span::styled(
             format!("{label}: "),
@@ -16019,9 +16019,9 @@ impl ChatWidget<'_> {
                     .unwrap_or("")
                     .trim();
                 let banner = if hint.is_empty() {
-                    ">> Code review started <<".to_string()
+                    ">> Kay review started <<".to_string()
                 } else {
-                    format!(">> Code review started: {hint} <<")
+                    format!(">> Kay review started: {hint} <<")
                 };
                 self.active_review_hint = review_request.user_facing_hint.clone();
                 self.active_review_prompt = Some(review_request.prompt.clone());
@@ -16068,9 +16068,9 @@ impl ChatWidget<'_> {
                         let finish_banner = match hint.as_deref() {
                             Some(h) if !h.trim().is_empty() => {
                                 let trimmed = h.trim();
-                                format!("<< Code review finished: {trimmed} >>")
+                                format!("<< Kay review finished: {trimmed} >>")
                             }
-                            _ => "<< Code review finished >>".to_string(),
+                            _ => "<< Kay review finished >>".to_string(),
                         };
                         self.push_background_tail(finish_banner);
                     }
@@ -16079,10 +16079,10 @@ impl ChatWidget<'_> {
                             Some(h) if !h.trim().is_empty() => {
                                 let trimmed = h.trim();
                                 format!(
-                                    "<< Code review finished without a final response ({trimmed}) >>"
+                                    "<< Kay review finished without a final response ({trimmed}) >>"
                                 )
                             }
-                            _ => "<< Code review finished without a final response >>".to_string(),
+                            _ => "<< Kay review finished without a final response >>".to_string(),
                         };
                         self.push_background_tail(banner);
                         self.history_push_plain_state(history_cell::new_warning_event(
@@ -21638,7 +21638,7 @@ Have we met every part of this goal and is there no further work to do?"#
 
         let launch = TerminalLaunch {
             id,
-            title: "Upgrade Code".to_string(),
+            title: "Upgrade Kay".to_string(),
             command: Vec::new(),
             command_display: display_label,
             controller: Some(controller.clone()),
@@ -22997,8 +22997,8 @@ Have we met every part of this goal and is there no further work to do?"#
             if cmd_str == "test-approval" {
                 continue;
             }
-            // Prefer "Code" branding in the Help panel
-            let desc = cmd.description().replace("Codex", "Code");
+            // Prefer "Kay" branding in the Help panel
+            let desc = cmd.description().replace("Codex", "Kay");
             // Render as "/command  —  description"
             lines.push(RtLine::from(vec![
                 RtSpan::styled(format!("/{cmd_str:<12}"), t_fg),
@@ -23842,7 +23842,7 @@ Have we met every part of this goal and is there no further work to do?"#
                 }
             }
         } else {
-            tracing::warn!("Could not locate Code home to persist review model");
+            tracing::warn!("Could not locate Kay home to persist review model");
             format!(
                 "Review model set for this session: {}",
                 self.config.review_model
@@ -23911,7 +23911,7 @@ Have we met every part of this goal and is there no further work to do?"#
                 }
             }
         } else {
-            tracing::warn!("Could not locate Code home to persist resolve model");
+            tracing::warn!("Could not locate Kay home to persist resolve model");
             format!(
                 "Resolve model set for this session: {}",
                 self.config.review_resolve_model
@@ -24051,7 +24051,7 @@ Have we met every part of this goal and is there no further work to do?"#
                 }
             }
         } else {
-            tracing::warn!("Could not locate Code home to persist Auto Review model");
+            tracing::warn!("Could not locate Kay home to persist Auto Review model");
             format!(
                 "Auto Review model set for this session: {}",
                 self.config.auto_review_model
@@ -24155,7 +24155,7 @@ Have we met every part of this goal and is there no further work to do?"#
                 }
             }
         } else {
-            tracing::warn!("Could not locate Code home to persist Auto Review resolve model");
+            tracing::warn!("Could not locate Kay home to persist Auto Review resolve model");
             format!(
                 "Auto Review resolve model set for this session: {}",
                 self.config.auto_review_resolve_model
@@ -24441,7 +24441,7 @@ Have we met every part of this goal and is there no further work to do?"#
                 }
             }
         } else {
-            tracing::warn!("Could not locate Code home to persist Auto Drive model");
+            tracing::warn!("Could not locate Kay home to persist Auto Drive model");
             format!(
                 "Auto Drive model set for this session: {}",
                 self.config.auto_drive.model
@@ -25182,7 +25182,7 @@ Have we met every part of this goal and is there no further work to do?"#
             }
         }
 
-        let mut commands: Vec<String> = vec!["plan".into(), "solve".into(), "code".into()];
+        let mut commands: Vec<String> = vec!["plan".into(), "solve".into(), "kay".into()];
         let custom: Vec<String> = self
             .config
             .subagent_commands
@@ -25806,7 +25806,7 @@ Have we met every part of this goal and is there no further work to do?"#
                 tracing::info!("Persisted TUI spinner selection to config.toml");
             }
         } else {
-            tracing::warn!("Could not locate Codex home to persist spinner selection");
+            tracing::warn!("Could not locate Kay home to persist spinner selection");
         }
 
         // Confirmation message (replaceable system notice)
@@ -26063,7 +26063,7 @@ Have we met every part of this goal and is there no further work to do?"#
                 }
             }
             Err(e) => {
-                tracing::warn!("Could not locate Codex home to persist theme: {}", e);
+                tracing::warn!("Could not locate Kay home to persist theme: {}", e);
             }
         }
     }
@@ -28361,25 +28361,25 @@ Have we met every part of this goal and is there no further work to do?"#
         };
 
         tracing::info!(
-            "[/browser] scheduling Code autofix for context='{}', error='{}'",
+            "[/browser] scheduling Kay autofix for context='{}', error='{}'",
             failure_context,
             truncated
         );
 
         let visible_message = format!(
-            "🤖 Handing /browser failure ({}) to Code. Error: {}",
+            "🤖 Handing /browser failure ({}) to Kay. Error: {}",
             failure_context,
             truncated
         );
         app_event_tx.send_background_event_with_ticket(&ticket, visible_message);
 
         let command_text = format!(
-            "/code The /browser command failed to {context}. Recent error: {error}. Please diagnose and fix the environment (for example, install or configure Chrome) so /browser works in this workspace.",
+            "/kay The /browser command failed to {context}. Recent error: {error}. Please diagnose and fix the environment (for example, install or configure Chrome) so /browser works in this workspace.",
             context = failure_context,
             error = truncated
         );
         app_event_tx.send(AppEvent::DispatchCommand(
-            SlashCommand::Code,
+            SlashCommand::Kay,
             command_text,
         ));
     }
@@ -30261,7 +30261,7 @@ Have we met every part of this goal and is there no further work to do?"#
 
             // Title follows theme text color
             spans.push(Span::styled(
-                "Every Code",
+                "Kay",
                 Style::default()
                     .fg(crate::colors::text())
                     .add_modifier(Modifier::BOLD),
@@ -33178,8 +33178,8 @@ use code_core::protocol::OrderMeta;
             Some(SlashCommand::Plan)
         ));
         assert!(matches!(
-            ChatWidget::slash_command_from_line("/code"),
-            Some(SlashCommand::Code)
+            ChatWidget::slash_command_from_line("/kay"),
+            Some(SlashCommand::Kay)
         ));
         assert_eq!(ChatWidget::slash_command_from_line("not-a-command"), None);
     }
@@ -37180,7 +37180,7 @@ impl ChatWidget<'_> {
                 }
             }
         } else {
-            tracing::warn!("Could not locate Codex home to persist review auto resolve toggle");
+            tracing::warn!("Could not locate Kay home to persist review auto resolve toggle");
             if enabled {
                 "Auto Resolve enabled for this session."
             } else {
@@ -37221,7 +37221,7 @@ impl ChatWidget<'_> {
                 }
             }
         } else {
-            tracing::warn!("Could not locate Codex home to persist auto review toggle");
+            tracing::warn!("Could not locate Kay home to persist auto review toggle");
             if enabled {
                 "Auto Review enabled for this session."
             } else {
@@ -38704,7 +38704,7 @@ impl ChatWidget<'_> {
                 }
             }
         } else {
-            tracing::warn!("Could not locate Codex home to persist auto resolve attempts");
+            tracing::warn!("Could not locate Kay home to persist auto resolve attempts");
             format!("Max re-reviews set to {} for this session.", limit.get())
         };
 
@@ -39403,7 +39403,7 @@ impl ChatWidget<'_> {
     pub(crate) fn show_cloud_tasks_loading(&mut self) {
         let loading_item = SelectionItem {
             name: "Loading cloud tasks…".to_string(),
-            description: Some("Fetching latest tasks from Codex Cloud".to_string()),
+            description: Some("Fetching latest tasks from Kay Cloud".to_string()),
             is_current: true,
             actions: Vec::new(),
         };
@@ -39459,7 +39459,7 @@ impl ChatWidget<'_> {
     pub(crate) fn show_cloud_environment_loading(&mut self) {
         let loading_item = SelectionItem {
             name: "Loading environments…".to_string(),
-            description: Some("Fetching available Codex Cloud environments".to_string()),
+            description: Some("Fetching available Kay Cloud environments".to_string()),
             is_current: true,
             actions: Vec::new(),
         };
@@ -39684,7 +39684,7 @@ impl ChatWidget<'_> {
 
         let view = CustomPromptView::new(
             format!("Create cloud task ({env_display})"),
-            "Describe the change you want Codex to implement".to_string(),
+            "Describe the change you want Kay to implement".to_string(),
             Some("Press Enter to submit · Esc cancel".to_string()),
             self.app_event_tx.clone(),
             None,
@@ -44771,7 +44771,7 @@ impl ChatWidget<'_> {
             .filter(|text| !text.is_empty());
 
         self.app_event_tx.send(AppEvent::EmitTuiNotification {
-            title: "Code".to_string(),
+            title: "Kay".to_string(),
             body: snippet,
         });
     }
