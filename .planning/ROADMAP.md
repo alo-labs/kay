@@ -33,7 +33,7 @@ This milestone adds provider CRUD and provider-aware model selection to Kay. Use
 **Requirements**: MODEL-01, MODEL-02, PLUG-01
 **Plans**: 2 plans
 **Plan list**:
-- [ ] 05-01-PLAN.md — reusable provider-aware visibility helper and regression tests
+- [x] 05-01-PLAN.md — reusable provider-aware visibility helper and regression tests
 - [ ] 05-02-PLAN.md — `/model` filtering, provider grouping, and VT100 coverage
 **Success Criteria** (what must be TRUE):
   1. `/model` shows only models for providers with configured credentials.
@@ -54,5 +54,5 @@ This milestone adds provider CRUD and provider-aware model selection to Kay. Use
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 4. Provider Credential CRUD | 4/4 | Complete   | 2026-05-12 |
-| 5. Dynamic Model Selection | 0/2 | Not started | - |
+| 5. Dynamic Model Selection | 1/2 | In Progress | - |
 | 6. Verification, Docs, and Release | 0/TBD | Not started | - |
