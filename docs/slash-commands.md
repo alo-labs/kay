@@ -19,7 +19,7 @@ Notes
 - `/resume`: resume a past session for this folder.
 - `/rename <name>`: rename the current session (shown in the resume list).
 - `/login`: manage Kay sign-ins (select, add, or disconnect accounts).
-- `/provider`: manage provider API keys for OpenCode Go, MiniMax, and OpenAI.
+- `/provider`: manage provider API keys for OpenCode Go, MiniMax, and OpenAI without editing config files.
 - `/settings [section]`: open the settings panel. Optional section argument
   jumps directly to `model`, `theme`, `agents`, `skills`, `auto`, `review`,
   `validation`, `limits`, `chrome`, `mcp`, or `notifications`.
@@ -121,6 +121,9 @@ Implementation Notes
   `code-rs/core/src/slash_commands.rs`. `/kay` is the canonical prompt-expanding
   command in the Kay UI.
   The retired `/code` alias should not appear in user-facing docs, snapshots, or TUI help.
+  Provider credential CRUD lives in `/provider`, which is the shared entry
+  point for adding, updating, or removing OpenCode Go, MiniMax, and OpenAI API
+  keys.
   When no `[[agents]]` are configured, the orchestrator advertises the
   following model slugs to the LLM for multi-agent runs: `code-gpt-5.4`,
   `code-gpt-5.3-codex`, `claude-opus-4.6`, `gemini-3-pro`,

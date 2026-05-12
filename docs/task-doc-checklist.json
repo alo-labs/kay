@@ -1,10 +1,11 @@
 {
   "task_id": "silver-init",
   "task_granularity": 2,
-  "updated_at": "2026-05-12T07:05:06Z",
+  "updated_at": "2026-05-12T18:58:21Z",
   "_notes": [
     "Refreshed during the Kay slash-command rename and intro-banner cleanup in the current session.",
     "Refreshed again during the final docs-gate reconciliation so the current-session freshness ledger matches the governed docs.",
+    "Refreshed during the test-notes-app live E2E harness and Silver Bullet session-marker reconciliation in the current session.",
     "This checklist records every governed doc key present under docs/ plus root README.md and CHANGELOG.md."
   ],
   "docs": {

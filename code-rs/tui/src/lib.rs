@@ -101,6 +101,7 @@ mod streaming;
 mod sanitize;
 mod layout_consts;
 mod terminal_info;
+pub mod transcript_viewer;
 // mod text_block; // Orphaned after trait-based HistoryCell migration
 mod text_formatting;
 mod text_processing;
@@ -134,6 +135,7 @@ mod updates;
 pub mod test_backend;
 
 pub use cli::Cli;
+pub use transcript_viewer::{run_main as run_transcript_viewer, TranscriptViewerArgs};
 pub use self::markdown_render::render_markdown_text;
 pub use public_widgets::composer_input::{ComposerAction, ComposerInput};
 

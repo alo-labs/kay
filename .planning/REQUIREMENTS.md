@@ -1,86 +1,31 @@
-# Requirements: code-monorepo
+# Milestone Requirements: v0.9.0 Test Notes App and Kay OCG Validation
 
-**Defined:** 2026-05-12
-**Core Value:** Keep the CLI buildable, understandable, and safe to evolve without disturbing existing workflows.
+## Requirement Set
 
-## v0.8.0 Requirements
+### KAY-01 - Isolated Kay Home
+Kay must default to its own writable home under `~/.kay` for end-user installs and not auto-inherit local Codex/Every Code state unless the user explicitly overrides the path.
 
-Requirements for this milestone. Each maps to roadmap phases.
+### KAY-02 - No Silent Codex Inheritance
+Kay must stop silently reading local `~/.code` or `~/.codex` state as the default source of truth for the end-user install.
 
-### Provider Management
+### NOTE-01 - Real Validation Repo
+A real `alo-exp/test-notes-app` repository must exist and be usable from a local checkout under `projects/test-notes-app` so Kay can drive meaningful note-taking work there.
 
-- [x] **PROVIDER-01**: Kay can create, read, update, and delete supported providers from within the app via `/provider`.
-- [x] **PROVIDER-02**: `/provider` supports the current provider order OpenCode Go, MiniMax, OpenAI and keeps existing provider settings intact.
+### VIEW-01 - Transcript Viewer
+Kay session transcripts must be inspectable through a lightweight, modern, chat-like viewer that reads the JSONL transcript/provenance stream.
 
-### Credentials
+### TEST-01 - OCG Model Coverage
+The supported OpenCode Go models must be exercised on substantial note-app work, not just one-line smoke prompts.
 
-- [ ] **AUTH-01**: Kay accepts provider API keys as a CLI argument so users can set credentials without editing config files.
+### DOCS-01 - Workflow Documentation
+The isolated Kay install, transcript viewer, and note-app validation workflow must be documented clearly enough for repeatable use before releases.
 
-### Model Routing
+### REL-01 - Release Gate
+The next release may only happen after the isolated Kay runtime and note-app validation workflow have been verified.
 
-- [x] **MODEL-01**: Kay’s `/model` command lists only models for providers with configured credentials.
-- [x] **MODEL-02**: `/model` exposes the expected model sets for OpenCode Go, MiniMax, and OpenAI.
+## Validation Notes
 
-### Plugin Seams
-
-- [x] **PLUG-01**: Provider plugins and model plugins remain orthogonal, with reusable model-compatibility profiles shared across multiple models instead of hard-coded per SKU.
-
-### Verification
-
-- [ ] **TEST-01**: Automated tests cover provider CRUD, CLI credential entry, provider-aware model filtering, and the reusable compatibility-profile seam.
-
-### Docs
-
-- [ ] **DOCS-01**: Kay documentation explains `/provider`, CLI API-key entry, and provider-aware `/model` behavior for the supported providers.
-
-### Release
-
-- [ ] **REL-01**: Kay release metadata and release notes are updated, and a new release is cut only after the provider-management milestone is verified.
-
-## v2 Requirements
-
-Deferred to future release. Tracked but not in current roadmap.
-
-### Provider Expansion
-
-- **PROV-EXP-01**: Support additional provider families beyond OpenCode Go, MiniMax, and OpenAI without changing the provider CRUD surface.
-
-### Model Expansion
-
-- **MODEL-EXP-01**: Add more model-specific compatibility profiles without coupling them to provider registration.
-
-## Out of Scope
-
-Explicitly excluded. Documented to prevent scope creep.
-
-| Feature | Reason |
-|---------|--------|
-| Adding provider families beyond OpenCode Go, MiniMax, and OpenAI during this milestone | The current milestone only needs the supported provider set in the specified order. |
-| Forcing config-file edits for provider onboarding | The user explicitly wants provider setup through the app or CLI arguments. |
-| Hard-coding model adaptations per SKU instead of reusable profiles | The milestone should move toward reusable model plugins. |
-| Replacing the existing OpenAI, MiniMax, or OpenCode Go provider behavior | Existing providers must keep working while the new UX is added. |
-
-## Traceability
-
-Which phases cover which requirements. Updated during roadmap creation.
-
-| Requirement | Phase | Status |
-|-------------|-------|--------|
-| PROVIDER-01 | Phase 4 | Complete |
-| PROVIDER-02 | Phase 4 | Complete |
-| AUTH-01 | Phase 4 | Pending |
-| MODEL-01 | Phase 5 | Complete |
-| MODEL-02 | Phase 5 | Complete |
-| PLUG-01 | Phase 5 | Complete |
-| TEST-01 | Phase 6 | Pending |
-| DOCS-01 | Phase 6 | Pending |
-| REL-01 | Phase 6 | Pending |
-
-**Coverage:**
-- v0.8.0 requirements: 9 total
-- Mapped to phases: 9
-- Unmapped: 0 ✓
-
----
-*Requirements defined: 2026-05-12*
-*Last updated: 2026-05-12 after v0.8.0 semver realignment*
+- `~/.kay` is the target home for the end-user install.
+- `projects/test-notes-app` is the live project target for the OCG model work.
+- Session JSONL is the provenance source of truth for analysis and the viewer.
+- The OCG model matrix must prove useful note-app work, not a trivial smoke result.

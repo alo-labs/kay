@@ -29,6 +29,8 @@ use code_responses_api_proxy::Args as ResponsesApiProxyArgs;
 use code_tui::Cli as TuiCli;
 use code_tui::ExitSummary;
 use code_tui::resume_command_name;
+use code_tui::run_transcript_viewer;
+use code_tui::TranscriptViewerArgs;
 use llm::LlmCli;
 use llm::run_llm;
 use serde::Deserialize;
@@ -163,6 +165,9 @@ enum Subcommand {
 
     /// Side-channel LLM utilities (no TUI events).
     Llm(LlmCli),
+
+    /// Review a Kay session transcript.
+    Transcript(TranscriptCommand),
 
     /// Manage Kay Bridge subscription for this workspace.
     Bridge(BridgeCommand),
@@ -410,6 +415,13 @@ struct PreviewArgs {
     extra: Vec<String>,
 }
 
+#[derive(Debug, Parser)]
+struct TranscriptCommand {
+    /// Path to a transcript JSONL file. Defaults to the latest Kay session log.
+    #[arg(value_name = "PATH")]
+    path: Option<PathBuf>,
+}
+
 fn main() -> anyhow::Result<()> {
     arg0_dispatch_or_else(|code_linux_sandbox_exe| async move {
         cli_main(code_linux_sandbox_exe).await?;
@@ -637,6 +649,12 @@ async fn cli_main(code_linux_sandbox_exe: Option<PathBuf>) -> anyhow::Result<()>
         }
         Some(Subcommand::Preview(args)) => {
             preview_main(args).await?;
+        }
+        Some(Subcommand::Transcript(transcript_cli)) => {
+            let transcript_args = TranscriptViewerArgs {
+                path: transcript_cli.path,
+            };
+            run_transcript_viewer(transcript_args, code_linux_sandbox_exe).await?;
         }
         Some(Subcommand::Bridge(bridge_cli)) => {
             run_bridge_command(bridge_cli).await?;

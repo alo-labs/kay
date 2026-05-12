@@ -107,12 +107,12 @@ where
 
 const ILLEGAL_ENV_VAR_PREFIX: &str = "CODEX_";
 
-/// Load env vars from ~/.code/.env (legacy ~/.codex/.env is still read) and `$(pwd)/.env`.
+/// Load env vars from `~/.kay/.env` and `$(pwd)/.env`.
 ///
 /// Security: Do not allow `.env` files to create or modify any variables
 /// with names starting with `CODEX_`.
 fn load_dotenv() {
-    // 1) Load from global ~/.code/.env (or ~/.codex/.env) first.
+    // 1) Load from the Kay home .env first.
     if let Ok(code_home) = code_core::config::find_code_home() {
         let global_env_path = resolve_code_path_for_read(&code_home, Path::new(".env"));
         if let Ok(iter) = dotenvy::from_path_iter(global_env_path) {
@@ -125,7 +125,7 @@ fn load_dotenv() {
     //    - Do NOT import provider API keys by default (e.g., OPENAI_API_KEY, ANTHROPIC_API_KEY,
     //      GOOGLE_API_KEY, QWEN_API_KEY).
     //    - Users can opt back in via CODEX_ALLOW_PROJECT_OPENAI_KEYS=1 (either exported
-    //      in the shell or placed in ~/.code/.env).
+    //      in the shell or placed in the Kay home .env).
     // NOTE: use an explicit cwd/.env path instead of dotenv_iter() because
     // dotenv_iter() walks parent directories. Parent-walking can accidentally
     // load unrelated files such as ~/.env when the working directory is nested
@@ -137,7 +137,7 @@ fn load_dotenv() {
             for (key, value) in iter.into_iter().flatten() {
                 let upper = key.to_ascii_uppercase();
                 // Never allow CODEX_* to be set from .env files for safety.
-                if upper.starts_with(ILLEGAL_ENV_VAR_PREFIX) && upper != "CODEX_HOME" { continue; }
+                if upper.starts_with(ILLEGAL_ENV_VAR_PREFIX) { continue; }
                 // Always ignore provider API keys from project .env (must be set globally or in shell).
                 if matches!(
                     upper.as_str(),
@@ -158,18 +158,6 @@ fn load_dotenv() {
         }
     }
 
-    // Bridge CODE_HOME to CODEX_HOME for legacy components that still read only CODEX_HOME.
-    let codex_home_missing = std::env::var("CODEX_HOME")
-        .map(|v| v.trim().is_empty())
-        .unwrap_or(true);
-    if codex_home_missing {
-        if let Ok(code_home) = std::env::var("CODE_HOME") {
-            if !code_home.trim().is_empty() {
-                // Safe: still single-threaded during startup.
-                unsafe { std::env::set_var("CODEX_HOME", code_home) };
-            }
-        }
-    }
 }
 
 /// Helper to set vars from a dotenvy iterator while filtering out `CODEX_` keys.
