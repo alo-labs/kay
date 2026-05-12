@@ -18,9 +18,8 @@ Notes
 - `/new`: start a new chat during a conversation.
 - `/resume`: resume a past session for this folder.
 - `/rename <name>`: rename the current session (shown in the resume list).
-- `/quit`: exit Kay.
-- `/logout`: log out of Kay.
 - `/login`: manage Kay sign-ins (select, add, or disconnect accounts).
+- `/provider`: manage provider API keys for OpenCode Go, MiniMax, and OpenAI.
 - `/settings [section]`: open the settings panel. Optional section argument
   jumps directly to `model`, `theme`, `agents`, `skills`, `auto`, `review`,
   `validation`, `limits`, `chrome`, `mcp`, or `notifications`.
@@ -99,6 +98,11 @@ typically start multiple agents. They require a task/problem description.
 - `/plan <task>`: create a comprehensive plan (multiple agents). Prompt‑expanding.
 - `/solve <problem>`: solve a challenging problem (multiple agents). Prompt‑expanding.
 - `/kay <task>`: perform a coding task (multiple agents). Prompt‑expanding.
+
+## Account & Exit
+
+- `/logout`: log out of Kay.
+- `/quit`: exit Kay.
 
 ## Development‑Only
 

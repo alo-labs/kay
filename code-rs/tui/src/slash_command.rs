@@ -86,6 +86,7 @@ pub enum SlashCommand {
     Resume,
     Rename,
     Login,
+    Provider,
     // Prompt-expanding commands
     Plan,
     Solve,
@@ -141,6 +142,9 @@ impl SlashCommand {
             SlashCommand::Perf => "performance tracing (on/off/show/reset)",
             SlashCommand::Demo => "populate history with demo cells (dev/perf only)",
             SlashCommand::Login => "manage Kay sign-ins (add/select/disconnect)",
+            SlashCommand::Provider => {
+                "manage provider API keys (OpenCode Go, MiniMax, OpenAI)"
+            },
             SlashCommand::Logout => "log out of Kay",
             #[cfg(debug_assertions)]
             SlashCommand::TestApproval => "test approval request",
@@ -354,6 +358,16 @@ mod tests {
         match process_slash_command_message("/fast") {
             ProcessedCommand::RegularCommand(SlashCommand::Fast, command_text) => {
                 assert_eq!(command_text, "/fast");
+            }
+            other => panic!("expected RegularCommand, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn provider_command_is_regular_command() {
+        match process_slash_command_message("/provider") {
+            ProcessedCommand::RegularCommand(SlashCommand::Provider, command_text) => {
+                assert_eq!(command_text, "/provider");
             }
             other => panic!("expected RegularCommand, got {:?}", other),
         }

@@ -954,6 +954,7 @@ use crate::bottom_pane::LoginAccountsState;
 use crate::bottom_pane::LoginAccountsView;
 use crate::bottom_pane::LoginAddAccountState;
 use crate::bottom_pane::LoginAddAccountView;
+use crate::bottom_pane::ProviderCredentialsView;
 use crate::bottom_pane::UpdateSharedState;
 use crate::height_manager::HeightEvent;
 use crate::height_manager::HeightManager;
@@ -17320,6 +17321,10 @@ impl ChatWidget<'_> {
         self.show_login_accounts_view();
     }
 
+    pub(crate) fn handle_provider_command(&mut self) {
+        self.show_provider_credentials_view();
+    }
+
     pub(crate) fn auth_manager(&self) -> Arc<AuthManager> {
         self.auth_manager.clone()
     }
@@ -17351,6 +17356,17 @@ impl ChatWidget<'_> {
         self.login_add_view_state = Some(LoginAddAccountState::weak_handle(&state_rc));
         self.login_view_state = None;
         self.bottom_pane.show_login_add_account(view);
+        self.request_redraw();
+    }
+
+    pub(crate) fn show_provider_credentials_view(&mut self) {
+        let ticket = self.make_background_tail_ticket();
+        let (view, _state_rc) = ProviderCredentialsView::new(
+            self.config.code_home.clone(),
+            self.app_event_tx.clone(),
+            ticket,
+        );
+        self.bottom_pane.show_provider_credentials(view);
         self.request_redraw();
     }
 
