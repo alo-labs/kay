@@ -1006,7 +1006,15 @@ impl ChatComposer {
 
     /// Handle a key event coming from the main UI.
     pub fn handle_key_event(&mut self, key_event: KeyEvent) -> (InputResult, bool) {
-        let now = Instant::now();
+        self.handle_key_event_at(key_event, Instant::now())
+    }
+
+    #[doc(hidden)]
+    pub(crate) fn handle_key_event_at(
+        &mut self,
+        key_event: KeyEvent,
+        now: Instant,
+    ) -> (InputResult, bool) {
 
         // Track rapid plain-character bursts (common when bracketed paste is
         // unavailable) so we can suppress Enter-based submissions and insert

@@ -3,6 +3,19 @@ use crate::model_family::provider_model_slug;
 use crate::MINIMAX_PROVIDER_ID;
 use crate::OPENCODE_GO_PROVIDER_ID;
 
+const OPENCODE_GO_SUPPORTED_MODELS: &[&str] = &[
+    "glm-5.1",
+    "kimi-k2.6",
+    "mimo-v2.5-pro",
+    "mimo-v2.5",
+    "minimax-m2.7",
+    "qwen3.6-plus",
+    "deepseek-v4-pro",
+    "deepseek-v4-flash",
+];
+
+const MINIMAX_SUPPORTED_MODELS: &[&str] = &["MiniMax-M2.7"];
+
 /// Provider buckets are intentionally locked so the picker can render them in
 /// a predictable order.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -98,18 +111,29 @@ where
         .collect()
 }
 
-fn matches_opencode_go_namespace(model: &str) -> bool {
-    provider_model_slug(OPENCODE_GO_PROVIDER_ID, model).as_ref() != model
-}
-
 fn matches_minimax_model(model: &str) -> bool {
-    model.trim().eq_ignore_ascii_case("MiniMax-M2.7")
+    MINIMAX_SUPPORTED_MODELS
+        .iter()
+        .any(|supported| model.trim().eq_ignore_ascii_case(supported))
 }
 
 fn matches_openai_model(model: &str) -> bool {
     let slug = provider_model_slug("openai", model);
     let slug = slug.as_ref().trim().to_ascii_lowercase();
     slug.starts_with("gpt-") && !slug.starts_with("gpt-oss")
+}
+
+fn matches_opencode_go_supported_model(model: &str) -> bool {
+    let Some((namespace, _)) = model.trim().split_once('/') else {
+        return false;
+    };
+    if !namespace.eq_ignore_ascii_case(OPENCODE_GO_PROVIDER_ID) {
+        return false;
+    }
+    let slug = provider_model_slug(OPENCODE_GO_PROVIDER_ID, model);
+    OPENCODE_GO_SUPPORTED_MODELS
+        .iter()
+        .any(|supported| slug.as_ref().trim().eq_ignore_ascii_case(supported))
 }
 
 fn is_visible_to_openai<P>(auth: Option<&crate::auth::CodexAuth>, preset: &P) -> bool
@@ -140,7 +164,7 @@ where
 {
     provider_key_visible
         && preset.visibility_show_in_picker()
-        && matches_opencode_go_namespace(preset.visibility_model())
+        && matches_opencode_go_supported_model(preset.visibility_model())
 }
 
 fn is_visible_to_minimax<P>(
@@ -197,10 +221,12 @@ mod tests {
     }
 
     #[test]
-    fn opencode_go_namespace_matching_is_exact() {
-        assert!(matches_opencode_go_namespace("opencode-go/kimi-k2.6"));
-        assert!(!matches_opencode_go_namespace("xopencode-go/kimi-k2.6"));
-        assert!(!matches_opencode_go_namespace("opencode-gox/kimi-k2.6"));
+    fn opencode_go_model_matching_is_whitelist_based() {
+        assert!(matches_opencode_go_supported_model("opencode-go/kimi-k2.6"));
+        assert!(!matches_opencode_go_supported_model("xopencode-go/kimi-k2.6"));
+        assert!(!matches_opencode_go_supported_model("opencode-gox/kimi-k2.6"));
+        assert!(matches_opencode_go_supported_model("opencode-go/minimax-m2.7"));
+        assert!(!matches_opencode_go_supported_model("opencode-go/minimax-m2.7-beta"));
     }
 
     #[test]
