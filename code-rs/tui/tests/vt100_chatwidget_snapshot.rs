@@ -26,6 +26,8 @@ use code_core::protocol::{
     WebSearchBeginEvent,
     WebSearchCompleteEvent,
 };
+use code_core::auth;
+use code_core::OPENCODE_GO_PROVIDER_ID;
 use code_tui::test_helpers::{
     force_scroll_offset as harness_force_scroll_offset,
     layout_metrics as harness_layout_metrics,
@@ -2605,6 +2607,54 @@ fn agents_toggle_claude_opus_persists_via_slash_command() {
     let reopen_lower = overlay_reopen.to_lowercase();
     assert!(reopen_lower.contains("claude-opus-4.6"));
     assert!(reopen_lower.contains("disabled"));
+}
+
+#[test]
+fn provider_management_states_cover_list_update_add_and_delete() {
+    let _lock = ENV_LOCK.lock().unwrap();
+    let env = EnvGuard::new(&["HOME", "CODE_HOME", "CODEX_HOME", "TMPDIR"]);
+    let home_dir = TempDir::new().expect("temp home");
+    let code_home = TempDir::new().expect("code home");
+    env.set_path("HOME", home_dir.path());
+    env.set_path("TMPDIR", code_home.path());
+    env.set_path("CODE_HOME", code_home.path());
+    env.set_path("CODEX_HOME", code_home.path());
+
+    auth::save_provider_api_key(code_home.path(), OPENCODE_GO_PROVIDER_ID, "sk-opencode-go")
+        .expect("opencode provider key should be saved");
+    auth::login_with_api_key(code_home.path(), "sk-openai")
+        .expect("openai login should write auth");
+
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
+        .enable_all()
+        .build()
+        .expect("test runtime");
+    let _runtime_guard = runtime.enter();
+
+    let mut harness = ChatWidgetHarness::new();
+    harness.open_provider_credentials_overlay();
+
+    let mut frames = Vec::new();
+    frames.push(normalize_output(render_chat_widget_to_vt100(&mut harness, 100, 28)));
+
+    harness.send_key(make_key(KeyCode::Enter, KeyModifiers::NONE));
+    frames.push(normalize_output(render_chat_widget_to_vt100(&mut harness, 100, 28)));
+
+    harness.send_key(make_key(KeyCode::Esc, KeyModifiers::NONE));
+    harness.send_key(make_key(KeyCode::Down, KeyModifiers::NONE));
+    harness.send_key(make_key(KeyCode::Enter, KeyModifiers::NONE));
+    frames.push(normalize_output(render_chat_widget_to_vt100(&mut harness, 100, 28)));
+
+    harness.send_key(make_key(KeyCode::Esc, KeyModifiers::NONE));
+    harness.send_key(make_key(KeyCode::Down, KeyModifiers::NONE));
+    harness.send_key(make_key(KeyCode::Char('d'), KeyModifiers::NONE));
+    frames.push(normalize_output(render_chat_widget_to_vt100(&mut harness, 100, 28)));
+
+    insta::assert_snapshot!(
+        "provider_management_states_cover_list_update_add_and_delete",
+        frames.join("\n---FRAME---\n"),
+    );
 }
 
 #[test]
