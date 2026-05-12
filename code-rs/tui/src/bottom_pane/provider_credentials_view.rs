@@ -21,6 +21,7 @@ use crate::app_event_sender::AppEventSender;
 use crate::chatwidget::BackgroundOrderTicket;
 
 use super::bottom_pane_view::{BottomPaneView, ConditionalUpdate};
+use super::form_text_field::FormTextField;
 use super::BottomPane;
 
 /// Interactive view shown for `/provider` to manage stored provider keys.
@@ -31,10 +32,14 @@ pub(crate) struct ProviderCredentialsView {
 impl ProviderCredentialsView {
     pub fn new(
         code_home: PathBuf,
-        _app_event_tx: AppEventSender,
-        _tail_ticket: BackgroundOrderTicket,
+        app_event_tx: AppEventSender,
+        tail_ticket: BackgroundOrderTicket,
     ) -> (Self, Rc<RefCell<ProviderCredentialsState>>) {
-        let state = Rc::new(RefCell::new(ProviderCredentialsState::new(code_home)));
+        let state = Rc::new(RefCell::new(ProviderCredentialsState::new(
+            code_home,
+            app_event_tx,
+            tail_ticket,
+        )));
         (Self { state: state.clone() }, state)
     }
 }
@@ -82,20 +87,42 @@ struct Feedback {
     is_error: bool,
 }
 
+#[derive(Debug)]
+enum ViewMode {
+    List,
+    Edit {
+        provider_ref: String,
+        provider_label: String,
+        detail: Option<String>,
+        existing: bool,
+        field: FormTextField,
+    },
+}
+
 pub(crate) struct ProviderCredentialsState {
     code_home: PathBuf,
+    app_event_tx: AppEventSender,
+    tail_ticket: BackgroundOrderTicket,
     providers: Vec<ProviderRow>,
     selected: usize,
+    mode: ViewMode,
     feedback: Option<Feedback>,
     is_complete: bool,
 }
 
 impl ProviderCredentialsState {
-    fn new(code_home: PathBuf) -> Self {
+    fn new(
+        code_home: PathBuf,
+        app_event_tx: AppEventSender,
+        tail_ticket: BackgroundOrderTicket,
+    ) -> Self {
         let mut state = Self {
             code_home,
+            app_event_tx,
+            tail_ticket,
             providers: Vec::new(),
             selected: 0,
+            mode: ViewMode::List,
             feedback: None,
             is_complete: false,
         };
@@ -165,32 +192,89 @@ impl ProviderCredentialsState {
     }
 
     fn handle_key_event(&mut self, key_event: KeyEvent) {
-        let provider_count = self.providers.len();
+        let mode = std::mem::replace(&mut self.mode, ViewMode::List);
+        match mode {
+            ViewMode::List => {
+                let provider_count = self.providers.len();
 
-        match key_event.code {
-            KeyCode::Esc | KeyCode::Char('q') => {
-                self.is_complete = true;
-            }
-            KeyCode::Up => {
-                if provider_count == 0 {
-                    self.selected = 0;
-                } else if self.selected == 0 {
-                    self.selected = provider_count - 1;
-                } else {
-                    self.selected -= 1;
+                match key_event.code {
+                    KeyCode::Esc | KeyCode::Char('q') => {
+                        self.is_complete = true;
+                    }
+                    KeyCode::Up => {
+                        if provider_count == 0 {
+                            self.selected = 0;
+                        } else if self.selected == 0 {
+                            self.selected = provider_count - 1;
+                        } else {
+                            self.selected -= 1;
+                        }
+                    }
+                    KeyCode::Down => {
+                        if provider_count == 0 {
+                            self.selected = 0;
+                        } else {
+                            self.selected = (self.selected + 1) % provider_count;
+                        }
+                    }
+                    KeyCode::Enter => {
+                        self.open_editor_for_selected();
+                    }
+                    KeyCode::Char('r') => {
+                        self.reload_providers();
+                    }
+                    _ => {}
+                }
+
+                if !self.is_complete && matches!(self.mode, ViewMode::List) {
+                    self.mode = ViewMode::List;
                 }
             }
-            KeyCode::Down => {
-                if provider_count == 0 {
-                    self.selected = 0;
-                } else {
-                    self.selected = (self.selected + 1) % provider_count;
+            ViewMode::Edit {
+                provider_ref,
+                provider_label,
+                detail,
+                existing,
+                mut field,
+            } => {
+                match key_event.code {
+                    KeyCode::Esc => {
+                        self.feedback = Some(Feedback {
+                            message: format!("Cancelled {provider_label}"),
+                            is_error: false,
+                        });
+                        self.mode = ViewMode::List;
+                    }
+                    KeyCode::Enter => {
+                        if self.try_save_provider_key(
+                            &provider_ref,
+                            &provider_label,
+                            existing,
+                            field.text(),
+                        ) {
+                            self.mode = ViewMode::List;
+                        } else {
+                            self.mode = ViewMode::Edit {
+                                provider_ref,
+                                provider_label,
+                                detail,
+                                existing,
+                                field,
+                            };
+                        }
+                    }
+                    _ => {
+                        let _ = field.handle_key(key_event);
+                        self.mode = ViewMode::Edit {
+                            provider_ref,
+                            provider_label,
+                            detail,
+                            existing,
+                            field,
+                        };
+                    }
                 }
             }
-            KeyCode::Char('r') => {
-                self.reload_providers();
-            }
-            _ => {}
         }
     }
 
@@ -202,23 +286,51 @@ impl ProviderCredentialsState {
         self.is_complete = true;
     }
 
-    fn desired_height(&self, _width: u16) -> usize {
-        const MIN_HEIGHT: usize = 9;
-        let mut lines = 4; // title, spacer, footer spacer, footer
-        if self.feedback.is_some() {
-            lines += 2;
+    fn desired_height(&self, width: u16) -> usize {
+        match &self.mode {
+            ViewMode::List => {
+                const MIN_HEIGHT: usize = 9;
+                let mut lines = 4; // title, spacer, footer spacer, footer
+                if self.feedback.is_some() {
+                    lines += 2;
+                }
+                lines += self.providers.len().max(1);
+                (lines + 2).max(MIN_HEIGHT)
+            }
+            ViewMode::Edit { detail, field, .. } => {
+                let mut lines = 7; // title, provider label, field, footer and spacers
+                if self.feedback.is_some() {
+                    lines += 2;
+                }
+                if detail.is_some() {
+                    lines += 1;
+                }
+                lines + field.desired_height(width) as usize - 1
+            }
         }
-        lines += self.providers.len().max(1);
-        (lines + 2).max(MIN_HEIGHT)
     }
 
     fn render(&self, area: Rect, buf: &mut Buffer) {
         Clear.render(area, buf);
+        let title = match &self.mode {
+            ViewMode::List => " Manage Providers ".to_string(),
+            ViewMode::Edit {
+                provider_label,
+                existing,
+                ..
+            } => {
+                if *existing {
+                    format!(" Update {provider_label} Key ")
+                } else {
+                    format!(" Add {provider_label} Key ")
+                }
+            }
+        };
         let block = Block::default()
             .borders(Borders::ALL)
             .border_style(Style::default().fg(crate::colors::border()))
             .style(Style::default().bg(crate::colors::background()).fg(crate::colors::text()))
-            .title(" Manage Providers ")
+            .title(title)
             .title_alignment(Alignment::Center);
         let inner = block.inner(area);
         block.render(area, buf);
@@ -234,77 +346,116 @@ impl ProviderCredentialsState {
             lines.push(Line::from(""));
         }
 
-        lines.push(Line::from(vec![Span::styled(
-            "Supported Providers",
-            Style::default().add_modifier(Modifier::BOLD),
-        )]));
-        lines.push(Line::from(""));
+        match &self.mode {
+            ViewMode::List => {
+                lines.push(Line::from(vec![Span::styled(
+                    "Supported Providers",
+                    Style::default().add_modifier(Modifier::BOLD),
+                )]));
+                lines.push(Line::from(""));
 
-        if self.providers.is_empty() {
-            lines.push(Line::from(Span::styled(
-                "No supported providers found.",
-                Style::default().fg(crate::colors::text_dim()),
-            )));
-        } else {
-            for (idx, provider) in self.providers.iter().enumerate() {
-                let selected = idx == self.selected;
-                let arrow_style = if selected {
-                    Style::default().fg(crate::colors::primary())
-                } else {
-                    Style::default().fg(crate::colors::text_dim())
-                };
-                let label_style = if selected {
-                    Style::default()
-                        .fg(crate::colors::primary())
-                        .add_modifier(Modifier::BOLD)
-                } else {
-                    Style::default()
-                };
-                let status_style = if provider.is_configured {
-                    Style::default()
-                        .fg(crate::colors::success())
-                        .add_modifier(Modifier::BOLD)
-                } else {
-                    Style::default()
-                        .fg(crate::colors::warning())
-                        .add_modifier(Modifier::BOLD)
-                };
-
-                let mut spans = vec![
-                    Span::styled(if selected { "› " } else { "  " }, arrow_style),
-                    Span::styled(provider.label.clone(), label_style),
-                    Span::raw(" "),
-                    Span::styled(
-                        if provider.is_configured {
-                            "(configured)"
-                        } else {
-                            "(missing)"
-                        },
-                        status_style,
-                    ),
-                ];
-
-                if let Some(detail) = &provider.detail {
-                    spans.push(Span::raw("  "));
-                    spans.push(Span::styled(
-                        detail.clone(),
+                if self.providers.is_empty() {
+                    lines.push(Line::from(Span::styled(
+                        "No supported providers found.",
                         Style::default().fg(crate::colors::text_dim()),
-                    ));
+                    )));
+                } else {
+                    for (idx, provider) in self.providers.iter().enumerate() {
+                        let selected = idx == self.selected;
+                        let arrow_style = if selected {
+                            Style::default().fg(crate::colors::primary())
+                        } else {
+                            Style::default().fg(crate::colors::text_dim())
+                        };
+                        let label_style = if selected {
+                            Style::default()
+                                .fg(crate::colors::primary())
+                                .add_modifier(Modifier::BOLD)
+                        } else {
+                            Style::default()
+                        };
+                        let status_style = if provider.is_configured {
+                            Style::default()
+                                .fg(crate::colors::success())
+                                .add_modifier(Modifier::BOLD)
+                        } else {
+                            Style::default()
+                                .fg(crate::colors::warning())
+                                .add_modifier(Modifier::BOLD)
+                        };
+
+                        let mut spans = vec![
+                            Span::styled(if selected { "› " } else { "  " }, arrow_style),
+                            Span::styled(provider.label.clone(), label_style),
+                            Span::raw(" "),
+                            Span::styled(
+                                if provider.is_configured {
+                                    "(configured)"
+                                } else {
+                                    "(missing)"
+                                },
+                                status_style,
+                            ),
+                        ];
+
+                        if let Some(detail) = &provider.detail {
+                            spans.push(Span::raw("  "));
+                            spans.push(Span::styled(
+                                detail.clone(),
+                                Style::default().fg(crate::colors::text_dim()),
+                            ));
+                        }
+
+                        lines.push(Line::from(spans));
+                    }
                 }
 
-                lines.push(Line::from(spans));
+                lines.push(Line::from(""));
+                lines.push(Line::from(vec![
+                    Span::styled("↑↓", Style::default().fg(crate::colors::function())),
+                    Span::styled(" Navigate  ", Style::default().fg(crate::colors::text_dim())),
+                    Span::styled("Enter", Style::default().fg(crate::colors::success())),
+                    Span::styled(" Edit  ", Style::default().fg(crate::colors::text_dim())),
+                    Span::styled("r", Style::default().fg(crate::colors::warning()).add_modifier(Modifier::BOLD)),
+                    Span::styled(" Reload  ", Style::default().fg(crate::colors::text_dim())),
+                    Span::styled("Esc", Style::default().fg(crate::colors::error()).add_modifier(Modifier::BOLD)),
+                    Span::styled(" Close", Style::default().fg(crate::colors::text_dim())),
+                ]));
+            }
+            ViewMode::Edit {
+                provider_label,
+                detail,
+                field,
+                ..
+            } => {
+                lines.push(Line::from(vec![Span::styled(
+                    format!("Editing {provider_label} provider key"),
+                    Style::default().add_modifier(Modifier::BOLD),
+                )]));
+                lines.push(Line::from(""));
+
+                if let Some(detail) = detail {
+                    lines.push(Line::from(vec![Span::styled(
+                        detail.clone(),
+                        Style::default().fg(crate::colors::text_dim()),
+                    )]));
+                    lines.push(Line::from(""));
+                }
+
+                lines.push(Line::from(vec![Span::styled(
+                    "Paste the API key below and press Enter to save.",
+                    Style::default().fg(crate::colors::text_dim()),
+                )]));
+                lines.push(Line::from(field_render_line(field)));
+                lines.push(Line::from(""));
+                lines.push(Line::from(vec![
+                    Span::styled("Enter", Style::default().fg(crate::colors::success())),
+                    Span::styled(" Save  ", Style::default().fg(crate::colors::text_dim())),
+                    Span::styled("Esc", Style::default().fg(crate::colors::error()).add_modifier(Modifier::BOLD)),
+                    Span::styled(" Cancel", Style::default().fg(crate::colors::text_dim())),
+                ]));
             }
         }
-
-        lines.push(Line::from(""));
-        lines.push(Line::from(vec![
-            Span::styled("↑↓", Style::default().fg(crate::colors::function())),
-            Span::styled(" Navigate  ", Style::default().fg(crate::colors::text_dim())),
-            Span::styled("r", Style::default().fg(crate::colors::warning()).add_modifier(Modifier::BOLD)),
-            Span::styled(" Reload  ", Style::default().fg(crate::colors::text_dim())),
-            Span::styled("Esc", Style::default().fg(crate::colors::error()).add_modifier(Modifier::BOLD)),
-            Span::styled(" Close", Style::default().fg(crate::colors::text_dim())),
-        ]));
 
         Paragraph::new(lines)
             .wrap(Wrap { trim: true })
@@ -322,3 +473,78 @@ impl ProviderCredentialsState {
     }
 }
 
+impl ProviderCredentialsState {
+    fn open_editor_for_selected(&mut self) {
+        let Some(provider) = self.providers.get(self.selected).cloned() else {
+            return;
+        };
+
+        self.mode = ViewMode::Edit {
+            provider_ref: provider.provider_ref,
+            provider_label: provider.label,
+            detail: provider.detail,
+            existing: provider.is_configured,
+            field: FormTextField::new_single_line(),
+        };
+    }
+
+    fn select_provider_ref(&mut self, provider_ref: &str) {
+        if let Some(idx) = self
+            .providers
+            .iter()
+            .position(|row| row.provider_ref == provider_ref)
+        {
+            self.selected = idx;
+        }
+    }
+
+    fn try_save_provider_key(
+        &mut self,
+        provider_ref: &str,
+        provider_label: &str,
+        existing: bool,
+        api_key: &str,
+    ) -> bool {
+        let api_key = api_key.trim();
+        if api_key.is_empty() {
+            self.feedback = Some(Feedback {
+                message: format!("{provider_label} API key cannot be empty"),
+                is_error: true,
+            });
+            return false;
+        }
+
+        match auth::save_provider_api_key(&self.code_home, provider_ref, api_key) {
+            Ok(()) => {
+                let action = if existing { "Updated" } else { "Added" };
+                self.send_tail(format!("{action} {provider_label} API key"));
+                self.reload_providers();
+                self.select_provider_ref(provider_ref);
+                self.feedback = Some(Feedback {
+                    message: format!("{provider_label} API key saved"),
+                    is_error: false,
+                });
+                true
+            }
+            Err(err) => {
+                self.feedback = Some(Feedback {
+                    message: format!("Failed to save {provider_label} API key: {err}"),
+                    is_error: true,
+                });
+                false
+            }
+        }
+    }
+
+    fn send_tail(&self, message: impl Into<String>) {
+        self.app_event_tx
+            .send_background_event_with_ticket(&self.tail_ticket, message);
+    }
+}
+
+fn field_render_line(field: &FormTextField) -> Line<'static> {
+    let mut spans: Vec<Span<'static>> = Vec::new();
+    spans.push(Span::raw(field.text().to_string()));
+    spans.push(Span::raw("_"));
+    Line::from(spans)
+}
