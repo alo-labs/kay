@@ -4,15 +4,15 @@ milestone: v0.8.0
 milestone_name: Provider CRUD and Dynamic Model Selection
 current_plan: 1
 status: verifying
-stopped_at: Completed 04-01-PLAN.md
-last_updated: "2026-05-12T12:26:34.909Z"
+stopped_at: Completed 04-03-PLAN.md
+last_updated: "2026-05-12T12:32:58.907Z"
 last_activity: 2026-05-12
 progress:
   total_phases: 3
   completed_phases: 0
   total_plans: 4
-  completed_plans: 2
-  percent: 50
+  completed_plans: 3
+  percent: 75
 ---
 
 # Project State
@@ -56,6 +56,7 @@ Last activity: 2026-05-12
 
 *Updated after each plan completion*
 | Phase 4 P1 | 30m | 2 tasks | 6 files |
+| Phase 04-provider-credential-crud P3 | 14m | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -71,6 +72,9 @@ Last activity: 2026-05-12
 - [Phase 4]: Delete provider credentials only from auth.json.provider_credentials and leave the dedicated OPENAI_API_KEY field untouched.
 - [Phase 4]: Normalize provider ids before mutation and treat missing auth files or missing provider entries as no-op deletes.
 - [Phase 4]: Route provider credential writes through the existing atomic auth.json writer.
+- [Phase 04-provider-credential-crud]: /provider stays separate from /login and /model — Keeping provider CRUD orthogonal avoids cross-flow regressions in existing account and model behavior.
+- [Phase 04-provider-credential-crud]: Provider order is explicit: OpenCode Go, MiniMax, OpenAI — A fixed order preserves the user-facing contract and avoids hash/map iteration drift.
+- [Phase 04-provider-credential-crud]: Provider add/update reuses existing auth save helpers and metadata hints — Reusing the existing auth path keeps config mutation consistent and avoids duplicate parsing or persistence logic.
 
 ### Pending Todos
 
@@ -90,6 +94,6 @@ currently.
 
 ## Session Continuity
 
-Last session: 2026-05-12T12:25:37.392Z
-Stopped at: Completed 04-01-PLAN.md
-Resume file: .planning/phases/04-provider-credential-crud/04-01-PLAN.md
+Last session: 2026-05-12T12:32:58.897Z
+Stopped at: Completed 04-03-PLAN.md
+Resume file: None
