@@ -10,7 +10,7 @@ Requirements for this milestone. Each maps to roadmap phases.
 ### Provider Management
 
 - [x] **PROVIDER-01**: Kay can create, read, update, and delete supported providers from within the app via `/provider`.
-- [ ] **PROVIDER-02**: `/provider` supports the current provider order OpenCode Go, MiniMax, OpenAI and keeps existing provider settings intact.
+- [x] **PROVIDER-02**: `/provider` supports the current provider order OpenCode Go, MiniMax, OpenAI and keeps existing provider settings intact.
 
 ### Credentials
 
@@ -67,7 +67,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | PROVIDER-01 | Phase 4 | Complete |
-| PROVIDER-02 | Phase 4 | Pending |
+| PROVIDER-02 | Phase 4 | Complete |
 | AUTH-01 | Phase 4 | Pending |
 | MODEL-01 | Phase 5 | Pending |
 | MODEL-02 | Phase 5 | Pending |
