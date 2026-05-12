@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.7.0] — 2026-05-12
+
+## Features
+- `feat(core): add provider-model acceptance coverage` (84cde4a10)
+
+## Tests
+- `test(cli): harden provider acceptance JSON prompt` (32a8b23d4)
+
+## Chores
+- `chore(branding): rename Every Code to Kay across repo` (d50706c81)
+
+---
+
 > [!TIP]
 > We're constantly improving Kay! This page documents the core changes. You can also check our [releases page](https://github.com/alo-labs/kay/releases) for additional information.
 
