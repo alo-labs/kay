@@ -2,19 +2,27 @@
 
 ## Usage-based billing alternative: Use an OpenAI API key
 
-If you prefer to pay-as-you-go, you can still authenticate with your OpenAI API key by setting it as an environment variable:
+If you prefer to pay-as-you-go, you can still authenticate with your OpenAI API key in one of two ways:
 
-```shell
-export OPENAI_API_KEY="your-api-key-here"
+- Direct argument, for scripted onboarding:
+
+```bash
+code login --api-key <KEY>
 ```
 
-Alternatively, read from a file:
+- stdin, for shell-safe use:
 
 ```shell
-code login --with-api-key < my_key.txt
+printenv OPENAI_API_KEY | code login --with-api-key
 ```
 
-The legacy `--api-key` flag now exits with an error instructing you to use `--with-api-key` so that the key never appears in shell history or process listings.
+If you are saving a provider-specific key, add `--provider minimax` or `--provider opencode-go` to either form, for example:
+
+```bash
+code login --provider minimax --api-key <KEY>
+```
+
+The direct argument form is convenient for scripts and one-off onboarding, but it will appear in shell history and process listings. Use the stdin form when you want to keep the secret out of both.
 
 This key must, at minimum, have write access to the Responses API.
 
