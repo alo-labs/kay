@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 milestone: v0.8.0
 milestone_name: Provider CRUD and Dynamic Model Selection
 current_plan: 2
-status: executing
-stopped_at: Completed 05-01-PLAN.md
-last_updated: "2026-05-12T13:40:15.538Z"
+status: verifying
+stopped_at: Completed 05-02-PLAN.md
+last_updated: "2026-05-12T14:19:27.337Z"
 last_activity: 2026-05-12
 progress:
   total_phases: 3
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 6
-  completed_plans: 5
-  percent: 83
+  completed_plans: 6
+  percent: 100
 ---
 
 # Project State
@@ -30,7 +30,7 @@ Phase: 05 (Dynamic Model Selection) — EXECUTING
 Plan: 2 of 2
 Current Plan: 2
 Total Plans in Phase: 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-05-12
 
 ## Performance Metrics
@@ -60,6 +60,7 @@ Last activity: 2026-05-12
 | Phase 04-provider-credential-crud P3 | 14m | 2 tasks | 6 files |
 | Phase 04-provider-credential-crud P4 | 18m | 2 tasks | 4 files |
 | Phase 05-dynamic-model-selection P1 | 33m | 2 tasks | 3 files |
+| Phase 05-dynamic-model-selection P2 | 2h30m | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -84,6 +85,9 @@ Last activity: 2026-05-12
 - [Phase 05-dynamic-model-selection]: Used AuthManager::auth for OpenAI visibility and AuthManager::provider_api_key for OpenCode Go and MiniMax gating — Matches the existing auth resolution paths for each provider family.
 - [Phase 05-dynamic-model-selection]: Locked provider order as OpenCode Go -> MiniMax -> OpenAI and kept matching strict — Prevents provider ordering drift and enforces exact namespace and model-id classification.
 - [Phase 05-dynamic-model-selection]: Added integration coverage for save/remove key transitions so the helper stays reusable for future picker and API consumers — Proves the helper stays credential-driven as auth state changes.
+- [Phase 05-dynamic-model-selection]: Use the shared code_core::model_visibility helper as the source of truth for picker visibility.
+- [Phase 05-dynamic-model-selection]: Keep the OpenAI shortlist curation inside the OpenAI bucket only, after provider grouping.
+- [Phase 05-dynamic-model-selection]: Render provider headers in the fixed OpenCode Go, MiniMax, OpenAI order and show an explicit empty state when nothing is unlocked.
 
 ### Pending Todos
 
@@ -101,6 +105,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-05-12T13:40:09.472Z
-Stopped at: Completed 05-01-PLAN.md
-Resume file: 05-02-PLAN.md
+Last session: 2026-05-12T14:19:27.328Z
+Stopped at: Completed 05-02-PLAN.md
+Resume file: None
