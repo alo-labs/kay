@@ -39,6 +39,7 @@ Add the `/provider` command and CLI API-key entry so users can CRUD supported pr
 - The user explicitly does not want to edit config files for API-key onboarding.
 - The supported provider order matters: OpenCode Go first, then MiniMax, then OpenAI.
 - The current CLI already supports provider-specific key storage, so the new work should reuse that path instead of inventing a second auth model.
+- The current CLI flag surface still has `--with-api-key` stdin intake plus a hidden deprecated `--api-key` path, so the new provider flow should keep non-interactive onboarding available without forcing config-file edits.
 
 </specifics>
 
@@ -57,6 +58,7 @@ Add the `/provider` command and CLI API-key entry so users can CRUD supported pr
 
 ### Test strategy
 - `docs/TESTING.md` — Two-layer acceptance/regression testing strategy for provider-model work
+- `code-rs/cli/src/main.rs` — Current login flag surface and stdin-vs-argument handling
 
 </canonical_refs>
 
@@ -76,13 +78,14 @@ Add the `/provider` command and CLI API-key entry so users can CRUD supported pr
 - `code-rs/core/src/config.rs` — Built-in provider selection and reserved provider IDs
 - `code-rs/core/src/auth_accounts.rs` — Account storage / provider-key persistence
 - `code-rs/tui/src/app.rs` / `code-rs/tui/src/chatwidget.rs` — Slash-command dispatch and TUI command handling
+- `code-rs/cli/src/main.rs` — `code login` flag parsing for stdin and provider-specific API-key entry
 
 </code_context>
 
 <deferred>
 ## Deferred Ideas
 
-- Provider-aware model filtering and provider-specific model lists belong in Phase 5.
+- Provider-aware `/model` filtering and provider-specific model lists belong in Phase 5. That phase should surface the OpenCode Go supported list, MiniMax `MiniMax-M2.7`, and the upstream OpenAI-supported model set once provider credentials are available.
 - Broader provider families beyond OpenCode Go, MiniMax, and OpenAI belong in a later milestone.
 - A broader settings UX redesign for auth flows is out of scope for this phase.
 

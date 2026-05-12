@@ -57,7 +57,7 @@
 | Expand provider families | Add new provider families beyond OpenCode Go, MiniMax, OpenAI now | |
 
 **User's choice:** Phase 4 only
-**Notes:** Provider-aware `/model` filtering is deferred to Phase 5; additional provider families are deferred to later milestones.
+**Notes:** Provider-aware `/model` filtering is deferred to Phase 5; that later phase should expose the OpenCode Go model list we already support, MiniMax `MiniMax-M2.7`, and the upstream OpenAI-supported models. Additional provider families are deferred to later milestones.
 
 ---
 
@@ -69,7 +69,7 @@
 
 ## Deferred Ideas
 
-- Provider-aware `/model` filtering and provider-specific model lists.
+- Provider-aware `/model` filtering and provider-specific model lists, including OpenCode Go supported models, MiniMax `MiniMax-M2.7`, and upstream OpenAI models.
 - Additional provider families beyond OpenCode Go, MiniMax, and OpenAI.
 - A broader settings UX redesign for auth flows.
 
