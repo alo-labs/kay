@@ -8,6 +8,9 @@ use code_core::config_types::ContextMode;
 use code_core::config_types::ReasoningEffort;
 use code_core::config_types::ServiceTier;
 use code_core::model_family::supports_extended_context;
+use code_core::model_family::provider_model_slug;
+use code_core::model_visibility::VisibleProvider;
+use code_core::{MINIMAX_PROVIDER_ID, OPENCODE_GO_PROVIDER_ID};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use std::cell::Cell;
 use ratatui::buffer::Buffer;
@@ -21,6 +24,7 @@ use std::cmp::Ordering;
 /// Flattened preset entry combining a model with a specific reasoning effort.
 #[derive(Clone, Debug)]
 struct FlatPreset {
+    provider: VisibleProvider,
     model: String,
     effort: ReasoningEffort,
     label: String,
@@ -35,11 +39,13 @@ struct ModelLine {
 
 impl FlatPreset {
     fn from_model_preset(preset: &ModelPreset) -> Vec<Self> {
+        let provider = Self::provider_for_model(&preset.model);
         preset
             .supported_reasoning_efforts
             .iter()
             .map(|effort_preset| {
                 FlatPreset {
+                    provider,
                     model: preset.model.to_string(),
                     effort: effort_preset.effort.into(),
                     label: format!(
@@ -51,6 +57,16 @@ impl FlatPreset {
                 }
             })
             .collect()
+    }
+
+    fn provider_for_model(model: &str) -> VisibleProvider {
+        if provider_model_slug(OPENCODE_GO_PROVIDER_ID, model).as_ref() != model {
+            VisibleProvider::OpenCodeGo
+        } else if model.trim().eq_ignore_ascii_case("MiniMax-M2.7") {
+            VisibleProvider::MiniMax
+        } else {
+            VisibleProvider::OpenAI
+        }
     }
 
     fn effort_label(effort: ReasoningEffort) -> &'static str {
@@ -389,6 +405,56 @@ impl ModelSelectionView {
         }
 
         parts.join("-")
+    }
+
+    fn normalized_model_slug(provider: VisibleProvider, model: &str) -> String {
+        let slug = match provider {
+            VisibleProvider::OpenCodeGo => provider_model_slug(OPENCODE_GO_PROVIDER_ID, model),
+            VisibleProvider::MiniMax => provider_model_slug(MINIMAX_PROVIDER_ID, model),
+            VisibleProvider::OpenAI => provider_model_slug("openai", model),
+        };
+        slug.as_ref().to_string()
+    }
+
+    fn model_header_label(provider: VisibleProvider, model: &str) -> String {
+        let normalized = Self::normalized_model_slug(provider, model);
+        Self::format_model_header(&normalized)
+    }
+
+    fn provider_header_line(provider: VisibleProvider) -> ModelLine {
+        ModelLine {
+            line: Line::from(vec![Span::styled(
+                provider.label().to_string(),
+                Style::default()
+                    .fg(crate::colors::text_bright())
+                    .add_modifier(Modifier::BOLD),
+            )]),
+            is_selected: false,
+        }
+    }
+
+    fn empty_state_lines() -> Vec<ModelLine> {
+        let header_style = Style::default()
+            .fg(crate::colors::text_bright())
+            .add_modifier(Modifier::BOLD);
+        let desc_style = Style::default().fg(crate::colors::text_dim());
+
+        vec![
+            ModelLine {
+                line: Line::from(vec![Span::styled(
+                    "No models are unlocked yet.",
+                    header_style,
+                )]),
+                is_selected: false,
+            },
+            ModelLine {
+                line: Line::from(vec![Span::styled(
+                    "Add provider credentials with /provider to unlock OpenCode Go, MiniMax, and OpenAI models.",
+                    desc_style,
+                )]),
+                is_selected: false,
+            },
+        ]
     }
 
     fn entries(&self) -> Vec<EntryKind> {
@@ -769,11 +835,29 @@ impl ModelSelectionView {
             });
         }
 
+        if self.flat_presets.is_empty() {
+            lines.extend(Self::empty_state_lines());
+            return lines;
+        }
+
+        let mut previous_provider: Option<VisibleProvider> = None;
         let mut previous_model: Option<&str> = None;
         let entries = self.entries();
         for (entry_idx, entry) in entries.iter().enumerate() {
             let EntryKind::Preset(preset_index) = entry else { continue };
             let flat_preset = &self.flat_presets[*preset_index];
+
+            if previous_provider != Some(flat_preset.provider) {
+                if previous_provider.is_some() {
+                    lines.push(ModelLine {
+                        line: Line::from(""),
+                        is_selected: false,
+                    });
+                }
+                lines.push(Self::provider_header_line(flat_preset.provider));
+                previous_provider = Some(flat_preset.provider);
+                previous_model = None;
+            }
 
             if previous_model
                 .map(|m| !m.eq_ignore_ascii_case(&flat_preset.model))
@@ -787,7 +871,7 @@ impl ModelSelectionView {
                 }
                 lines.push(ModelLine {
                     line: Line::from(vec![Span::styled(
-                        Self::format_model_header(&flat_preset.model),
+                        Self::model_header_label(flat_preset.provider, &flat_preset.model),
                         Style::default()
                             .fg(crate::colors::text_bright())
                             .add_modifier(Modifier::BOLD),
@@ -871,14 +955,28 @@ impl ModelSelectionView {
             lines = lines.saturating_add(4);
         }
 
+        if self.flat_presets.is_empty() {
+            return lines.saturating_add(2).saturating_add(2);
+        }
+
+        let mut previous_provider: Option<VisibleProvider> = None;
         let mut previous_model: Option<&str> = None;
         for idx in self.sorted_indices() {
             let flat_preset = &self.flat_presets[idx];
-            let is_new_model = previous_model
-                .map(|prev| !prev.eq_ignore_ascii_case(&flat_preset.model))
-                .unwrap_or(true);
 
-            if is_new_model {
+            if previous_provider != Some(flat_preset.provider) {
+                if previous_provider.is_some() {
+                    lines = lines.saturating_add(1);
+                }
+                lines = lines.saturating_add(1);
+                previous_provider = Some(flat_preset.provider);
+                previous_model = None;
+            }
+
+            if previous_model
+                .map(|prev| !prev.eq_ignore_ascii_case(&flat_preset.model))
+                .unwrap_or(true)
+            {
                 if previous_model.is_some() {
                     lines = lines.saturating_add(1);
                 }
@@ -902,6 +1000,11 @@ impl ModelSelectionView {
     }
 
     fn compare_presets(a: &FlatPreset, b: &FlatPreset) -> Ordering {
+        let provider_rank = a.provider.cmp(&b.provider);
+        if provider_rank != Ordering::Equal {
+            return provider_rank;
+        }
+
         let model_name_rank = Self::compare_model_names(&a.model, &b.model);
         if model_name_rank != Ordering::Equal {
             return model_name_rank;
@@ -1160,6 +1263,38 @@ mod tests {
         }
     }
 
+    fn make_preset_with_efforts(
+        model: &str,
+        display_name: &str,
+        description: &str,
+        efforts: Vec<(ReasoningEffort, &'static str)>,
+    ) -> ModelPreset {
+        let default_reasoning_effort = efforts
+            .first()
+            .map(|(effort, _)| *effort)
+            .unwrap_or(ReasoningEffort::Low);
+
+        ModelPreset {
+            id: model.to_string(),
+            model: model.to_string(),
+            display_name: display_name.to_string(),
+            description: description.to_string(),
+            default_reasoning_effort: default_reasoning_effort.into(),
+            supported_reasoning_efforts: efforts
+                .into_iter()
+                .map(|(effort, description)| ReasoningEffortPreset {
+                    effort: effort.into(),
+                    description: description.to_string(),
+                })
+                .collect(),
+            supported_text_verbosity: &TEST_VERBOSITY,
+            is_default: false,
+            upgrade: None,
+            pro_only: false,
+            show_in_picker: true,
+        }
+    }
+
     fn buffer_body_lines(buf: &Buffer, width: u16, height: u16) -> Vec<String> {
         let mut rows = Vec::new();
         if width < 2 || height < 2 {
@@ -1391,6 +1526,132 @@ mod tests {
         assert!(visible.contains(
             "Unavailable for this model. Saved settings apply automatically on supported models."
         ));
+    }
+
+    #[test]
+    fn model_selection_groups_provider_buckets_and_preserves_effort_rows() {
+        let presets = vec![
+            make_preset_with_efforts(
+                "opencode-go/kimi-k2.6",
+                "OpenCode Go Kimi K2.6",
+                "OpenCode Go model",
+                vec![
+                    (ReasoningEffort::Low, "opencode low reasoning"),
+                    (ReasoningEffort::High, "opencode high reasoning"),
+                ],
+            ),
+            make_preset_with_efforts(
+                "MiniMax-M2.7",
+                "MiniMax M2.7",
+                "MiniMax model",
+                vec![(ReasoningEffort::Low, "minimax reasoning")],
+            ),
+            make_preset_with_efforts(
+                "gpt-5.4",
+                "GPT-5.4",
+                "OpenAI model",
+                vec![(ReasoningEffort::Low, "openai reasoning")],
+            ),
+        ];
+
+        let (tx, _rx) = mpsc::channel::<AppEvent>();
+        let view = ModelSelectionView::new(
+            presets,
+            "opencode-go/kimi-k2.6".to_string(),
+            ReasoningEffort::Low,
+            None,
+            None,
+            false,
+            ModelSelectionTarget::Session,
+            AppEventSender::new(tx),
+        );
+
+        let width = 120;
+        let height = 28;
+        let mut buf = ratatui::buffer::Buffer::empty(Rect {
+            x: 0,
+            y: 0,
+            width,
+            height,
+        });
+        view.render(
+            Rect {
+                x: 0,
+                y: 0,
+                width,
+                height,
+            },
+            &mut buf,
+        );
+
+        let lines = buffer_body_lines(&buf, width, height);
+        let visible = lines.join("\n");
+        let opencode_idx = lines
+            .iter()
+            .position(|line| line.trim() == "OpenCode Go")
+            .expect("OpenCode Go header");
+        let minimax_idx = lines
+            .iter()
+            .position(|line| line.trim() == "MiniMax")
+            .expect("MiniMax header");
+        let openai_idx = lines
+            .iter()
+            .position(|line| line.trim() == "OpenAI")
+            .expect("OpenAI header");
+
+        assert!(
+            opencode_idx < minimax_idx && minimax_idx < openai_idx,
+            "provider headers should stay in locked order:\n{}",
+            visible
+        );
+        assert!(visible.contains("KIMI-K2.6"));
+        assert!(visible.contains("MINIMAX-M2.7"));
+        assert!(visible.contains("GPT-5.4"));
+        assert!(visible.contains("Low (current)"));
+        assert!(visible.contains("opencode low reasoning"));
+        assert!(visible.contains("minimax reasoning"));
+        assert!(visible.contains("openai reasoning"));
+    }
+
+    #[test]
+    fn model_selection_shows_empty_state_when_no_presets_are_visible() {
+        let (tx, _rx) = mpsc::channel::<AppEvent>();
+        let view = ModelSelectionView::new(
+            Vec::new(),
+            "gpt-5.4".to_string(),
+            ReasoningEffort::Low,
+            None,
+            None,
+            false,
+            ModelSelectionTarget::Session,
+            AppEventSender::new(tx),
+        );
+
+        let width = 100;
+        let height = 16;
+        let mut buf = ratatui::buffer::Buffer::empty(Rect {
+            x: 0,
+            y: 0,
+            width,
+            height,
+        });
+        view.render(
+            Rect {
+                x: 0,
+                y: 0,
+                width,
+                height,
+            },
+            &mut buf,
+        );
+
+        let lines = buffer_body_lines(&buf, width, height);
+        let visible = lines.join("\n");
+        assert!(visible.contains("No models are unlocked yet."));
+        assert!(visible.contains("Add provider credentials with /provider"));
+        assert!(!lines.iter().any(|line| line.trim() == "OpenCode Go"));
+        assert!(!lines.iter().any(|line| line.trim() == "MiniMax"));
+        assert!(!lines.iter().any(|line| line.trim() == "OpenAI"));
     }
 
     #[test]
