@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.8.0] — 2026-05-12
+
+## Features
+- `feat(core/model): add provider-aware visibility helper`, `feat(tui/model): wire picker through shared visibility helper`, and `feat(tui/model): render provider buckets and empty picker state` (6277a75ea, 3a5387ef5, 74635fdb0)
+- `feat(core/auth): add provider-key deletion helper`, `feat(tui): add provider slash command and pane shell`, and `feat(tui): add provider key edit flow` (768fb8428, 5311784f3, 55d92f476)
+- `feat(core): add provider VT100 snapshot coverage` (c824f8259)
+
+## Bug Fixes
+- `fix(cli/login): restore direct api-key entry` and `fix(tui/model): tighten provider visibility` (dbad7cb4a, 7e46fe693)
+
+## Tests
+- `test(core/model): add provider visibility regressions`, `test(cli/login): cover api-key entry modes`, `test(core/auth): cover provider-key delete round trip`, and `test(tui/model): cover live model picker with VT100 snapshots` (0c6b05ba3, d5172e181, 860e54b28, 8878e7cd0)
+
+## Documentation
+- `docs(readme): rewrite Kay overview and attribution`, `docs(04): add provider CRUD plan`, `docs(planning): realign milestone semver to v0.8.0`, `docs(05): record model-selection UAT`, `docs(05-02): complete dynamic model selection plan`, and `docs(05-01): refresh phase 5 tracking` (d8dae9063, 50c566867, efc8dc215, 3ed52e935, 4f4c8850d, aa7ae1198)
+
+---
+
 ## [0.7.2] — 2026-05-12
 
 ## Bug Fixes
