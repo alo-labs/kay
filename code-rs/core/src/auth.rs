@@ -1204,6 +1204,31 @@ mod tests {
     }
 
     #[test]
+    fn remove_provider_api_key_deletes_only_targeted_provider_and_keeps_others() {
+        let dir = tempdir().unwrap();
+
+        super::login_with_api_key(dir.path(), "sk-openai").expect("openai login should write auth");
+        super::save_provider_api_key(dir.path(), "MiniMax", "sk-minimax")
+            .expect("minimax key should be saved");
+        super::save_provider_api_key(dir.path(), "minimax", "sk-minimax-updated")
+            .expect("minimax key should be updated");
+        super::save_provider_api_key(dir.path(), "opencode-go", "sk-opencode")
+            .expect("opencode key should be saved");
+
+        super::remove_provider_api_key(dir.path(), " minimax ")
+            .expect("minimax key should be removed");
+
+        let auth = super::try_read_auth_json(&super::get_auth_file(dir.path()))
+            .expect("auth should parse");
+
+        // D-07: OpenAI auth remains on its dedicated field.
+        assert_eq!(auth.openai_api_key.as_deref(), Some("sk-openai"));
+        // D-03: deletion only removes the targeted provider entry.
+        assert_eq!(auth.provider_api_key("minimax"), None);
+        assert_eq!(auth.provider_api_key("opencode-go"), Some("sk-opencode"));
+    }
+
+    #[test]
     fn login_with_api_key_preserves_provider_credentials() {
         let dir = tempdir().unwrap();
 
