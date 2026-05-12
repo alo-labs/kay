@@ -44,7 +44,7 @@ use mcp_types::CallToolResult;
 use serde_bytes::ByteBuf;
 use serde_json::json;
 use std::path::PathBuf;
-use std::time::{Duration, SystemTime};
+use std::time::{Duration, Instant, SystemTime};
 fn make_key(code: KeyCode, modifiers: KeyModifiers) -> KeyEvent {
     KeyEvent {
         code,
@@ -291,6 +291,7 @@ fn composer_input_short_line_multiline_key_stream_does_not_submit() {
 fn composer_input_tabbed_multiline_key_stream_does_not_submit() {
     // Per-key paste containing tabs should keep Enter suppression active.
     let mut composer = ComposerInput::new();
+    let mut now = Instant::now();
 
     let events = [
         make_key(KeyCode::Char('a'), KeyModifiers::NONE),
@@ -306,9 +307,10 @@ fn composer_input_tabbed_multiline_key_stream_does_not_submit() {
     ];
 
     for event in events {
-        if let ComposerAction::Submitted(text) = composer.input(event) {
+        if let ComposerAction::Submitted(text) = composer.input_at(event, now) {
             panic!("tabbed per-key paste should not submit early (submitted: {text})");
         }
+        now += Duration::from_millis(1);
     }
 
     assert_eq!(composer.text(), "a\tb\nc");

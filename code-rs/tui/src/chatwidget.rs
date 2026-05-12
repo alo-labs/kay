@@ -23282,7 +23282,7 @@ Have we met every part of this goal and is there no further work to do?"#
 
         let trimmed = command_args.trim();
         if !trimmed.is_empty() {
-            if let Some(preset) = self.find_model_preset(trimmed, &visible_presets) {
+            if let Some(preset) = self.find_model_preset(trimmed, &all_presets) {
                 let effort = Self::preset_effort_for_model(&preset);
                 self.apply_model_selection(preset.model.to_string(), Some(effort));
             } else {
