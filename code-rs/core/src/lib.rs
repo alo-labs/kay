@@ -77,6 +77,7 @@ pub mod git_worktree;
 pub mod slash_commands;
 pub mod parse_command;
 pub mod history;
+pub mod model_visibility;
 mod truncate;
 mod unified_exec;
 mod user_instructions;
