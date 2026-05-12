@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v0.8.0
 milestone_name: Provider CRUD and Dynamic Model Selection
 status: Defining requirements
-stopped_at: Phase 4 context gathered
-last_updated: "2026-05-12T11:25:21.421Z"
+stopped_at: Phase 4 spec drafted
+last_updated: "2026-05-12T11:35:34.446Z"
 last_activity: 2026-05-12 — Milestone v0.8.0 started
 progress:
   total_phases: 3
@@ -76,6 +76,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-05-12T11:25:21.395Z
-Stopped at: Phase 4 context gathered
-Resume file: .planning/phases/04-provider-credential-crud/04-CONTEXT.md
+Last session: 2026-05-12T11:35:34.419Z
+Stopped at: Phase 4 spec drafted
+Resume file: .planning/SPEC.md
