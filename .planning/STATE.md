@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v0.8.0
 milestone_name: Provider CRUD and Dynamic Model Selection
-current_plan: 1
-status: verifying
+current_plan: 4
+status: complete
 stopped_at: Completed 04-04-PLAN.md
-last_updated: "2026-05-12T12:55:27.362Z"
+last_updated: "2026-05-12T12:57:24Z"
 last_activity: 2026-05-12
 progress:
   total_phases: 3
@@ -26,36 +26,37 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 
 ## Current Position
 
-Phase: 4 (Provider Credential CRUD) — PLANNING
-Plan: 1 of 1
-Current Plan: 1
-Total Plans in Phase: 1
-Status: Phase complete — ready for verification
+Phase: 4 (Provider Credential CRUD) — COMPLETE
+Plan: 4 of 4
+Current Plan: 4
+Total Plans in Phase: 4
+Status: Phase complete
 Last activity: 2026-05-12
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 0
-- Average duration: n/a
-- Total execution time: 0.0 hours
+- Total plans completed: 4
+- Average duration: 39m
+- Total execution time: 2.6 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 4. Provider Credential CRUD | 0/1 | Planning | - |
+| 4. Provider Credential CRUD | 4/4 | Complete | 2026-05-12 |
 | 5. Dynamic Model Selection | 0/TBD | Not started | - |
 | 6. Verification, Docs, and Release | 0/TBD | Not started | - |
 
 **Recent Trend:**
 
-- Last 5 plans: n/a
+- Last 5 plans: 30m, 1h 35m, 14m, 18m
 - Trend: Stable
 
 *Updated after each plan completion*
-| Phase 4 P1 | 30m | 2 tasks | 6 files |
+| Phase 04-provider-credential-crud P1 | 30m | 2 tasks | 6 files |
+| Phase 04-provider-credential-crud P2 | 1h 35m | 2 tasks | 5 files |
 | Phase 04-provider-credential-crud P3 | 14m | 2 tasks | 6 files |
 | Phase 04-provider-credential-crud P4 | 18m | 2 tasks | 4 files |
 
@@ -78,7 +79,6 @@ Last activity: 2026-05-12
 - [Phase 04-provider-credential-crud]: Provider add/update reuses existing auth save helpers and metadata hints — Reusing the existing auth path keeps config mutation consistent and avoids duplicate parsing or persistence logic.
 - [Phase 04-provider-credential-crud]: Keep provider deletion inside the provider pane with an explicit confirm/cancel state instead of routing it through /login. — Destructive actions stay explicit and localized to provider CRUD.
 - [Phase 04-provider-credential-crud]: Use a test-only harness helper to open the provider overlay directly because the VT100 harness does not dispatch slash commands the same way the live app does. — The snapshot test needs a deterministic way to reach the provider pane without relying on slash-command routing.
-- [Phase 04-provider-credential-crud]: Use a test-only harness helper to open the provider overlay directly because the VT100 harness does not dispatch slash commands the same way the live app does. — The snapshot test needs a deterministic way to reach the provider pane without relying on slash-command routing.
 
 ### Pending Todos
 
@@ -86,9 +86,7 @@ None yet.
 
 ### Blockers/Concerns
 
-currently.
-
-- cargo test -p code-cli provider_api_key_entry -- --nocapture is blocked by an unrelated compile error in code-rs/tui/src/bottom_pane/provider_credentials_view.rs: error[E0603] module model_provider_info is private
+None.
 
 ## Deferred Items
 
