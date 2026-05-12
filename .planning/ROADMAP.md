@@ -20,7 +20,7 @@ This milestone adds provider CRUD and provider-aware model selection to Kay. Use
 **Plan list**:
 - [x] 04-01-PLAN.md — Add provider auth CRUD helpers and tests
 - [x] 04-02-PLAN.md — Restore direct CLI API-key entry
-- [ ] 04-03-PLAN.md — Add `/provider` command and provider pane shell
+- [x] 04-03-PLAN.md — Add `/provider` command and provider pane shell
 - [ ] 04-04-PLAN.md — Finish delete action and TUI regressions
 **Success Criteria** (what must be TRUE):
   1. `/provider` can manage the supported provider set in the required order: OpenCode Go, MiniMax, OpenAI.
