@@ -1185,6 +1185,11 @@ impl App<'_> {
                                 widget.handle_login_command();
                             }
                         }
+                        SlashCommand::Provider => {
+                            if let AppState::Chat { widget } = &mut self.app_state {
+                                widget.handle_provider_command();
+                            }
+                        }
                         SlashCommand::Logout => {
                             if let Err(e) = code_login::logout(&self.config.code_home) { tracing::error!("failed to logout: {e}"); }
                             break 'main;
