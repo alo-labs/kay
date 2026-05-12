@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.7.0] — 2026-05-12
+## [0.7.1] — 2026-05-12
 
 ## Features
 - `feat(core): add provider-model acceptance coverage` (84cde4a10)
