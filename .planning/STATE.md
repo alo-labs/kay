@@ -2,16 +2,17 @@
 gsd_state_version: 1.0
 milestone: v0.8.0
 milestone_name: Provider CRUD and Dynamic Model Selection
-status: Planning
-stopped_at: Phase 4 plan 01 drafted
-last_updated: "2026-05-12T11:52:38Z"
-last_activity: 2026-05-12 — Milestone v0.8.0 started
+current_plan: 1
+status: verifying
+stopped_at: Completed 04-01-PLAN.md
+last_updated: "2026-05-12T12:26:34.909Z"
+last_activity: 2026-05-12
 progress:
   total_phases: 3
   completed_phases: 0
-  total_plans: 1
-  completed_plans: 0
-  percent: 0
+  total_plans: 4
+  completed_plans: 2
+  percent: 50
 ---
 
 # Project State
@@ -29,8 +30,8 @@ Phase: 4 (Provider Credential CRUD) — PLANNING
 Plan: 1 of 1
 Current Plan: 1
 Total Plans in Phase: 1
-Status: Planning
-Last activity: 2026-05-12 — Milestone v0.8.0 started
+Status: Phase complete — ready for verification
+Last activity: 2026-05-12
 
 ## Performance Metrics
 
@@ -54,6 +55,7 @@ Last activity: 2026-05-12 — Milestone v0.8.0 started
 - Trend: Stable
 
 *Updated after each plan completion*
+| Phase 4 P1 | 30m | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -62,6 +64,13 @@ Last activity: 2026-05-12 — Milestone v0.8.0 started
 - [Init] issue_tracker=gsd, active_workflow=full-dev-cycle, permissions.auto enabled
 - [Milestone v1.0] OpenCode Go was treated as a first-class provider integration and validated with a representative `opencode-go/<model>` path before release.
 - [Milestone v0.8.0] `/provider` is the canonical provider CRUD surface; `/model` should filter by configured provider credentials; provider plugins and model plugins stay orthogonal.
+- [Phase 04-provider-credential-crud]: Restore --api-key as the direct-argument login path while keeping --with-api-key stdin compatibility
+- [Phase 04-provider-credential-crud]: Trim and reject empty direct API-key input before dispatching to auth helpers
+- [Phase ?]: Delete provider credentials only from auth.json.provider_credentials and leave the dedicated OPENAI_API_KEY field untouched.
+- [Phase ?]: Normalize provider ids before mutation and treat missing auth files or missing provider entries as no-op deletes.
+- [Phase 4]: Delete provider credentials only from auth.json.provider_credentials and leave the dedicated OPENAI_API_KEY field untouched.
+- [Phase 4]: Normalize provider ids before mutation and treat missing auth files or missing provider entries as no-op deletes.
+- [Phase 4]: Route provider credential writes through the existing atomic auth.json writer.
 
 ### Pending Todos
 
@@ -69,7 +78,9 @@ None yet.
 
 ### Blockers/Concerns
 
-None currently.
+currently.
+
+- cargo test -p code-cli provider_api_key_entry -- --nocapture is blocked by an unrelated compile error in code-rs/tui/src/bottom_pane/provider_credentials_view.rs: error[E0603] module model_provider_info is private
 
 ## Deferred Items
 
@@ -79,6 +90,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-05-12T11:52:38Z
-Stopped at: Phase 4 plan 01 drafted
+Last session: 2026-05-12T12:25:37.392Z
+Stopped at: Completed 04-01-PLAN.md
 Resume file: .planning/phases/04-provider-credential-crud/04-01-PLAN.md

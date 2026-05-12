@@ -16,6 +16,12 @@ This milestone adds provider CRUD and provider-aware model selection to Kay. Use
 **Goal**: Let users create, read, update, and delete provider credentials from within Kay and through the CLI without editing config files.
 **Depends on**: Nothing
 **Requirements**: PROVIDER-01, PROVIDER-02, AUTH-01
+**Plans**: 4 plans
+**Plan list**:
+- [x] 04-01-PLAN.md — Add provider auth CRUD helpers and tests
+- [x] 04-02-PLAN.md — Restore direct CLI API-key entry
+- [ ] 04-03-PLAN.md — Add `/provider` command and provider pane shell
+- [ ] 04-04-PLAN.md — Finish delete action and TUI regressions
 **Success Criteria** (what must be TRUE):
   1. `/provider` can manage the supported provider set in the required order: OpenCode Go, MiniMax, OpenAI.
   2. API keys can be supplied directly via CLI argument and saved without manual config-file edits.
@@ -43,6 +49,6 @@ This milestone adds provider CRUD and provider-aware model selection to Kay. Use
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 4. Provider Credential CRUD | 0/TBD | Not started | - |
+| 4. Provider Credential CRUD | 2/4 | In Progress|  |
 | 5. Dynamic Model Selection | 0/TBD | Not started | - |
 | 6. Verification, Docs, and Release | 0/TBD | Not started | - |
