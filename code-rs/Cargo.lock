@@ -1087,6 +1087,7 @@ dependencies = [
  "clap_complete",
  "code-app-server",
  "code-app-server-protocol",
+ "code-apply-patch",
  "code-arg0",
  "code-chatgpt",
  "code-cloud-tasks",
@@ -1106,6 +1107,7 @@ dependencies = [
  "flate2",
  "futures",
  "owo-colors",
+ "portable-pty",
  "regex",
  "reqwest",
  "serde",
@@ -1118,6 +1120,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "uuid",
+ "vt100",
  "which",
  "zip",
 ]

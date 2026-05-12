@@ -28,7 +28,7 @@ On Windows, agent discovery can be affected by PATH configuration and file exten
 
 **1. Use absolute paths (recommended):**
 
-Edit your `~/.code/config.toml` to use full paths to agent executables:
+Edit your `~/.kay/config.toml` to use full paths to agent executables:
 
 ```toml
 [[agents]]

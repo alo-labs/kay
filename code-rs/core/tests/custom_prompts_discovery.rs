@@ -90,13 +90,12 @@ async fn discovers_prompts_from_code_home() -> Result<()> {
 }
 
 #[tokio::test]
-async fn discovers_prompts_from_legacy_codex_home() -> Result<()> {
+async fn ignores_prompts_from_legacy_codex_home() -> Result<()> {
     let _env_lock = ENV_MUTEX.lock().unwrap();
     let env = EnvBackup::new(&["HOME", "CODE_HOME", "CODEX_HOME"]);
 
     let fake_home = TempDir::new()?;
-    let codex_home = fake_home.path().join(".codex");
-    let legacy_prompts = codex_home.join("prompts");
+    let legacy_prompts = fake_home.path().join(".codex/prompts");
     fs::create_dir_all(&legacy_prompts)?;
     fs::write(legacy_prompts.join("legacy.md"), "# legacy")?;
 
@@ -104,15 +103,10 @@ async fn discovers_prompts_from_legacy_codex_home() -> Result<()> {
     env.remove("CODE_HOME");
     env.remove("CODEX_HOME");
 
-    let default_dir = default_prompts_dir().expect("expected prompts dir");
-    assert_eq!(
-        normalize_path_for_assertion(&default_dir),
-        normalize_path_for_assertion(&legacy_prompts)
+    assert!(
+        default_prompts_dir().is_none(),
+        "legacy Codex prompts should not be auto-discovered"
     );
-
-    let prompts = discover_prompts_in(&default_dir).await;
-    let names = prompt_names(&prompts);
-    assert_eq!(names, vec!["legacy"]);
 
     Ok(())
 }
@@ -123,7 +117,7 @@ async fn prefers_code_home_when_both_locations_exist() -> Result<()> {
     let env = EnvBackup::new(&["HOME", "CODE_HOME", "CODEX_HOME"]);
 
     let fake_home = TempDir::new()?;
-    let code_home = fake_home.path().join(".code");
+    let code_home = fake_home.path().join(".kay");
     let codex_home = fake_home.path().join(".codex");
     let code_prompts = code_home.join("prompts");
     let codex_prompts = codex_home.join("prompts");

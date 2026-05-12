@@ -352,8 +352,7 @@ pub struct Config {
     /// appends one extra argument containing a JSON payload describing the
     /// event.
     ///
-    /// Example `~/.code/config.toml` snippet (Kay also reads legacy
-    /// `~/.codex/config.toml`):
+    /// Example `~/.kay/config.toml` snippet:
     ///
     /// ```toml
     /// notify = ["notify-send", "Codex"]
@@ -407,12 +406,11 @@ pub struct Config {
     /// Ordered list of fallback filenames to consider when loading project docs.
     pub project_doc_fallback_filenames: Vec<String>,
 
-    /// Directory containing all Codex state (defaults to `~/.code`; can be
-    /// overridden by the `CODE_HOME` or `CODEX_HOME` environment variables).
+    /// Directory containing all Kay state (defaults to `~/.kay`; can be
+    /// overridden by the `CODE_HOME` environment variable).
     pub code_home: PathBuf,
 
-    /// Settings that govern if and what will be written to `~/.code/history.jsonl`
-    /// (Kay still reads legacy `~/.codex/history.jsonl`).
+    /// Settings that govern if and what will be written to `~/.kay/history.jsonl`.
     pub history: History,
 
     /// Optional URI-based file opener. If set, citations to files in the model
@@ -621,7 +619,7 @@ pub fn load_allowed_approval_policies(
     }
 }
 
-/// Base config deserialized from ~/.code/config.toml (legacy ~/.codex/config.toml is still read).
+/// Base config deserialized from `~/.kay/config.toml`.
 #[derive(Deserialize, Debug, Clone, Default)]
 pub struct ConfigToml {
     /// Optional override of model selection.
@@ -752,8 +750,7 @@ pub struct ConfigToml {
     #[serde(default)]
     pub profiles: HashMap<String, ConfigProfile>,
 
-    /// Settings that govern if and what will be written to `~/.code/history.jsonl`
-    /// (Kay still reads legacy `~/.codex/history.jsonl`).
+    /// Settings that govern if and what will be written to `~/.kay/history.jsonl`.
     #[serde(default)]
     pub history: Option<History>,
 
@@ -2011,9 +2008,8 @@ persistence = "none"
 
     #[serial_test::serial]
     #[test]
-    fn load_instructions_falls_back_to_legacy_codex_home() -> anyhow::Result<()> {
+    fn load_instructions_ignores_legacy_codex_home() -> anyhow::Result<()> {
         let code_home = TempDir::new()?;
-        let host_home = TempDir::new()?;
         let legacy_home = TempDir::new()?;
         let legacy_codex = legacy_home.path().join(".codex");
         std::fs::create_dir_all(&legacy_codex)?;
@@ -2025,7 +2021,6 @@ persistence = "none"
         let _codex_home_guard = EnvVarGuard::new("CODEX_HOME");
 
         unsafe {
-            std::env::set_var("CODEX_HOST_HOME", host_home.path());
             std::env::set_var("HOME", legacy_home.path());
             std::env::remove_var("CODE_HOME");
             std::env::remove_var("CODEX_HOME");
@@ -2033,28 +2028,28 @@ persistence = "none"
 
         let loaded = Config::load_instructions(Some(code_home.path()));
 
-        assert_eq!(loaded.as_deref(), Some("legacy guidance"));
+        assert!(loaded.is_none(), "legacy Codex guidance should not be auto-loaded");
         Ok(())
     }
 
     #[serial_test::serial]
     #[test]
-    fn load_instructions_merges_host_codex_and_local_code_home() -> anyhow::Result<()> {
-        let host_home = TempDir::new()?;
+    fn load_instructions_uses_only_local_code_home() -> anyhow::Result<()> {
         let code_home = TempDir::new()?;
-        let host_codex = host_home.path().join(".codex");
-        std::fs::create_dir_all(&host_codex)?;
-        std::fs::write(host_codex.join("AGENTS.md"), "host guidance")?;
         std::fs::write(code_home.path().join("AGENTS.md"), "local guidance")?;
 
         let _host_home_guard = EnvVarGuard::new("CODEX_HOST_HOME");
+        let _code_home_guard = EnvVarGuard::new("CODE_HOME");
+        let _codex_home_guard = EnvVarGuard::new("CODEX_HOME");
+
         unsafe {
-            std::env::set_var("CODEX_HOST_HOME", &host_codex);
+            std::env::remove_var("CODE_HOME");
+            std::env::remove_var("CODEX_HOME");
         }
 
         let loaded = Config::load_instructions(Some(code_home.path()));
 
-        assert_eq!(loaded.as_deref(), Some("host guidance\n\nlocal guidance"));
+        assert_eq!(loaded.as_deref(), Some("local guidance"));
         Ok(())
     }
 

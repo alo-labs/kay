@@ -50,14 +50,14 @@ Notes:
 
 Because Kay is written in Rust, it honors the `RUST_LOG` environment variable to configure its logging behavior.
 
-When you run the TUI with `--debug`, log messages are written to `~/.code/debug_logs/codex-tui.log`, so you can leave the following running in a separate terminal to monitor log messages as they are written:
+When you run the TUI with `--debug`, log messages are written to `~/.kay/debug_logs/codex-tui.log`, so you can leave the following running in a separate terminal to monitor log messages as they are written:
 
 ```
-tail -F ~/.code/debug_logs/codex-tui.log
+tail -F ~/.kay/debug_logs/codex-tui.log
 ```
 
 When you enable the CLI `--debug` flag, request/response JSON is partitioned
-into helper-specific folders under `~/.code/debug_logs/`. Expect
+into helper-specific folders under `~/.kay/debug_logs/`. Expect
 subdirectories such as:
 
 - `auto/coordinator`
@@ -75,7 +75,7 @@ Tags become nested path components, so custom helpers appear alongside the
 existing timestamped filenames.
 
 Without `--debug`, Kay only writes critical crash/error logs to
-`~/.code/debug_logs/critical.log.*`; routine log output is suppressed.
+`~/.kay/debug_logs/critical.log.*`; routine log output is suppressed.
 
 By comparison, the non-interactive mode (`code exec`) defaults to `RUST_LOG=error`, but messages are printed inline, so there is no need to monitor a separate file.
 
@@ -83,7 +83,7 @@ See the Rust documentation on [`RUST_LOG`](https://docs.rs/env_logger/latest/env
 
 ## Model Context Protocol (MCP)
 
-The Kay CLI can be configured to leverage MCP servers by defining an [`mcp_servers`](./config.md#mcp_servers) section in `~/.code/config.toml` (Kay will also read a legacy `~/.codex/config.toml`). It is intended to mirror how tools such as Claude and Cursor define `mcpServers` in their respective JSON config files, though the Kay format is slightly different since it uses TOML rather than JSON, e.g.:
+The Kay CLI can be configured to leverage MCP servers by defining an [`mcp_servers`](./config.md#mcp_servers) section in `~/.kay/config.toml`. It is intended to mirror how tools such as Claude and Cursor define `mcpServers` in their respective JSON config files, though the Kay format is slightly different since it uses TOML rather than JSON, e.g.:
 
 ```toml
 # IMPORTANT: the top-level key is `mcp_servers` rather than `mcpServers`.

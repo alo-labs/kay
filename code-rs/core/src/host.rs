@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use dirs::home_dir;
 use std::env;
 use std::path::Path;

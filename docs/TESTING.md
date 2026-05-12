@@ -77,6 +77,22 @@ Acceptance target:
 - This is intentionally smoke-level. Use it to catch regressions early, not to claim full behavioral parity or benchmark equivalence.
 - If a provider/model family needs a compatibility profile, keep the profile-specific assertions in unit or wire tests and keep the release smoke matrix minimal and realistic.
 
+## Real Project Validation
+
+Kay also has a real-world note-app target at `~/projects/test-notes-app`
+(`alo-exp/test-notes-app` on GitHub). Use it to validate substantial model work
+before releases, not just final-answer smoke:
+
+1. Bootstrap the target checkout and isolated Kay home:
+   - `scripts/bootstrap-test-notes-app.sh`
+2. Run the live Kay harness against the supported OpenCode Go model set:
+   - `cargo test -p code-cli --test test_notes_app_live_e2e -- --nocapture`
+3. Review the copied session transcript JSONL in the notes-app repo when
+   investigating model behavior or UX frictions.
+
+This target is intended to expose real edit/review behavior, transcript
+provenance, and UX rough edges that simple prompt smokes cannot catch.
+
 ## Notes
 
 - Do not use `rustfmt` as part of init or completion unless explicitly requested

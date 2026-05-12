@@ -1,6 +1,5 @@
 use crate::config::Config;
 use crate::git_info::resolve_root_git_project_for_trust;
-use crate::host::host_codex_home_dir;
 use crate::skills::model::SkillError;
 use crate::skills::model::SkillLoadOutcome;
 use crate::skills::model::SkillMetadata;
@@ -100,14 +99,6 @@ pub(crate) fn user_skills_root(config: &Config) -> SkillRoot {
     }
 }
 
-pub(crate) fn host_skills_root() -> Option<SkillRoot> {
-    let root = host_codex_home_dir()?.join(SKILLS_DIR_NAME);
-    Some(SkillRoot {
-        path: root,
-        scope: SkillScope::User,
-    })
-}
-
 pub(crate) fn home_agents_skills_root() -> Option<SkillRoot> {
     let home = dirs::home_dir()?;
     Some(SkillRoot {
@@ -182,10 +173,6 @@ fn skill_roots(config: &Config) -> Vec<SkillRoot> {
         &config.cwd,
         REPO_ROOT_CONFIG_DIR_NAME,
     ));
-
-    if let Some(host_root) = host_skills_root() {
-        roots.push(host_root);
-    }
 
     if let Some(home_root) = home_agents_skills_root() {
         roots.push(home_root);
