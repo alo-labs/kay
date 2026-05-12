@@ -296,7 +296,7 @@ fn small_welcome_lines(version: &str) -> Vec<String> {
 
 fn tiny_welcome_lines(version: &str) -> Vec<String> {
     vec![
-        format!("EVERY                 {version}    "),
+        format!("KAY                   {version}    "),
         " █████╗ █████╗ █████╗ ██████╗         ".to_string(),
         "██╔═══╝██╔══██╗██╔═██╗██╔═══╝         ".to_string(),
         "██║    ██║  ██║██║ ██║████╗           ".to_string(),
@@ -362,7 +362,7 @@ fn render_static_lines(
     _frame: u32,
     reveal_x_shadow: isize,
 ) {
-    let static_target = Color::Rgb(230, 232, 235); // matches CODE/EVERY final color (#e6e8eb)
+    let static_target = Color::Rgb(230, 232, 235); // matches CODE/KAY final color (#e6e8eb)
     let static_color_base = blend_to_background(static_target, alpha);
     for (row_idx, line) in lines.iter().enumerate() {
         let y = area.y + row_idx as u16;

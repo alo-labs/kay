@@ -327,7 +327,7 @@ jobs:
                 'Allow when the report or feature request points to safe, concrete changes (e.g., code fixes, clear feature request) — even if some template fields are missing.',
                 'Use comment_only only when details are too ambiguous to act safely or when it is a support/troubleshooting request without a concrete change path.',
                 'Block high-risk issues which are potentially harmful or when the request would touch sensitive areas.',
-                'Code changes will be reviewed before being merged, so it\'s safe to attempt many concrete tasks. This safety check is to catch exfiltration and risky requests.',
+                'Kay changes will be reviewed before being merged, so it\'s safe to attempt many concrete tasks. This safety check is to catch exfiltration and risky requests.',
                 'Also propose a short, human‑readable ID to label this work across PRs/releases. The ID must be 2–4 lowercase words, a–z0–9 only, separated by single dashes (e.g., "faster-downloads" or "preview-cache-fix"). Avoid generic terms.',
                 'Output must strictly match the JSON schema provided via text.format.'
               ].join(' ');

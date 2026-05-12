@@ -1,8 +1,9 @@
 ---
 source: tui/tests/bottom_spacer_clip_regression.rs
+assertion_line: 20
 expression: output
 ---
- |                                 Every Code                                 |
+ |                                     Kay                                    |
 
    - Running commands
 

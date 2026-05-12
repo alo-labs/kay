@@ -3,7 +3,7 @@ source: tui/src/chatwidget/tests.rs
 expression: terminal.backend()
 ---
 "                                                                                "
-"? Codex wants to run echo hello world                                           "
+"? Kay wants to run echo hello world                                             "
 "                                                                                "
 "▌Allow command?                                                                 "
 "▌ Yes   Always   No, provide feedback                                           "

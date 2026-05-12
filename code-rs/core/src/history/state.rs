@@ -390,7 +390,7 @@ pub struct MessageLine {
 pub enum MessageLineKind {
     Paragraph,
     Bullet { indent: u8, marker: BulletMarker },
-    Code { language: Option<String> },
+    Kay { language: Option<String> },
     Quote,
     Separator,
     Metadata,
@@ -447,7 +447,7 @@ impl Default for TextEmphasis {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TextEntity {
     Link { href: String },
-    Code,
+    Kay,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -608,7 +608,7 @@ pub enum ReasoningBlock {
         marker: BulletMarker,
         spans: Vec<InlineSpan>,
     },
-    Code { language: Option<String>, content: String },
+    Kay { language: Option<String>, content: String },
     Quote(Vec<InlineSpan>),
     Separator,
 }

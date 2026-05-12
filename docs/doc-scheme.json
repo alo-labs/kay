@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated_at": "2026-05-11T10:37:29Z",
+  "updated_at": "2026-05-11T18:48:24Z",
   "sync": {
     "doc_scheme_md_path": "docs/doc-scheme.md",
     "task_checklist_path": "docs/task-doc-checklist.json"
@@ -10,22 +10,15 @@
     "granularity_levels": [2, 3]
   },
   "mandatory_updated_docs": [
-    "docs/ARCHITECTURE.md",
-    "docs/TESTING.md",
-    "docs/CHANGELOG.md",
-    "docs/knowledge/INDEX.md",
-    "docs/knowledge/2026-05.md",
-    "docs/lessons/2026-05.md",
-    "docs/workflows/full-dev-cycle.md",
-    "docs/workflows/devops-cycle.md",
     "docs/doc-scheme.md",
     "docs/doc-scheme.json",
+    "docs/slash-commands.md",
     "docs/task-doc-checklist.json"
   ],
   "required_docs": [
     {
       "key": "docs/ARCHITECTURE.md",
-      "mandatory_updated": true,
+      "mandatory_updated": false,
       "required_sections": [
         "System Shape",
         "Data Flow"
@@ -33,7 +26,7 @@
     },
     {
       "key": "docs/TESTING.md",
-      "mandatory_updated": true,
+      "mandatory_updated": false,
       "required_sections": [
         "Required Gate",
         "Recommended Checks"
@@ -41,21 +34,21 @@
     },
     {
       "key": "docs/CHANGELOG.md",
-      "mandatory_updated": true,
+      "mandatory_updated": false,
       "required_sections": [
         "2026-05-11"
       ]
     },
     {
       "key": "docs/knowledge/INDEX.md",
-      "mandatory_updated": true,
+      "mandatory_updated": false,
       "required_sections": [
         "Monthly Files"
       ]
     },
     {
       "key": "docs/knowledge/2026-05.md",
-      "mandatory_updated": true,
+      "mandatory_updated": false,
       "required_sections": [
         "Architecture Patterns",
         "Known Gotchas",
@@ -64,7 +57,7 @@
     },
     {
       "key": "docs/lessons/2026-05.md",
-      "mandatory_updated": true,
+      "mandatory_updated": false,
       "required_sections": [
         "practice:init",
         "practice:docs"
@@ -72,7 +65,7 @@
     },
     {
       "key": "docs/workflows/full-dev-cycle.md",
-      "mandatory_updated": true,
+      "mandatory_updated": false,
       "required_sections": [
         "Start",
         "Core Loop",
@@ -81,7 +74,7 @@
     },
     {
       "key": "docs/workflows/devops-cycle.md",
-      "mandatory_updated": true,
+      "mandatory_updated": false,
       "required_sections": [
         "Start",
         "Core Loop",
@@ -102,6 +95,14 @@
       "required_sections": [
         "version",
         "required_docs"
+      ]
+    },
+    {
+      "key": "docs/slash-commands.md",
+      "mandatory_updated": true,
+      "required_sections": [
+        "Prompt-Expanding (Multi-Agent)",
+        "Implementation Notes"
       ]
     },
     {

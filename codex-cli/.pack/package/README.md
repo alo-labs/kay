@@ -1,22 +1,22 @@
-<img src="docs/images/every-logo.png" alt="Every Code Logo" width="400">
+<img src="docs/images/every-logo.png" alt="Kay Logo" width="400">
 
 &ensp;
 
-**Every Code** (Code for short) is a fast, local coding agent for your terminal. It's a community-driven fork of `openai/codex` focused on real developer ergonomics: Browser integration, multi-agents, theming, and reasoning control — all while staying compatible with upstream.
+**Kay** (Kay) is a fast, local coding agent for your terminal. It's a community-driven fork of `openai/codex` focused on real developer ergonomics: Browser integration, multi-agents, theming, and reasoning control — all while staying compatible with upstream.
 
 &ensp;
 ## What's new in v0.6.0 (December 2025)
 
 - **Auto Review** – background ghost-commit watcher runs reviews in a separate worktree whenever a turn changes code; uses `codex-5.1-mini-high` and reports issues plus ready-to-apply fixes without blocking the main thread.
-- **Code Bridge** – Sentry-style local bridge that streams errors, console, screenshots, and control from running apps into Code; ships an MCP server; install by asking Code to pull `https://github.com/just-every/code-bridge`.
+- **Kay Bridge** – Sentry-style local bridge that streams errors, console, screenshots, and control from running apps into Kay; ships an MCP server; install by asking Kay to pull `https://github.com/alo-labs/kay-bridge`.
 - **Plays well with Auto Drive** – reviews run in parallel with long Auto Drive tasks so quality checks land while the flow keeps moving.
 - **Quality-first focus** – the release shifts emphasis from "can the model write this file" to "did we verify it works".
-- _From v0.5.0:_ rename to Every Code, upgraded `/auto` planning/recovery, unified `/settings`, faster streaming/history with card-based activity, and more reliable `/resume` + `/undo`.
+- _From v0.5.0:_ rename to Kay, upgraded `/auto` planning/recovery, unified `/settings`, faster streaming/history with card-based activity, and more reliable `/resume` + `/undo`.
 
  [Read the full notes in RELEASE_NOTES.md](docs/release-notes/RELEASE_NOTES.md)
 
 &ensp;
-## Why Every Code
+## Why Kay
 
 - 🚀 **Auto Drive orchestration** – Multi-agent automation that now self-heals and ships complete tasks.
 - 🌐 **Browser Integration** – CDP support, headless browsing, screenshots captured inline.
@@ -61,13 +61,13 @@
 ### Run
 
 ```bash
-npx -y @just-every/code
+npx -y @alo-labs/kay
 ```
 
 ### Install & Run
 
 ```bash
-npm install -g @just-every/code
+npm install -g @alo-labs/kay
 code // or `coder` if you're using VS Code
 ```
 
@@ -81,7 +81,7 @@ Note: If another tool already provides a `code` command (e.g. VS Code), our CLI 
 
 ### Install Claude & Gemini (optional)
 
-Every Code supports orchestrating other AI CLI tools. Install these and config to use alongside Code.
+Kay supports orchestrating other AI CLI tools. Install these and config to use alongside Kay.
 
 ```bash
 # Ensure Node.js 20+ is available locally (installs into ~/.n)
@@ -179,7 +179,7 @@ Note: `--model` only changes the model name sent to the active provider. To use 
 &ensp;
 ## Memory & project docs
 
-Every Code can remember context across sessions:
+Kay can remember context across sessions:
 
 1. **Create an `AGENTS.md` or `CLAUDE.md` file** in your project root:
 ```markdown
@@ -195,7 +195,7 @@ This is a React TypeScript application with:
 - `/server/` - Backend services
 ```
 
-2. **Session memory**: Every Code maintains conversation history
+2. **Session memory**: Kay maintains conversation history
 3. **Codebase analysis**: Automatically understands project structure
 
 &ensp;
@@ -217,7 +217,7 @@ code --config output_format=json "list all TODO comments"
 &ensp;
 ## Model Context Protocol (MCP)
 
-Every Code supports MCP for extended capabilities:
+Kay supports MCP for extended capabilities:
 
 - **File operations**: Advanced file system access
 - **Database connections**: Query and modify databases
@@ -238,7 +238,7 @@ args = ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/project"]
 Main config file: `~/.code/config.toml`
 
 > [!NOTE]
-> Every Code reads from both `~/.code/` and `~/.codex/` for backwards compatibility, but it only writes updates to `~/.code/`. If you switch back to Codex and it fails to start, remove `~/.codex/config.toml`. If Every Code appears to miss settings after upgrading, copy your legacy `~/.codex/config.toml` into `~/.code/`.
+> Kay reads from both `~/.code/` and `~/.codex/` for backwards compatibility, but it only writes updates to `~/.code/`. If you switch back to Codex and it fails to start, remove `~/.codex/config.toml`. If Kay appears to miss settings after upgrading, copy your legacy `~/.codex/config.toml` into `~/.code/`.
 
 ```toml
 # Model settings
@@ -277,7 +277,7 @@ model_reasoning_summary = "detailed"
 > This fork adds browser integration, multi-agent commands (`/plan`, `/solve`, `/code`), theme system, and enhanced reasoning controls while maintaining full compatibility.
 
 **Can I use my existing Codex configuration?**
-> Yes. Every Code reads from both `~/.code/` (primary) and legacy `~/.codex/` directories. We only write to `~/.code/`, so Codex will keep running if you switch back; copy or remove legacy files if you notice conflicts.
+> Yes. Kay reads from both `~/.code/` (primary) and legacy `~/.codex/` directories. We only write to `~/.code/`, so Codex will keep running if you switch back; copy or remove legacy files if you notice conflicts.
 
 **Does this work with ChatGPT Plus?**
 > Absolutely. Use the same "Sign in with ChatGPT" flow as the original.
@@ -288,13 +288,13 @@ model_reasoning_summary = "detailed"
 &ensp;
 ## Contributing
 
-We welcome contributions! Every Code maintains compatibility with upstream while adding community-requested features.
+We welcome contributions! Kay maintains compatibility with upstream while adding community-requested features.
 
 ### Development workflow
 
 ```bash
 # Clone and setup
-git clone https://github.com/just-every/code.git
+git clone https://github.com/alo-labs/kay.git
 cd code
 npm install
 
@@ -330,10 +330,10 @@ The `pre-push` hook runs `./pre-release.sh` automatically when pushing to `main`
 
 ### License & attribution
 - This project is a community fork of `openai/codex` under **Apache-2.0**. We preserve upstream LICENSE and NOTICE files.
-- **Every Code** (Code) is **not** affiliated with, sponsored by, or endorsed by OpenAI.
+- **Kay** (Kay) is **not** affiliated with, sponsored by, or endorsed by OpenAI.
 
 ### Your responsibilities
-Using OpenAI, Anthropic or Google services through Every Code means you agree to **their Terms and policies**. In particular:
+Using OpenAI, Anthropic or Google services through Kay means you agree to **their Terms and policies**. In particular:
 - **Don't** programmatically scrape/extract content outside intended flows.
 - **Don't** bypass or interfere with rate limits, quotas, or safety mitigations.
 - Use your **own** account; don't share or rotate accounts to evade limits.
@@ -344,15 +344,15 @@ Using OpenAI, Anthropic or Google services through Every Code means you agree to
 - Inputs/outputs you send to AI providers are handled under their Terms and Privacy Policy; consult those documents (and any org-level data-sharing settings).
 
 ### Subject to change
-AI providers can change eligibility, limits, models, or authentication flows. Every Code supports **both** ChatGPT sign-in and API-key modes so you can pick what fits (local/hobby vs CI/automation).
+AI providers can change eligibility, limits, models, or authentication flows. Kay supports **both** ChatGPT sign-in and API-key modes so you can pick what fits (local/hobby vs CI/automation).
 
 &ensp;
 ## License
 
 Apache 2.0 - See [LICENSE](LICENSE) file for details.
 
-Every Code is a community fork of the original Codex CLI. We maintain compatibility while adding enhanced features requested by the developer community.
+Kay is a community fork of the original Codex CLI. We maintain compatibility while adding enhanced features requested by the developer community.
 
 &ensp;
 ---
-**Need help?** Open an issue on [GitHub](https://github.com/just-every/code/issues) or check our documentation.
+**Need help?** Open an issue on [GitHub](https://github.com/alo-labs/kay/issues) or check our documentation.

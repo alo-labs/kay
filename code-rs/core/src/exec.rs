@@ -137,7 +137,7 @@ pub struct StdoutStream {
 
     /// Optional directory to spool full stdout/stderr output for this exec.
     ///
-    /// When set, Code writes raw stream bytes to disk while still keeping only
+    /// When set, Kay writes raw stream bytes to disk while still keeping only
     /// a bounded tail in memory.
     pub(crate) spool_dir: Option<PathBuf>,
 }

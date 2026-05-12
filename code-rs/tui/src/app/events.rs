@@ -1026,7 +1026,7 @@ impl App<'_> {
                 }
                 AppEvent::DispatchCommand(command, command_text) => {
                     // Persist UI-only slash commands to cross-session history.
-                    // For prompt-expanding commands (/plan, /solve, /code) we let the
+                    // For prompt-expanding commands (/plan, /solve, /kay) we let the
                     // expanded prompt be recorded by the normal submission path.
                     if !command.is_prompt_expanding() {
                         let _ = self
@@ -1326,7 +1326,7 @@ impl App<'_> {
                         // Prompt-expanding commands should have been handled in submit_user_message
                         // but add a fallback just in case. Use a helper that shows the original
                         // slash command in history while sending the expanded prompt to the model.
-                        SlashCommand::Plan | SlashCommand::Solve | SlashCommand::Code => {
+                        SlashCommand::Plan | SlashCommand::Solve | SlashCommand::Kay => {
                             // These should have been expanded already, but handle them anyway
                             if let AppState::Chat { widget } = &mut self.app_state {
                                 let expanded = command.expand_prompt(command_args.trim());

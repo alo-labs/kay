@@ -116,7 +116,7 @@ fn load_dotenv() {
     if let Ok(code_home) = code_core::config::find_code_home() {
         let global_env_path = resolve_code_path_for_read(&code_home, Path::new(".env"));
         if let Ok(iter) = dotenvy::from_path_iter(global_env_path) {
-            // Global env may legitimately contain provider keys for Code usage.
+            // Global env may legitimately contain provider keys for Kay usage.
             set_filtered(iter);
         }
     }

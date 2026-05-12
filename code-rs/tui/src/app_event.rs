@@ -274,7 +274,7 @@ pub(crate) enum AppEvent {
     /// Session nickname update finished
     SessionRenameCompleted { message: String },
 
-    /// Signal that agents are about to start (triggered when /plan, /solve, /code commands are entered)
+    /// Signal that agents are about to start (triggered when /plan, /solve, /kay commands are entered)
     PrepareAgents,
 
     /// Update the model and optional reasoning effort preset

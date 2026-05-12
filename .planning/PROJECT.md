@@ -43,7 +43,7 @@ Keep the CLI buildable, understandable, and safe to evolve without disturbing ex
 ## Context
 
 - Kay already has a multi-provider architecture from the MiniMax work.
-- Official OpenCode docs say OpenCode Go uses model IDs in the `opencode-go/<model-id>` format, with examples such as Kimi K2.6, and that those models are reachable via OpenCode Go API endpoints.
+- Official OpenKay docs say OpenCode Go uses model IDs in the `opencode-go/<model-id>` format, with examples such as Kimi K2.6, and that those models are reachable via OpenCode Go API endpoints.
 - The OpenCode Go docs also show mixed wire APIs across models, so the first milestone should validate a representative OpenAI-compatible path and keep any non-matching model families explicit.
 - The user has supplied a live OpenCode Go API key for verification; do not commit it anywhere.
 
@@ -59,7 +59,7 @@ Keep the CLI buildable, understandable, and safe to evolve without disturbing ex
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
 | OpenCode Go will be treated as a first-class provider integration, not a one-off config snippet | Keeps docs, tests, and release flow aligned | Pending |
-| The milestone will validate a representative `opencode-go/<model>` path before release | OpenCode docs show multiple model formats; we should prove one working path first | Pending |
+| The milestone will validate a representative `opencode-go/<model>` path before release | OpenKay docs show multiple model formats; we should prove one working path first | Pending |
 | The supplied API key will be used only for live validation, never committed | Protects secrets while still enabling end-to-end proof | Pending |
 
 ## Evolution

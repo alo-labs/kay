@@ -164,7 +164,7 @@ enum Subcommand {
     /// Side-channel LLM utilities (no TUI events).
     Llm(LlmCli),
 
-    /// Manage Code Bridge subscription for this workspace.
+    /// Manage Kay Bridge subscription for this workspace.
     Bridge(BridgeCommand),
 }
 
@@ -299,7 +299,7 @@ struct SubscriptionOverride {
     llm_filter: String,
 }
 
-const SUBSCRIPTION_OVERRIDE_FILE: &str = "code-bridge.subscription.json";
+const SUBSCRIPTION_OVERRIDE_FILE: &str = "kay-bridge.subscription.json";
 
 fn default_levels() -> Vec<String> {
     vec!["errors".to_string()]
@@ -399,7 +399,7 @@ struct OrderReplayArgs {
 struct PreviewArgs {
     /// Slug identifier (e.g., faster-downloads)
     slug: String,
-    /// Optional owner/repo to override (defaults to just-every/code or $GITHUB_REPOSITORY)
+    /// Optional owner/repo to override (defaults to alo-labs/kay or $GITHUB_REPOSITORY)
     #[arg(long = "repo", value_name = "OWNER/REPO")]
     repo: Option<String>,
     /// Output directory where the binary will be extracted
@@ -681,7 +681,7 @@ fn run_bridge_subscription(cmd: BridgeSubscriptionCommand) -> anyhow::Result<()>
         if override_path.exists() {
             fs::remove_file(&override_path).context("failed to remove subscription override")?;
             println!(
-                "Removed {}. The running Code session will revert to defaults (errors only) within a few seconds.",
+                "Removed {}. The running Kay session will revert to defaults (errors only) within a few seconds.",
                 override_path.display()
             );
         } else {
@@ -696,7 +696,7 @@ fn run_bridge_subscription(cmd: BridgeSubscriptionCommand) -> anyhow::Result<()>
         println!("levels       : {}", sub.levels.join(", "));
         println!("capabilities : {}", sub.capabilities.join(", "));
         println!("llm_filter   : {}", sub.llm_filter);
-        println!("(Running Code picks up changes every ~5s.)");
+        println!("(Running Kay picks up changes every ~5s.)");
         return Ok(());
     }
 
@@ -722,7 +722,7 @@ fn run_bridge_subscription(cmd: BridgeSubscriptionCommand) -> anyhow::Result<()>
     println!("levels       : {}", sub.levels.join(", "));
     println!("capabilities : {}", sub.capabilities.join(", "));
     println!("llm_filter   : {}", sub.llm_filter);
-    println!("Running Code session will resubscribe within ~5s.");
+    println!("Running Kay session will resubscribe within ~5s.");
     Ok(())
 }
 
@@ -731,7 +731,7 @@ async fn run_bridge_list(_cmd: BridgeListCommand) -> anyhow::Result<()> {
     let targets = bridge::discover_bridge_targets(&cwd)?;
     if targets.is_empty() {
         println!(
-            "No Code Bridge metadata found. Start `code-bridge-host` in this workspace and try again."
+            "No Kay Bridge metadata found. Start `kay-bridge-host` in this workspace and try again."
         );
         return Ok(());
     }
@@ -772,7 +772,7 @@ async fn run_bridge_list(_cmd: BridgeListCommand) -> anyhow::Result<()> {
         );
         if target.stale {
             println!(
-                "{}⚠ metadata looks stale; restart code-bridge-host if this persists.",
+                "{}⚠ metadata looks stale; restart kay-bridge-host if this persists.",
                 indent
             );
         }
@@ -874,7 +874,7 @@ fn select_bridge_target(selector: Option<&str>) -> anyhow::Result<bridge::Bridge
     let targets = bridge::discover_bridge_targets(&cwd)?;
     if targets.is_empty() {
         return Err(anyhow!(
-            "No Code Bridge metadata found. Start `code-bridge-host` in this workspace and try again."
+            "No Kay Bridge metadata found. Start `kay-bridge-host` in this workspace and try again."
         ));
     }
 
@@ -976,7 +976,7 @@ fn resolve_subscription_override_path(start: &Path) -> PathBuf {
 fn find_meta_dir(start: &Path) -> Option<PathBuf> {
     let mut current = Some(start);
     while let Some(dir) = current {
-        let candidate = dir.join(".code").join("code-bridge.json");
+        let candidate = dir.join(".code").join("kay-bridge.json");
         if candidate.exists() {
             return candidate.parent().map(Path::to_path_buf);
         }
@@ -1306,7 +1306,7 @@ async fn preview_main(args: PreviewArgs) -> anyhow::Result<()> {
     let repo = args
         .repo
         .or_else(|| env::var("GITHUB_REPOSITORY").ok())
-        .unwrap_or_else(|| "just-every/code".to_string());
+        .unwrap_or_else(|| "alo-labs/kay".to_string());
     let (owner, name) = repo
         .split_once('/')
         .map(|(o, n)| (o.to_string(), n.to_string()))
@@ -1649,7 +1649,7 @@ async fn doctor_main() -> anyhow::Result<()> {
         let bun_coder = format!("{}/coder", bun_bin);
         if coder_paths.iter().any(|p| p == &bun_coder) {
             println!("\nBun shim detected for 'coder': {}", bun_coder);
-            println!("Suggestion: remove old Bun global with: bun remove -g @just-every/code");
+            println!("Suggestion: remove old Bun global with: bun remove -g @alo-labs/kay");
         }
         let bun_code = format!("{}/code", bun_bin);
         if code_paths.iter().any(|p| p == &bun_code) {
@@ -1686,8 +1686,8 @@ async fn doctor_main() -> anyhow::Result<()> {
     }
 
     println!("\nIf versions differ, remove older installs and keep one package manager:");
-    println!("  - Bun: bun remove -g @just-every/code");
-    println!("  - npm/pnpm: npm uninstall -g @just-every/code");
+    println!("  - Bun: bun remove -g @alo-labs/kay");
+    println!("  - npm/pnpm: npm uninstall -g @alo-labs/kay");
     println!("  - Homebrew: brew uninstall code");
     println!("  - Prefer using 'coder' to avoid conflicts with VS Code's 'code'.");
 

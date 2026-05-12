@@ -25,7 +25,7 @@ pub struct ModelUpgrade {
     pub migration_config_key: String,
 }
 
-/// Metadata describing a Code-supported model.
+/// Metadata describing a Kay-supported model.
 #[derive(Debug, Clone)]
 pub struct ModelPreset {
     pub id: String,
@@ -379,7 +379,7 @@ static PRESETS: Lazy<Vec<ModelPreset>> = Lazy::new(|| {
             id: "gpt-5.1-codex".to_string(),
             model: "gpt-5.1-codex".to_string(),
             display_name: "gpt-5.1-codex".to_string(),
-            description: "Optimized for Code.".to_string(),
+            description: "Optimized for Kay.".to_string(),
             default_reasoning_effort: ReasoningEffort::Medium,
             supported_reasoning_efforts: vec![
                 ReasoningEffortPreset {
@@ -410,7 +410,7 @@ static PRESETS: Lazy<Vec<ModelPreset>> = Lazy::new(|| {
             id: "gpt-5.1-codex-mini".to_string(),
             model: "gpt-5.1-codex-mini".to_string(),
             display_name: "gpt-5.1-codex-mini".to_string(),
-            description: "Optimized for Code. Cheaper, faster, but less capable.".to_string(),
+            description: "Optimized for Kay. Cheaper, faster, but less capable.".to_string(),
             default_reasoning_effort: ReasoningEffort::Medium,
             supported_reasoning_efforts: vec![
                 ReasoningEffortPreset {
@@ -472,7 +472,7 @@ static PRESETS: Lazy<Vec<ModelPreset>> = Lazy::new(|| {
             id: "gpt-5-codex".to_string(),
             model: "gpt-5-codex".to_string(),
             display_name: "gpt-5-codex".to_string(),
-            description: "Optimized for Code.".to_string(),
+            description: "Optimized for Kay.".to_string(),
             default_reasoning_effort: ReasoningEffort::Medium,
             supported_reasoning_efforts: vec![
                 ReasoningEffortPreset {
@@ -502,7 +502,7 @@ static PRESETS: Lazy<Vec<ModelPreset>> = Lazy::new(|| {
             id: "gpt-5-codex-mini".to_string(),
             model: "gpt-5-codex-mini".to_string(),
             display_name: "gpt-5-codex-mini".to_string(),
-            description: "Optimized for Code. Cheaper, faster, but less capable.".to_string(),
+            description: "Optimized for Kay. Cheaper, faster, but less capable.".to_string(),
             default_reasoning_effort: ReasoningEffort::Medium,
             supported_reasoning_efforts: vec![
                 ReasoningEffortPreset {

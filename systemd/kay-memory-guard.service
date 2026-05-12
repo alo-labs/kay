@@ -1,11 +1,11 @@
 [Unit]
-Description=Guard Every Code memory usage
+Description=Guard Kay memory usage
 After=network.target
 StartLimitIntervalSec=0
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/code-memory-guard.sh
+ExecStart=/usr/local/bin/kay-memory-guard.sh
 Restart=always
 RestartSec=2
 Nice=10

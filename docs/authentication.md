@@ -20,7 +20,7 @@ This key must, at minimum, have write access to the Responses API.
 
 ## Migrating to ChatGPT login from API key
 
-If you've used the Code CLI before with usage-based billing via an API key and want to switch to using your ChatGPT plan, follow these steps:
+If you've used the Kay CLI before with usage-based billing via an API key and want to switch to using your ChatGPT plan, follow these steps:
 
 1. Update the CLI and ensure `code --version` is `0.5.0` or later
 2. Delete `~/.code/auth.json` if you want to reset Kay locally. The host Codex environment keeps its own `~/.codex/auth.json`; on Windows these live under `C:\\Users\\USERNAME\\.code\\auth.json` and `C:\\Users\\USERNAME\\.codex\\auth.json`
@@ -28,12 +28,12 @@ If you've used the Code CLI before with usage-based billing via an API key and w
 
 ## Forcing a specific auth method (advanced)
 
-You can explicitly choose which authentication Code should prefer when both are available.
+You can explicitly choose which authentication Kay should prefer when both are available.
 
 - To always use your API key (even when ChatGPT auth exists), set:
 
 ```toml
-# ~/.code/config.toml (Code also reads the host ~/.codex/config.toml overlay)
+# ~/.code/config.toml (Kay also reads the host ~/.codex/config.toml overlay)
 preferred_auth_method = "apikey"
 ```
 
@@ -46,21 +46,21 @@ code --config preferred_auth_method="apikey"
 - To prefer ChatGPT auth (default), set:
 
 ```toml
-# ~/.code/config.toml (Code also reads the host ~/.codex/config.toml overlay)
+# ~/.code/config.toml (Kay also reads the host ~/.codex/config.toml overlay)
 preferred_auth_method = "chatgpt"
 ```
 
 Notes:
 
 - When `preferred_auth_method = "apikey"` and an API key is available, the login screen is skipped.
-- When `preferred_auth_method = "chatgpt"` (default), Code prefers ChatGPT auth if present; if only an API key is present, it will use the API key. Certain account types may also require API-key mode.
+- When `preferred_auth_method = "chatgpt"` (default), Kay prefers ChatGPT auth if present; if only an API key is present, it will use the API key. Certain account types may also require API-key mode.
 - To check which auth method is being used during a session, use the `/status` command in the TUI.
 
 ## Project .env safety (OPENAI_API_KEY)
 
-By default, Code will no longer read `OPENAI_API_KEY` or `AZURE_OPENAI_API_KEY` from a project’s local `.env` file.
+By default, Kay will no longer read `OPENAI_API_KEY` or `AZURE_OPENAI_API_KEY` from a project’s local `.env` file.
 
-Why: many repos include an API key in `.env` for unrelated tooling, which could cause Code to silently use the API key instead of your ChatGPT plan in that folder.
+Why: many repos include an API key in `.env` for unrelated tooling, which could cause Kay to silently use the API key instead of your ChatGPT plan in that folder.
 
 What still works:
 
@@ -71,7 +71,7 @@ Project `.env` provider keys are always ignored — there is no opt‑in.
 
 UI clarity:
 
-- When Code is using an API key, the chat footer shows a bold “Auth: API key” badge so it’s obvious which mode you’re in.
+- When Kay is using an API key, the chat footer shows a bold “Auth: API key” badge so it’s obvious which mode you’re in.
 
 ## Connecting on a "Headless" Machine
 
@@ -105,7 +105,7 @@ ssh user@remote 'mkdir -p ~/.code && cat > ~/.code/auth.json' < ~/.code/auth.jso
 
 ### Connecting through VPS or remote
 
-If you run Code on a remote machine (VPS/server) without a local browser, the login helper starts a server on `localhost:1455` on the remote host. To complete login in your local browser, forward that port to your machine before starting the login flow:
+If you run Kay on a remote machine (VPS/server) without a local browser, the login helper starts a server on `localhost:1455` on the remote host. To complete login in your local browser, forward that port to your machine before starting the login flow:
 
 ```bash
 # From your local machine

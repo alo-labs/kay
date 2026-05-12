@@ -20,7 +20,7 @@ use uuid::Uuid;
 type WsStream =
     tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>;
 
-const META_FILE: &str = "code-bridge.json";
+const META_FILE: &str = "kay-bridge.json";
 const HEARTBEAT_STALE_MS: i64 = 20_000;
 const DEFAULT_CAPABILITIES: &[&str] = &[
     "error",

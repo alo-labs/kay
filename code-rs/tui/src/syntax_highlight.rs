@@ -92,8 +92,8 @@ fn themes() -> &'static ThemeSet {
     THEMES.get_or_init(|| {
         let mut ts = ThemeSet::load_defaults();
         // Insert Codex built-in themes
-        ts.themes.insert("Code Dark".to_string(), build_code_dark_theme());
-        ts.themes.insert("Code Light".to_string(), build_code_light_theme());
+        ts.themes.insert("Kay Dark".to_string(), build_code_dark_theme());
+        ts.themes.insert("Kay Light".to_string(), build_code_light_theme());
         ts
     })
 }
@@ -110,7 +110,7 @@ fn item(scope: &str, fg: (u8,u8,u8), style: Option<FontStyle>) -> ThemeItem {
 
 fn build_code_dark_theme() -> Theme {
     let mut t = Theme::default();
-    t.name = Some("Code Dark".to_string());
+    t.name = Some("Kay Dark".to_string());
     t.settings = {
         let mut s = ThemeSettings::default();
         // Globals
@@ -216,7 +216,7 @@ fn build_code_dark_theme() -> Theme {
 
 fn build_code_light_theme() -> Theme {
     let mut t = Theme::default();
-    t.name = Some("Code Light".to_string());
+    t.name = Some("Kay Light".to_string());
     t.settings = {
         let mut s = ThemeSettings::default();
         // Globals
@@ -334,7 +334,7 @@ fn current_theme_name<'a>(ts: &'a ThemeSet) -> &'a str {
         }
         HighlightPref::Auto => {}
     }
-    if is_light_bg() { "Code Light" } else { "Code Dark" }
+    if is_light_bg() { "Kay Light" } else { "Kay Dark" }
 }
 
 fn blending_enabled() -> bool { false }
@@ -346,7 +346,7 @@ fn default_theme<'a>() -> &'a Theme {
     // Prefer the Solarized themes; fall back to first available if missing.
     ts.themes
         .get(name)
-        .or_else(|| ts.themes.get(if is_light_bg() { "Code Light" } else { "Code Dark" }))
+        .or_else(|| ts.themes.get(if is_light_bg() { "Kay Light" } else { "Kay Dark" }))
         .unwrap_or_else(|| ts.themes.values().next().expect("at least one syntect theme"))
 }
 

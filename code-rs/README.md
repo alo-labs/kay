@@ -92,7 +92,7 @@ codex --sandbox workspace-write
 codex --sandbox danger-full-access
 ```
 
-The same setting can be persisted in `~/.code/config.toml` via the top-level `sandbox_mode = "MODE"` key (Code will also read legacy `~/.codex/config.toml`), e.g. `sandbox_mode = "workspace-write"`.
+The same setting can be persisted in `~/.code/config.toml` via the top-level `sandbox_mode = "MODE"` key (Kay will also read legacy `~/.codex/config.toml`), e.g. `sandbox_mode = "workspace-write"`.
 
 If you want to prevent the agent from updating Git metadata (e.g., local safety), you can opt‑out with a workspace‑write tweak:
 
@@ -127,7 +127,7 @@ Use these console helpers to diagnose motion/cancellation behavior when testing 
 
   `window.__vc && window.__vc.moveTo(200, 200)`
 
-## Code Organization
+## Kay Organization
 
 This folder is the root of a Cargo workspace. It contains quite a bit of experimental code, but here are the key crates:
 

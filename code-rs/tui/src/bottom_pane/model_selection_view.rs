@@ -976,9 +976,9 @@ impl ModelSelectionView {
         } else if model.eq_ignore_ascii_case("gpt-5.1-codex-max") {
             Some("Latest Codex-optimized flagship for deep and fast reasoning.")
         } else if model.eq_ignore_ascii_case("gpt-5.1-codex") {
-            Some("Optimized for Code.")
+            Some("Optimized for Kay.")
         } else if model.eq_ignore_ascii_case("gpt-5.1-codex-mini") {
-            Some("Optimized for Code. Cheaper, faster, but less capable.")
+            Some("Optimized for Kay. Cheaper, faster, but less capable.")
         } else if model.eq_ignore_ascii_case("gpt-5.1") {
             Some("Broad world knowledge with strong general reasoning.")
         } else {

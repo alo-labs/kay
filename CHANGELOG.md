@@ -1,7 +1,7 @@
 # Changelog
 
 > [!TIP]
-> We're constantly improving Code! This page documents the core changes. You can also check our [releases page](https://github.com/just-every/code/releases) for additional information.
+> We're constantly improving Kay! This page documents the core changes. You can also check our [releases page](https://github.com/alo-labs/kay/releases) for additional information.
 
 ## [0.6.100] — 2026-05-11
 
@@ -520,7 +520,7 @@
 ## [0.6.9] - 2025-12-18
 
 - TUI/cards: set ANSI-16 card backgrounds for consistent styling. (820991e9)
-- TUI/status: restore the Every Code header title in the status view. (455ed636)
+- TUI/status: restore the Kay header title in the status view. (455ed636)
 
 ## [0.6.8] - 2025-12-18
 
@@ -536,7 +536,7 @@
 
 ## [0.6.6] - 2025-12-15
 
-- TUI: show Every Code title and stabilize header rendering so status bar and snapshots stay consistent. (1f77f7ac, a8b8beeb)
+- TUI: show Kay title and stabilize header rendering so status bar and snapshots stay consistent. (1f77f7ac, a8b8beeb)
 - Skills: reimplement loading via SkillsManager and add skills/list op for more reliable discovery. (5d77d4db)
 - Config: clean config loading/API, expand safe commands, and refresh disk status using latest values for MCP servers. (92098d36, 49bf49c2, 163a7e31)
 - Windows: locate pwsh.exe/powershell.exe reliably and parse PowerShell output with PowerShell for sturdier scripts. (4312cae0, 90094903)
@@ -578,7 +578,7 @@
 
 ## [0.5.14] - 2025-11-28
 
-- Core/Bridge: surface code-bridge events directly in sessions so runs show live bridge activity. (ca8f0efa)
+- Core/Bridge: surface kay-bridge events directly in sessions so runs show live bridge activity. (ca8f0efa)
 - TUI: keep composer popups aligned after history navigation and wrap the agent list inside the command editor for better readability. (bb4a43cf, b890eac3)
 - Auto Drive: stabilize the intro placeholder and ensure exec completions render in order so automation transcripts stay coherent. (7a652b74, d9e5ddbd)
 - Core/Compact: prune orphan tool outputs before compaction to shrink bloated histories and speed up resumes. (8ba5f744)
@@ -636,7 +636,7 @@
 
 ## [0.5.0] - 2025-11-21
 
-- Rebrand the project to **Every Code** while keeping the `code` CLI name and refreshed docs.
+- Rebrand the project to **Kay** while keeping the `code` CLI name and refreshed docs.
 - Auto Drive resilience: compaction and diagnostics, retry/backoff with observer telemetry, resume safety, and clearer cards/status.
 - Default presets upgraded to gpt-5.1 with added codex-mini variants for lighter runs.
 - UX polish: unified settings overlay refinements, /review uncommitted preset, strict streaming order, slash navigation hotkeys, and backtrack improvements.
@@ -835,7 +835,7 @@
 
 ## [0.2.173] - 2025-09-29
 
-- TUI/Browser: auto hand off /browser startup failures to Code so sessions self-heal. (95e27cd0)
+- TUI/Browser: auto hand off /browser startup failures to Kay so sessions self-heal. (95e27cd0)
 - TUI/Browser: sanitize and surface error details when handoff triggers for faster diagnosis. (95e27cd0)
 
 ## [0.2.172] - 2025-09-28
@@ -1021,7 +1021,7 @@
 ## [0.2.142] - 2025-09-12
 
 - CI: avoid placeholder-only issue comments to reduce noise. (8254d2da)
-- CI: gate Code generation on OPENAI_API_KEY; skip gracefully when missing. (8254d2da)
+- CI: gate Kay generation on OPENAI_API_KEY; skip gracefully when missing. (8254d2da)
 - CI: ensure proxy step runs reliably in workflows. (8254d2da)
 
 ## [0.2.141] - 2025-09-12
@@ -1053,7 +1053,7 @@
 ## [0.2.133] - 2025-09-12
 
 - Release/Homebrew: compute `sha256` from local artifacts; add retry/backoff when fetching remote bottles; avoid failing during CDN propagation. (fd38d777b)
-- CI/Triage: remove OpenAI proxy and Rust/Code caches; call API directly in safety screen to simplify and speed up runs. (7a28af813)
+- CI/Triage: remove OpenAI proxy and Rust/Kay caches; call API directly in safety screen to simplify and speed up runs. (7a28af813)
 - Dev: add `scripts/openai-proxy.js` for local testing with SSE‑safe header handling; mirrors CI proxy behavior. (7e9203c22)
 
 ## [0.2.132] - 2025-09-12
@@ -1296,7 +1296,7 @@
 - TUI/History: Home/End jump to start/end when input is empty. (7287fa71, 60f9db8c)
 - TUI/Overlays: Esc closes Help/Diff; hide input cursor while active. (d7353069)
 - TUI/Help: include Slash Commands; left-align keys; simplify delete shortcuts. (e00a4ecd, 11a7022d, 25aa36a3)
-- TUI: rebrand help and slash descriptions to "Code"; hide internal /test-approval. (5a93aee6, bde3e624)
+- TUI: rebrand help and slash descriptions to "Kay"; hide internal /test-approval. (5a93aee6, bde3e624)
 
 ## [0.2.89] - 2025-09-08
 
@@ -1735,7 +1735,7 @@
 
 ## [0.1.13] - 2025-08-16
 
-- Rebrand: switch npm bin to `code`, handle collisions; rename Coder → Code across UI and docs. (0f1974a, b3176fe)
+- Rebrand: switch npm bin to `code`, handle collisions; rename Coder → Kay across UI and docs. (0f1974a, b3176fe)
 - TUI polish: glitch animations, status handling, stabilized scroll viewport; improved token footer and search suffix. (3375965, 2e42af0, 96913aa, 80fe37d)
 - Core: Rust login server port; sandbox fixes; exec timer; browser console tool. (e9b597c, c26d42a, 2359878, d6da1a4)
 

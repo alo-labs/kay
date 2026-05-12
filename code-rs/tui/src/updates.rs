@@ -144,10 +144,10 @@ struct ReleaseInfo {
 }
 
 const VERSION_FILENAME: &str = "version.json";
-const LATEST_RELEASE_URL: &str = "https://api.github.com/repos/just-every/code/releases/latest";
-const CURRENT_RELEASE_REPO: &str = "just-every/code";
+const LATEST_RELEASE_URL: &str = "https://api.github.com/repos/alo-labs/kay/releases/latest";
+const CURRENT_RELEASE_REPO: &str = "alo-labs/kay";
 const LEGACY_RELEASE_REPO: &str = "openai/codex";
-pub const CODE_RELEASE_URL: &str = "https://github.com/just-every/code/releases/latest";
+pub const CODE_RELEASE_URL: &str = "https://github.com/alo-labs/kay/releases/latest";
 
 const CACHE_TTL_HOURS: i64 = 20;
 const MAX_CLOCK_SKEW_MINUTES: i64 = 5;
@@ -185,9 +185,9 @@ pub fn resolve_upgrade_resolution() -> UpgradeResolution {
                 "npm".to_string(),
                 "install".to_string(),
                 "-g".to_string(),
-                "@just-every/code@latest".to_string(),
+                "@alo-labs/kay@latest".to_string(),
             ],
-            display: "npm install -g @just-every/code@latest".to_string(),
+            display: "npm install -g @alo-labs/kay@latest".to_string(),
         };
     }
 

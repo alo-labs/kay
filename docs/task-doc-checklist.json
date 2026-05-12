@@ -1,43 +1,67 @@
 {
   "task_id": "silver-init",
   "task_granularity": 2,
-  "updated_at": "2026-05-11T15:44:52Z",
+  "updated_at": "2026-05-12T07:05:06Z",
   "_notes": [
-    "This checklist records the docs that were created or refreshed during Silver Bullet init.",
-    "Refreshed during the 2026-05-11 docs-scheme gate after the Phase 1 plan rewrite.",
-    "Updated again during the OpenCode Go provider and resume-compatibility review so the docs-scheme ledger reflects the current session.",
-    "Refreshed again during the release smoke checklist update for OpenCode Go provider/model parity.",
-    "Updated during the provider-model abstraction assessment and next-iteration sketch."
+    "Refreshed during the Kay slash-command rename and intro-banner cleanup in the current session.",
+    "Refreshed again during the final docs-gate reconciliation so the current-session freshness ledger matches the governed docs.",
+    "This checklist records every governed doc key present under docs/ plus root README.md and CHANGELOG.md."
   ],
   "docs": {
-    "docs/ARCHITECTURE.md": "updated",
-    "docs/TESTING.md": "updated",
+    "docs/ARCHITECTURE.md": "not-needed: no architecture changes in this task",
     "docs/CHANGELOG.md": "updated",
-    "docs/knowledge/INDEX.md": "updated",
-    "docs/knowledge/2026-05.md": "updated",
-    "docs/lessons/2026-05.md": "updated",
-    "docs/workflows/full-dev-cycle.md": "updated",
-    "docs/workflows/devops-cycle.md": "updated",
+    "docs/TESTING.md": "not-needed: no testing-doc changes in this task",
+    "docs/advanced.md": "not-needed: unchanged in this session",
+    "docs/agents.md": "not-needed: unchanged in this session",
+    "docs/authentication.md": "not-needed: unchanged in this session",
+    "docs/auto-drive.md": "not-needed: unchanged in this session",
+    "docs/config.md": "not-needed: unchanged in this session",
     "docs/doc-scheme.md": "updated",
     "docs/doc-scheme.json": "updated",
-    "docs/task-doc-checklist.json": "updated"
+    "docs/example-config.md": "not-needed: unchanged in this session",
+    "docs/exec.md": "not-needed: unchanged in this session",
+    "docs/execpolicy.md": "not-needed: unchanged in this session",
+    "docs/exit-confirmation-prompt-design.md": "not-needed: unchanged in this session",
+    "docs/faq.md": "not-needed: unchanged in this session",
+    "docs/getting-started.md": "not-needed: unchanged in this session",
+    "docs/homebrew.md": "not-needed: unchanged in this session",
+    "docs/index.md": "not-needed: unchanged in this session",
+    "docs/install.md": "not-needed: unchanged in this session",
+    "docs/integration-zed.md": "not-needed: unchanged in this session",
+    "docs/knowledge/2026-05.md": "updated",
+    "docs/knowledge/INDEX.md": "not-needed: no docs index changes in this task",
+    "docs/lessons/2026-05.md": "updated",
+    "docs/platform-sandboxing.md": "not-needed: unchanged in this session",
+    "docs/prompts.md": "not-needed: unchanged in this session",
+    "docs/release-notes/RELEASE_NOTES.md": "not-needed: unchanged in this session",
+    "docs/sandbox.md": "not-needed: unchanged in this session",
+    "docs/sessions/2026-05-11-19-07-24.md": "not-needed: unchanged in this session",
+    "docs/settings.md": "not-needed: unchanged in this session",
+    "docs/skills.md": "not-needed: unchanged in this session",
+    "docs/slash-commands.md": "updated",
+    "docs/task-doc-checklist.json": "updated",
+    "docs/tui-alternate-screen.md": "not-needed: unchanged in this session",
+    "docs/tui-chat-composer.md": "not-needed: unchanged in this session",
+    "docs/tui-request-user-input.md": "not-needed: unchanged in this session",
+    "docs/tui-stream-chunking-review.md": "not-needed: unchanged in this session",
+    "docs/tui-stream-chunking-tuning.md": "not-needed: unchanged in this session",
+    "docs/tui-stream-chunking-validation.md": "not-needed: unchanged in this session",
+    "docs/workflows/devops-cycle.md": "not-needed: no workflow changes in this task",
+    "docs/workflows/full-dev-cycle.md": "not-needed: no workflow changes in this task",
+    "README.md": "not-needed: not a release task",
+    "CHANGELOG.md": "not-needed: root release changelog unchanged for this task"
   },
   "sections": {
-    "docs/ARCHITECTURE.md": {
-      "System Shape": "updated",
-      "Data Flow": "updated",
-      "Provider-Model Abstractions": "updated",
-      "Next Iteration Sketch": "updated"
-    },
-    "docs/TESTING.md": {
-      "Required Gate": "updated",
-      "Recommended Checks": "updated"
-    },
     "docs/CHANGELOG.md": {
       "2026-05-11": "updated"
     },
-    "docs/knowledge/INDEX.md": {
-      "Monthly Files": "updated"
+    "docs/doc-scheme.md": {
+      "Current Shape": "updated",
+      "Governed Documents": "updated"
+    },
+    "docs/doc-scheme.json": {
+      "version": "updated",
+      "required_docs": "updated"
     },
     "docs/knowledge/2026-05.md": {
       "Architecture Patterns": "updated",
@@ -48,28 +72,35 @@
       "practice:init": "updated",
       "practice:docs": "updated"
     },
-    "docs/workflows/full-dev-cycle.md": {
-      "Start": "updated",
-      "Core Loop": "updated",
-      "Supporting Commands": "updated"
-    },
-    "docs/workflows/devops-cycle.md": {
-      "Start": "updated",
-      "Core Loop": "updated",
-      "Release Discipline": "updated"
-    },
-    "docs/doc-scheme.md": {
-      "Current Shape": "updated",
-      "Governed Documents": "updated"
-    },
-    "docs/doc-scheme.json": {
-      "version": "updated",
-      "required_docs": "updated"
+    "docs/slash-commands.md": {
+      "Prompt-Expanding (Multi-Agent)": "updated",
+      "Implementation Notes": "updated"
     },
     "docs/task-doc-checklist.json": {
       "task_id": "updated",
       "task_granularity": "updated",
       "docs": "updated"
+    },
+    "docs/ARCHITECTURE.md": {
+      "System Shape": "not-needed: no architecture changes in this task",
+      "Data Flow": "not-needed: no architecture changes in this task"
+    },
+    "docs/TESTING.md": {
+      "Required Gate": "not-needed: no testing-doc changes in this task",
+      "Recommended Checks": "not-needed: no testing-doc changes in this task"
+    },
+    "docs/knowledge/INDEX.md": {
+      "Monthly Files": "not-needed: no docs index changes in this task"
+    },
+    "docs/workflows/full-dev-cycle.md": {
+      "Start": "not-needed: no workflow changes in this task",
+      "Core Loop": "not-needed: no workflow changes in this task",
+      "Supporting Commands": "not-needed: no workflow changes in this task"
+    },
+    "docs/workflows/devops-cycle.md": {
+      "Start": "not-needed: no workflow changes in this task",
+      "Core Loop": "not-needed: no workflow changes in this task",
+      "Release Discipline": "not-needed: no workflow changes in this task"
     }
   }
 }

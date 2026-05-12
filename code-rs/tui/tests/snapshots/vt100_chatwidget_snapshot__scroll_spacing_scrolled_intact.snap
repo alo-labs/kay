@@ -1,9 +1,10 @@
 ---
 source: tui/tests/vt100_chatwidget_snapshot.rs
+assertion_line: 1158
 expression: scrolled
 ---
  +----------------------------------------------------------------------------+
- |                                 Every Code                                 |
+ |                                     Kay                                    |
  +----------------------------------------------------------------------------+
  •
    Here is another paragraph to expand height.

@@ -8,7 +8,7 @@ This file has moved. Please see the latest configuration documentation here:
   - Values can contain objects, such as `--config shell_environment_policy.include_only=["PATH", "HOME", "USER"]`.
   - For consistency with `config.toml`, values are in TOML format rather than JSON format, so use `{a = 1, b = 2}` rather than `{"a": 1, "b": 2}`.
   - If `value` cannot be parsed as a valid TOML value, it is treated as a string value. This means that both `-c model="o3"` and `-c model=o3` are equivalent.
-- The `$CODE_HOME/config.toml` configuration file. `CODE_HOME` defaults to `~/.code`; Code also reads from `$CODEX_HOME`/`~/.codex` for backwards compatibility but only writes to `~/.code`. (Logs and other state use the same directory.)
+- The `$CODE_HOME/config.toml` configuration file. `CODE_HOME` defaults to `~/.code`; Kay also reads from `$CODEX_HOME`/`~/.codex` for backwards compatibility but only writes to `~/.code`. (Logs and other state use the same directory.)
 
 Both the `--config` flag and the `config.toml` file support the following options:
 
@@ -397,7 +397,7 @@ This config option is comparable to how Claude and Cursor define `mcpServers` in
 }
 ```
 
-Should be represented as follows in `~/.code/config.toml` (Code will also read the legacy `~/.codex/config.toml` if it exists):
+Should be represented as follows in `~/.code/config.toml` (Kay will also read the legacy `~/.codex/config.toml` if it exists):
 
 ```toml
 # IMPORTANT: the top-level key is `mcp_servers` rather than `mcpServers`.
@@ -409,7 +409,7 @@ env = { "API_KEY" = "value" }
 
 ## agents
 
-Agents are external CLI programs that Code can invoke to handle subtasks. Code includes built-in support for several agents (Claude, Gemini, Qwen, etc.) and allows you to configure custom agents as well.
+Agents are external CLI programs that Kay can invoke to handle subtasks. Kay includes built-in support for several agents (Claude, Gemini, Qwen, etc.) and allows you to configure custom agents as well.
 
 Each agent is configured using an `[[agents]]` section in your `config.toml`. Here's the basic structure:
 
@@ -426,13 +426,13 @@ env = { API_KEY = "value" }  # Environment variables
 
 ### Configuring agent commands
 
-The `command` field specifies how to invoke the agent. Code supports three approaches:
+The `command` field specifies how to invoke the agent. Kay supports three approaches:
 
 **1. Command name (PATH lookup):**
 ```toml
 [[agents]]
 name = "claude"
-command = "claude"  # Code will search for "claude" in your PATH
+command = "claude"  # Kay will search for "claude" in your PATH
 ```
 
 **2. Absolute path (recommended for Windows):**
@@ -453,7 +453,7 @@ command = "./bin/custom-agent"  # Relative to working directory
 
 On Windows, agent command discovery follows these rules:
 
-1. Code checks the `PATHEXT` environment variable for valid executable extensions (`.exe`, `.cmd`, `.bat`, `.com`)
+1. Kay checks the `PATHEXT` environment variable for valid executable extensions (`.exe`, `.cmd`, `.bat`, `.com`)
 2. If using PATH lookup, ensure the agent's directory is in your `PATH` environment variable
 3. For npm-installed agents, the typical location is `C:\Users\YourUser\AppData\Roaming\npm\`
 4. **Recommended:** Use absolute paths to avoid PATH issues:
@@ -494,16 +494,16 @@ command = "gemini"
 env = { GEMINI_API_KEY = "your-key-here" }
 ```
 
-Code automatically mirrors common API key environment variables for convenience:
+Kay automatically mirrors common API key environment variables for convenience:
 - `GOOGLE_API_KEY` ↔ `GEMINI_API_KEY`
 - `CLAUDE_API_KEY` ↔ `ANTHROPIC_API_KEY`
 - `QWEN_API_KEY` ↔ `DASHSCOPE_API_KEY`
 
 ### Built-in agents
 
-Code includes built-in support for these agents:
+Kay includes built-in support for these agents:
 
-- **code/codex** - Built-in Code CLI agents (use current executable)
+- **code/codex** - Built-in Kay CLI agents (use current executable)
 - **claude** - Claude AI assistant (requires `claude` CLI)
 - **gemini** - Google Gemini (requires `gemini` CLI)
 - **qwen** - Qwen AI assistant (requires `qwen` CLI)
@@ -549,10 +549,10 @@ If you see errors like `Agent 'xyz' could not be found`, try these steps:
 
 If subagents can't detect Git, ensure:
 1. Git is in your PATH
-2. You're running Code from a Git repository
+2. You're running Kay from a Git repository
 3. The `.git` directory is accessible
 
-For more details, see the [FAQ](https://github.com/just-every/code/blob/main/docs/faq.md).
+For more details, see the [FAQ](https://github.com/alo-labs/kay/blob/main/docs/faq.md).
 
 ## disable_response_storage
 

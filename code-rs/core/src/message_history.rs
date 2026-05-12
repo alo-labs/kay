@@ -1,6 +1,6 @@
 //! Persistence layer for the global, append-only *message history* file.
 //!
-//! The history is stored at `~/.code/history.jsonl` (Code still reads legacy
+//! The history is stored at `~/.code/history.jsonl` (Kay still reads legacy
 //! `~/.codex/history.jsonl`) with **one JSON object per
 //! line** so that it can be efficiently appended to and parsed with standard
 //! JSON-Lines tooling. Each record has the following schema:

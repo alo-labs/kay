@@ -1751,7 +1751,7 @@ pub fn resolve_code_path_for_read(code_home: &Path, relative: &Path) -> PathBuf 
     default_path
 }
 
-/// Returns the path to the Code/Codex configuration directory, which can be
+/// Returns the path to the Kay/Codex configuration directory, which can be
 /// specified by the `CODE_HOME` or `CODEX_HOME` environment variables. If not set,
 /// defaults to `~/.code` for the fork.
 ///
