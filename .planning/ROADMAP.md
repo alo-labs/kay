@@ -2,47 +2,47 @@
 
 ## Overview
 
-This milestone adds first-class OpenCode Go support to Kay, proves it with a live OpenCode Go API key, and finishes with a Kay release once the integration is verified. The work stays inside the existing multi-provider architecture and preserves OpenAI and MiniMax behavior.
+This milestone adds provider CRUD and provider-aware model selection to Kay. Users will be able to add API keys without editing config files, select from the supported provider set in the app, and see only the models enabled by configured provider credentials. The work preserves the existing multi-provider architecture and keeps provider plugins orthogonal to reusable model plugins.
 
 ## Phases
 
-- [ ] **Phase 1: OpenCode Provider Foundation** - Add the built-in provider, auth plumbing, and representative model routing.
-- [ ] **Phase 2: Live Validation and Docs** - Prove the provider with a live API key and document the supported setup.
-- [ ] **Phase 3: Release Kay** - Bump release metadata, update notes, and cut the release after verification.
+- [ ] **Phase 4: Provider Credential CRUD** - Add the `/provider` command, provider ordering, and CLI API-key entry for the supported providers.
+- [ ] **Phase 5: Dynamic Model Selection** - Make `/model` list only models enabled by configured provider credentials and keep model compatibility profiles reusable.
+- [ ] **Phase 6: Verification, Docs, and Release** - Prove the provider-management flow with tests, document it, and cut a release after verification.
 
 ## Phase Details
 
-### Phase 1: OpenCode Provider Foundation
-**Goal**: Add OpenCode Go as a first-class provider and make a representative OpenCode Go model resolve correctly.
+### Phase 4: Provider Credential CRUD
+**Goal**: Let users create, read, update, and delete provider credentials from within Kay and through the CLI without editing config files.
 **Depends on**: Nothing
-**Requirements**: PROV-01, PROV-02, MODEL-01
+**Requirements**: PROVIDER-01, PROVIDER-02, AUTH-01
 **Success Criteria** (what must be TRUE):
-  1. Kay can load an OpenCode Go provider entry without breaking OpenAI or MiniMax.
-  2. A representative `opencode-go/<model>` slug resolves to the expected provider/model-family behavior.
-  3. Existing provider-related tests continue to pass alongside the new provider wiring.
+  1. `/provider` can manage the supported provider set in the required order: OpenCode Go, MiniMax, OpenAI.
+  2. API keys can be supplied directly via CLI argument and saved without manual config-file edits.
+  3. Existing provider auth behavior remains intact while the new CRUD surface is added.
 
-### Phase 2: Live Validation and Docs
-**Goal**: Prove the provider works with a real API key and make setup discoverable in docs.
-**Depends on**: Phase 1
-**Requirements**: TEST-01, DOCS-01
+### Phase 5: Dynamic Model Selection
+**Goal**: Filter `/model` by configured provider credentials and keep model-specific compatibility profiles reusable across multiple models.
+**Depends on**: Phase 4
+**Requirements**: MODEL-01, MODEL-02, PLUG-01
 **Success Criteria** (what must be TRUE):
-  1. A live test can authenticate with the supplied OpenCode Go API key and complete a prompt.
-  2. The docs show how to configure OpenCode Go and which model namespace is verified.
-  3. Verification output clearly distinguishes the tested OpenCode Go path from any unverified model families.
+  1. `/model` shows only models for providers with configured credentials.
+  2. OpenCode Go shows the supported OpenCode Go list, MiniMax shows M2.7, and OpenAI shows the upstream-supported OpenAI models.
+  3. Provider plugins and model plugins remain orthogonal, with shared compatibility profiles reused across model families.
 
-### Phase 3: Release Kay
-**Goal**: Cut a new Kay release after the OpenCode Go integration has been verified.
-**Depends on**: Phase 2
-**Requirements**: REL-01
+### Phase 6: Verification, Docs, and Release
+**Goal**: Prove the provider-management and model-selection flow with automated tests, document it, and release the result.
+**Depends on**: Phase 5
+**Requirements**: TEST-01, DOCS-01, REL-01
 **Success Criteria** (what must be TRUE):
-  1. Release notes and version metadata reflect the OpenCode Go milestone.
-  2. `./build-fast.sh` passes on the release candidate.
-  3. The release is ready to publish with the new provider support included.
+  1. Automated tests cover provider CRUD, CLI credential entry, provider-aware model filtering, and compatibility-profile reuse.
+  2. Docs explain `/provider`, CLI API-key entry, and the provider-aware `/model` behavior.
+  3. A Kay release is cut only after the new workflow has been verified.
 
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. OpenCode Provider Foundation | 0/TBD | Not started | - |
-| 2. Live Validation and Docs | 0/TBD | Not started | - |
-| 3. Release Kay | 0/TBD | Not started | - |
+| 4. Provider Credential CRUD | 0/TBD | Not started | - |
+| 5. Dynamic Model Selection | 0/TBD | Not started | - |
+| 6. Verification, Docs, and Release | 0/TBD | Not started | - |
