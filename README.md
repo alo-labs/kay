@@ -1,403 +1,102 @@
-<img src="docs/images/every-logo.png" alt="Kay Logo" width="400">
-
-&ensp;
-
-**Kay** is a fast, local coding agent for your terminal. It's a community-driven fork of `openai/codex` focused on real developer ergonomics: Browser integration, multi-agents, theming, and reasoning control — all while staying compatible with upstream.
-
-&ensp;
-## What's new
-
-- **Latest long-session stability sweep** (post-0.6): Auto Drive and Auto Review are now decoupled so background reviews no longer block the command flow. `Esc` returns control immediately and typing works while review finalization continues.
-
-- **Operational upgrades in this cycle**
-  - Auto Review metadata (branch/worktree context) remains queryable through the active Auto Drive session after completion.
-  - Terminal agents are compacted and archived so heavy payloads are reduced while review linkage is preserved.
-  - Core `core`, coordinator, and TUI state maps now have hard caps with bounded drop/trim behavior.
-  - Auto Drive conversation/update queues are bounded in the coordinator; TUI has bounded prompt/agent/runtime caches.
-  - Background review notes are added as non-blocking history-visible notes instead of foreground task-injection.
-  - TUI housekeeping lifecycle is bounded with deterministic stop control.
-  - Stress tests now cover heavy agent churn plus concurrent Auto Review + Esc/typing responsiveness.
-
-- **New/updated models and agents**
-  - Auto Drive CLI model support includes `gpt-5.3-codex` (planning/problem-solving) and `gpt-5.3-codex-spark` (fast coding/fix loops), with `medium | high | xhigh` reasoning controls.
-  - Frontline and alias-aware agent model handling now includes `code-gpt-5.3-codex` and `code-gpt-5.3-codex-spark`, with compatibility alias upgrades for `gpt-5.1-codex`, `gpt-5.1-codex-mini`, `gpt-5.2-codex`, etc.
-  - Auto Drive decision schema and coordinator payloads now enforce bounded history while preserving goal and recent context.
-
-  See commit `60727b068` and related Auto Drive hardening commits in git history for details.
-
-
-- **Auto Review** – background ghost-commit watcher runs reviews in a separate worktree whenever a turn changes code; uses `codex-5.1-mini-high` and reports issues plus ready-to-apply fixes without blocking the main thread.
-- **Kay Bridge** – Sentry-style local bridge that streams errors, console, screenshots, and control from running apps into Kay; ships an MCP server; install by asking Kay to pull `https://github.com/alo-labs/kay-bridge`.
-- **Plays well with Auto Drive** – reviews run in parallel with long Auto Drive tasks so quality checks land while the flow keeps moving.
-- **Quality-first focus** – the release shifts emphasis from "can the model write this file" to "did we verify it works".
-- _From v0.5.0:_ rename to Kay, upgraded `/auto` planning/recovery, unified `/settings`, faster streaming/history with card-based activity, and more reliable `/resume` + `/undo`.
-
- [Read the full notes in RELEASE_NOTES.md](docs/release-notes/RELEASE_NOTES.md)
-
-&ensp;
-## Why Kay
-
-- 🚀 **Auto Drive orchestration** – Multi-agent automation that now self-heals and ships complete tasks.
-- 🌐 **Browser Integration** – CDP support, headless browsing, screenshots captured inline.
-- 🤖 **Multi-agent commands** – `/plan`, `/kay` and `/solve` coordinate multiple CLI agents.
-- 🧭 **Unified settings hub** – `/settings` overlay for limits, theming, approvals, and provider wiring.
-- 🎨 **Theme system** – Switch between accessible presets, customize accents, and preview live via `/themes`.
-- 🔌 **MCP support** – Extend with filesystem, DBs, APIs, or your own tools.
-- 🔒 **Safety modes** – Read-only, approvals, and workspace sandboxing.
-
-&ensp;
-## AI Videos
-
-&ensp;
 <p align="center">
-  <a href="https://www.youtube.com/watch?v=Ra3q8IVpIOc">
-    <img src="docs/images/video-auto-review-play.jpg" alt="Play Auto Review video" width="100%">
-  </a><br>
-  <strong>Auto Review</strong>
+  <img src="docs/images/logo.png" alt="Kay" width="280">
 </p>
 
-&ensp;
-<p align="center">
-  <a href="https://youtu.be/UOASHZPruQk">
-    <img src="docs/images/video-auto-drive-new-play.jpg" alt="Play Introducing Auto Drive video" width="100%">
-  </a><br>
-  <strong>Auto Drive Overview</strong>
-</p>
+# Kay
 
-&ensp;
-<p align="center">
-  <a href="https://youtu.be/sV317OhiysQ">
-    <img src="docs/images/video-v03-play.jpg" alt="Play Multi-Agent Support video" width="100%">
-  </a><br>
-  <strong>Multi-Agent Promo</strong>
-</p>
+Kay is a terminal coding agent for people who want a local, scriptable, multi-provider workflow without giving up the ergonomics of the original Codex CLI lineage.
 
+It is a separate project with its own release line, provider surface, and UI decisions. Kay keeps the familiar agent workflow, but it is not just a rename of Codex and it is not just Every Code under a different badge.
 
+## Why Kay exists separately
 
-&ensp;
-## Quickstart
+- **Codex** gave this project its core CLI and agent workflow heritage.
+- **Every Code** contributed the multi-provider direction and the idea that provider/model support should be first-class rather than bolted on.
+- **Kay** exists so those ideas can evolve on their own schedule, with their own UX and release cadence, while still staying compatible with the upstream ecosystem where it makes sense.
 
-### Run
+## What Kay does well
+
+- Runs as a local coding agent in your terminal.
+- Coordinates multi-step tasks with Auto Drive.
+- Supports browser-driven workflows through internal browser mode or CDP/Chrome.
+- Gives you multi-agent commands such as `/plan`, `/kay`, `/solve`, and `/auto`.
+- Provides themes, approvals, and safety controls directly in the TUI.
+- Integrates with MCP tools and custom provider wiring.
+- Tracks provider credentials without forcing config-file edits.
+
+## Provider support
+
+Kay currently supports these provider credentials in the UI and CLI:
+
+1. OpenCode Go
+2. MiniMax
+3. OpenAI
+
+Manage them from the TUI with:
+
+- `/provider` for provider credential CRUD
+- `/login` for the existing account flow
+- `/model` for model selection
+
+You can also set a key directly from the CLI:
 
 ```bash
-npx -y @alo-labs/kay
+code login --api-key <KEY>
 ```
 
-### Install & Run
+If you prefer stdin-safe entry:
+
+```bash
+printenv OPENAI_API_KEY | code login --with-api-key
+printenv MINIMAX_API_KEY | code login --provider minimax --with-api-key
+printenv OPENCODE_GO_API_KEY | code login --provider opencode-go --with-api-key
+```
+
+## Quickstart
+
+Install and run:
 
 ```bash
 npm install -g @alo-labs/kay
-codex // or `code` / `coder` aliases if you prefer
+code
 ```
 
-Note: If another tool already provides a `code` command (e.g. VS Code), our CLI is also installed as `coder`. Use `coder` to avoid conflicts.
+If `code` conflicts with another program on your system, use the `coder` alias instead.
 
-**Authenticate** (one of the following):
-- **Sign in with ChatGPT** (Plus/Pro/Team; uses models available to your plan)
-  - Run `code` and pick "Sign in with ChatGPT"
-- **API key** (usage-based)
-  - Set `export OPENAI_API_KEY=xyz` and run `code`
+For an interactive sign-in flow, launch Kay and choose the provider path that matches your account or API key.
 
-### Install Claude & Gemini (optional)
+## Core capabilities
 
-Kay supports orchestrating other AI CLI tools. Install these and config to use alongside Kay.
+### Agents and orchestration
 
-```bash
-# Ensure Node.js 20+ is available locally (installs into ~/.n)
-npm install -g n
-export N_PREFIX="$HOME/.n"
-export PATH="$N_PREFIX/bin:$PATH"
-n 20.18.1
+- `/auto` hands a task to Auto Drive for multi-step coordination.
+- `/plan` is for collaborative planning before implementation.
+- `/solve` is for fast multi-agent problem solving.
+- `/kay` is the main coding workflow.
 
-# Install the companion CLIs
-export npm_config_prefix="${npm_config_prefix:-$HOME/.npm-global}"
-mkdir -p "$npm_config_prefix/bin"
-export PATH="$npm_config_prefix/bin:$PATH"
-npm install -g @anthropic-ai/claude-code @google/gemini-cli @qwen-code/qwen-code
+### Browser workflows
 
-# Quick smoke tests
-claude --version
-gemini --version
-qwen --version
-```
+- `/chrome` connects to an external Chrome session.
+- `/browser` opens the internal browser experience.
 
-> ℹ️ Add `export N_PREFIX="$HOME/.n"` and `export PATH="$N_PREFIX/bin:$PATH"` (plus the `npm_config_prefix` bin path) to your shell profile so the CLIs stay on `PATH` in future sessions.
+### UI and safety
 
-&ensp;
-## Commands
+- `/themes` switches the visual theme.
+- `/reasoning` adjusts reasoning effort.
+- `/approvals` controls when Kay can proceed automatically.
+- `/new` starts a fresh conversation.
 
-### Browser
-```bash
-# Connect code to external Chrome browser (running CDP)
-/chrome        # Connect with auto-detect port
-/chrome 9222   # Connect to specific port
+## Documentation
 
-# Switch to internal browser mode
-/browser       # Use internal headless browser
-/browser https://example.com  # Open URL in internal browser
-```
+- [Authentication](docs/authentication.md)
+- [Slash commands](docs/slash-commands.md)
+- [Testing](docs/TESTING.md)
+- [FAQ](docs/faq.md)
 
-### Agents
-```bash
-# Plan code changes (Claude, Gemini and GPT-5 consensus)
-# All agents review task and create a consolidated plan
-/plan "Stop the AI from ordering pizza at 3AM"
+## Attribution and licenses
 
-# Solve complex problems (Claude, Gemini and GPT-5 race)
-# Fastest preferred (see https://arxiv.org/abs/2505.17813)
-/solve "Why does deleting one user drop the whole database?"
+Kay is distributed under the repository license in [`LICENSE`](LICENSE).
 
-# Write code! (Claude, Gemini and GPT-5 consensus)
-# Creates multiple worktrees then implements the optimal solution
-/kay "Show dark mode when I feel cranky"
-```
+This project acknowledges and preserves the lineage of both Codex and Every Code. Any upstream code, concepts, or notices that Kay inherits remain governed by their original terms and attributions. This README is an overview of the project, not a replacement for the applicable license files or notices.
 
-### Auto Drive
-```bash
-# Hand off a multi-step task; Auto Drive will coordinate agents and approvals
-/auto "Refactor the auth flow and add device login"
-
-# Resume or inspect an active Auto Drive run
-/auto status
-```
-
-### General
-```bash
-# Try a new theme!
-/themes
-
-# Change reasoning level
-/reasoning low|medium|high
-
-# Switch models or effort presets
-/model
-
-# Start new conversation
-/new
-```
-
-## CLI reference
-
-```shell
-code [options] [prompt]
-
-Options:
-  --model <name>        Override the model for the active provider (e.g. gpt-5.1)
-  --read-only          Prevent file modifications
-  --no-approval        Skip approval prompts (use with caution)
-  --config <key=val>   Override config values
-  --oss                Use local open source models
-  --sandbox <mode>     Set sandbox level (read-only, workspace-write, etc.)
-  --help              Show help information
-  --debug             Log API requests and responses to file
-  --version           Show version number
-```
-
-Note: `--model` only changes the model name sent to the active provider. To use a different provider, set `model_provider` in `config.toml`. Providers must expose an OpenAI-compatible API (Chat Completions or Responses).
-
-&ensp;
-## Memory & project docs
-
-Kay can remember context across sessions:
-
-1. **Create an `AGENTS.md` or `CLAUDE.md` file** in your project root:
-```markdown
-# Project Context
-This is a React TypeScript application with:
-- Authentication via JWT
-- PostgreSQL database
-- Express.js backend
-
-## Key files:
-- `/src/auth/` - Authentication logic
-- `/src/api/` - API client code  
-- `/server/` - Backend services
-```
-
-2. **Session memory**: Kay maintains conversation history
-3. **Codebase analysis**: Automatically understands project structure
-
-&ensp;
-## Non-interactive / CI mode
-
-For automation and CI/CD:
-
-```shell
-# Run a specific task
-code --no-approval "run tests and fix any failures"
-
-# Generate reports
-code --read-only "analyze code quality and generate report"
-
-# Batch processing
-code --config output_format=json "list all TODO comments"
-```
-
-&ensp;
-## Model Context Protocol (MCP)
-
-Kay supports MCP for extended capabilities:
-
-- **File operations**: Advanced file system access
-- **Database connections**: Query and modify databases
-- **API integrations**: Connect to external services
-- **Custom tools**: Build your own extensions
-
-Configure MCP in `~/.code/config.toml` Define each server under a named table like `[mcp_servers.<name>]` (this maps to the JSON `mcpServers` object used by other clients):
-
-```toml
-[mcp_servers.filesystem]
-command = "npx"
-args = ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/project"]
-```
-
-&ensp;
-## Configuration
-
-Main config file: `~/.code/config.toml`
-
-> [!NOTE]
-> Kay uses `~/.code/` for its own writable state. It also reads the host Codex environment rooted at `~/.codex/` by reference for shared skills, prompts, MCP servers, hooks, and plugins. Writes stay in `~/.code/`, so Kay and the host environment keep separate run history and auth while still sharing the same tool surface.
-
-```toml
-# Model settings
-model = "gpt-5.1"
-model_provider = "openai"
-
-# Behavior
-approval_policy = "on-request"  # untrusted | on-failure | on-request | never
-model_reasoning_effort = "medium" # low | medium | high
-sandbox_mode = "workspace-write"
-
-# UI preferences see THEME_CONFIG.md
-[tui.theme]
-name = "light-photon"
-
-# Add config for specific models
-[profiles.gpt-5]
-model = "gpt-5.1"
-model_provider = "openai"
-approval_policy = "never"
-model_reasoning_effort = "high"
-model_reasoning_summary = "detailed"
-```
-
-### MiniMax M2.7
-
-Kay includes a built-in MiniMax provider. Store the API key in the same
-auth file used for OpenAI credentials:
-
-```bash
-printenv MINIMAX_API_KEY | code login --provider minimax --with-api-key
-```
-
-Then launch with MiniMax M2.7:
-
-```bash
-code -c model_provider=minimax -c model=MiniMax-M2.7
-```
-
-To switch back to OpenAI for a session:
-
-```bash
-code -c model_provider=openai -c model=gpt-5.1
-```
-
-### Environment variables
-
-- `CODE_HOME`: Override config directory location
-- `OPENAI_API_KEY`: Use API key instead of ChatGPT auth
-- `OPENAI_BASE_URL`: Use OpenAI-compatible API endpoints (chat or responses)
-- `OPENAI_WIRE_API`: Force the built-in OpenAI provider to use `chat` or `responses` wiring
-- `MINIMAX_API_KEY`: Optional environment fallback for the built-in MiniMax provider
-- `MINIMAX_BASE_URL`: Optional base URL override for the built-in MiniMax provider
-
-&ensp;
-## FAQ
-
-**How is this different from the original?**
-> This fork adds browser integration, multi-agent commands (`/plan`, `/solve`, `/kay`), theme system, and enhanced reasoning controls while maintaining full compatibility.
-
-**Can I use my existing Codex configuration?**
-> Yes. Kay reads `~/.codex/` as the host environment overlay and `~/.code/` as its own writable home. If you have Kay-specific settings, keep them under `~/.code/`; host-side prompts, skills, hooks, MCPs, and plugins stay rooted at `~/.codex/`.
-
-**Does this work with ChatGPT Plus?**
-> Absolutely. Use the same "Sign in with ChatGPT" flow as the original.
-
-**Is my data secure?**
-> Yes. Authentication stays on your machine, and we don't proxy your credentials or conversations.
-
-&ensp;
-## Contributing
-
-We welcome contributions! Kay maintains compatibility with upstream while adding community-requested features.
-
-### Development workflow
-
-```bash
-# Clone and setup
-git clone https://github.com/alo-labs/kay.git
-cd code
-npm install
-
-# Build (use fast build for development)
-./build-fast.sh
-
-# Run locally
-./code-rs/target/dev-fast/code
-```
-
-#### Git hooks
-
-This repo ships shared hooks under `.githooks/`. To enable them locally:
-
-```bash
-git config core.hooksPath .githooks
-```
-
-The `pre-push` hook runs `./pre-release.sh` automatically when pushing to `main`.
-
-### Opening a pull request
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Make your changes
-4. Run tests: `cargo test`
-5. Build successfully: `./build-fast.sh`
-6. Submit a pull request
-
-After a release or heavy local build, run `./scripts/post-release-cleanup.sh` to remove transient build/cache artifacts. This cleanup intentionally preserves planning, spec, and design folders.
-
-
-&ensp;
-## Legal & Use
-
-### License & attribution
-- This project is a community fork of `openai/codex` under **Apache-2.0**. We preserve upstream LICENSE and NOTICE files.
-- **Kay** is **not** affiliated with, sponsored by, or endorsed by OpenAI.
-
-### Your responsibilities
-Using OpenAI, Anthropic or Google services through Kay means you agree to **their Terms and policies**. In particular:
-- **Don't** programmatically scrape/extract content outside intended flows.
-- **Don't** bypass or interfere with rate limits, quotas, or safety mitigations.
-- Use your **own** account; don't share or rotate accounts to evade limits.
-- If you configure other model providers, you're responsible for their terms.
-
-### Privacy
-- Your auth file lives at `~/.code/auth.json`
-- Third-party provider API keys are stored under `provider_credentials` in `~/.code/auth.json`
-- Inputs/outputs you send to AI providers are handled under their Terms and Privacy Policy; consult those documents (and any org-level data-sharing settings).
-
-### Subject to change
-AI providers can change eligibility, limits, models, or authentication flows. Kay supports **both** ChatGPT sign-in and API-key modes so you can pick what fits (local/hobby vs CI/automation).
-
-&ensp;
-## License
-
-Apache 2.0 - See [LICENSE](LICENSE) file for details.
-
-Kay is a community fork of the original Codex CLI. We maintain compatibility while adding enhanced features requested by the developer community.
-
-&ensp;
----
-**Need help?** Open an issue on [GitHub](https://github.com/alo-labs/kay/issues) or check our documentation.
+If you are redistributing or extending Kay, please review the included license files and any upstream notices before shipping changes.
