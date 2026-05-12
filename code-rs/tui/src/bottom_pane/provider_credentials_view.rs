@@ -16,6 +16,7 @@ use code_core::{
     MINIMAX_PROVIDER_ID,
     OPENCODE_GO_PROVIDER_ID,
 };
+use code_login::AuthMode;
 
 use crate::app_event_sender::AppEventSender;
 use crate::chatwidget::BackgroundOrderTicket;
@@ -96,6 +97,10 @@ enum ViewMode {
         detail: Option<String>,
         existing: bool,
         field: FormTextField,
+    },
+    DeleteConfirm {
+        provider_ref: String,
+        provider_label: String,
     },
 }
 
@@ -220,6 +225,9 @@ impl ProviderCredentialsState {
                     KeyCode::Enter => {
                         self.open_editor_for_selected();
                     }
+                    KeyCode::Char('d') | KeyCode::Delete => {
+                        self.open_delete_confirmation_for_selected();
+                    }
                     KeyCode::Char('r') => {
                         self.reload_providers();
                     }
@@ -275,6 +283,29 @@ impl ProviderCredentialsState {
                     }
                 }
             }
+            ViewMode::DeleteConfirm {
+                provider_ref,
+                provider_label,
+            } => {
+                match key_event.code {
+                    KeyCode::Esc | KeyCode::Char('n') | KeyCode::Char('N') => {
+                        self.mode = ViewMode::List;
+                    }
+                    KeyCode::Enter | KeyCode::Char('y') | KeyCode::Char('Y') => {
+                        if self.try_remove_provider_key(&provider_ref, &provider_label) {
+                            self.mode = ViewMode::List;
+                        } else {
+                            self.mode = ViewMode::List;
+                        }
+                    }
+                    _ => {
+                        self.mode = ViewMode::DeleteConfirm {
+                            provider_ref,
+                            provider_label,
+                        };
+                    }
+                }
+            }
         }
     }
 
@@ -288,15 +319,7 @@ impl ProviderCredentialsState {
 
     fn desired_height(&self, width: u16) -> usize {
         match &self.mode {
-            ViewMode::List => {
-                const MIN_HEIGHT: usize = 9;
-                let mut lines = 4; // title, spacer, footer spacer, footer
-                if self.feedback.is_some() {
-                    lines += 2;
-                }
-                lines += self.providers.len().max(1);
-                (lines + 2).max(MIN_HEIGHT)
-            }
+            ViewMode::List => self.list_desired_height(),
             ViewMode::Edit { detail, field, .. } => {
                 let mut lines = 7; // title, provider label, field, footer and spacers
                 if self.feedback.is_some() {
@@ -307,7 +330,18 @@ impl ProviderCredentialsState {
                 }
                 lines + field.desired_height(width) as usize - 1
             }
+            ViewMode::DeleteConfirm { .. } => self.list_desired_height() + 3,
         }
+    }
+
+    fn list_desired_height(&self) -> usize {
+        const MIN_HEIGHT: usize = 9;
+        let mut lines = 4; // title, spacer, footer spacer, footer
+        if self.feedback.is_some() {
+            lines += 2;
+        }
+        lines += self.providers.len().max(1);
+        (lines + 2).max(MIN_HEIGHT)
     }
 
     fn render(&self, area: Rect, buf: &mut Buffer) {
@@ -325,6 +359,9 @@ impl ProviderCredentialsState {
                     format!(" Add {provider_label} Key ")
                 }
             }
+            ViewMode::DeleteConfirm {
+                provider_label, ..
+            } => format!(" Remove {provider_label} Key "),
         };
         let block = Block::default()
             .borders(Borders::ALL)
@@ -455,6 +492,18 @@ impl ProviderCredentialsState {
                     Span::styled(" Cancel", Style::default().fg(crate::colors::text_dim())),
                 ]));
             }
+            ViewMode::DeleteConfirm {
+                provider_label, ..
+            } => {
+                lines.push(Line::from(""));
+                lines.push(Line::from(vec![Span::styled(
+                    format!("Remove {provider_label} provider credential?"),
+                    Style::default().add_modifier(Modifier::BOLD),
+                )]));
+                lines.push(Line::from(
+                    "Press Enter to delete or Esc to cancel.",
+                ));
+            }
         }
 
         Paragraph::new(lines)
@@ -485,6 +534,17 @@ impl ProviderCredentialsState {
             detail: provider.detail,
             existing: provider.is_configured,
             field: FormTextField::new_single_line(),
+        };
+    }
+
+    fn open_delete_confirmation_for_selected(&mut self) {
+        let Some(provider) = self.providers.get(self.selected).cloned() else {
+            return;
+        };
+
+        self.mode = ViewMode::DeleteConfirm {
+            provider_ref: provider.provider_ref,
+            provider_label: provider.label,
         };
     }
 
@@ -534,6 +594,59 @@ impl ProviderCredentialsState {
                 false
             }
         }
+    }
+
+    fn try_remove_provider_key(&mut self, provider_ref: &str, provider_label: &str) -> bool {
+        let result = if provider_ref == "openai" {
+            self.remove_openai_provider_key()
+        } else {
+            auth::remove_provider_api_key(&self.code_home, provider_ref)
+        };
+
+        match result {
+            Ok(()) => {
+                self.send_tail(format!("Removed {provider_label} API key"));
+                self.reload_providers();
+                self.feedback = Some(Feedback {
+                    message: format!("{provider_label} API key removed"),
+                    is_error: false,
+                });
+                true
+            }
+            Err(err) => {
+                self.feedback = Some(Feedback {
+                    message: format!("Failed to remove {provider_label} API key: {err}"),
+                    is_error: true,
+                });
+                false
+            }
+        }
+    }
+
+    fn remove_openai_provider_key(&self) -> io::Result<()> {
+        let auth_file = auth::get_auth_file(&self.code_home);
+        let mut auth_dot_json = match auth::try_read_auth_json(&auth_file) {
+            Ok(auth) => auth,
+            Err(err) if err.kind() == io::ErrorKind::NotFound => return Ok(()),
+            Err(err) => return Err(err),
+        };
+
+        let had_openai_key = auth_dot_json.openai_api_key.take().is_some();
+        let mut auth_mode_reset = false;
+        if auth_dot_json
+            .auth_mode
+            .as_ref()
+            .is_some_and(|mode| *mode == AuthMode::ApiKey)
+        {
+            auth_dot_json.auth_mode = None;
+            auth_mode_reset = true;
+        }
+
+        if !had_openai_key && !auth_mode_reset {
+            return Ok(());
+        }
+
+        auth::write_auth_json(&auth_file, &auth_dot_json)
     }
 
     fn send_tail(&self, message: impl Into<String>) {
