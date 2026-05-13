@@ -17,7 +17,7 @@ GitHub Releases also contain a [DotSlash](https://dotslash-cli.com/) shim named 
 ```bash
 # Clone the repository and navigate to the workspace root.
 git clone https://github.com/alo-labs/kay.git
-cd code
+cd kay
 
 # Install the Rust toolchain, if necessary.
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y

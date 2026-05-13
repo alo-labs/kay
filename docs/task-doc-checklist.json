@@ -1,16 +1,18 @@
 {
   "task_id": "silver-init",
   "task_granularity": 2,
-  "updated_at": "2026-05-12T18:58:21Z",
+  "updated_at": "2026-05-13T07:38:03Z",
   "_notes": [
     "Refreshed during the Kay slash-command rename and intro-banner cleanup in the current session.",
     "Refreshed again during the final docs-gate reconciliation so the current-session freshness ledger matches the governed docs.",
     "Refreshed during the test-notes-app live E2E harness and Silver Bullet session-marker reconciliation in the current session.",
+    "Refreshed during the README refresh and install-doc alignment in the current session.",
+    "Refreshed during the Kay README multi-provider and getting-started rewrite in the current session.",
     "This checklist records every governed doc key present under docs/ plus root README.md and CHANGELOG.md."
   ],
   "docs": {
     "docs/ARCHITECTURE.md": "not-needed: no architecture changes in this task",
-    "docs/CHANGELOG.md": "updated",
+    "docs/CHANGELOG.md": "not-needed: changelog unchanged in this session",
     "docs/TESTING.md": "not-needed: no testing-doc changes in this task",
     "docs/advanced.md": "not-needed: unchanged in this session",
     "docs/agents.md": "not-needed: unchanged in this session",
@@ -24,14 +26,14 @@
     "docs/execpolicy.md": "not-needed: unchanged in this session",
     "docs/exit-confirmation-prompt-design.md": "not-needed: unchanged in this session",
     "docs/faq.md": "not-needed: unchanged in this session",
-    "docs/getting-started.md": "not-needed: unchanged in this session",
+    "docs/getting-started.md": "updated",
     "docs/homebrew.md": "not-needed: unchanged in this session",
     "docs/index.md": "not-needed: unchanged in this session",
     "docs/install.md": "not-needed: unchanged in this session",
     "docs/integration-zed.md": "not-needed: unchanged in this session",
-    "docs/knowledge/2026-05.md": "updated",
+    "docs/knowledge/2026-05.md": "not-needed: knowledge log unchanged in this session",
     "docs/knowledge/INDEX.md": "not-needed: no docs index changes in this task",
-    "docs/lessons/2026-05.md": "updated",
+    "docs/lessons/2026-05.md": "not-needed: lessons log unchanged in this session",
     "docs/platform-sandboxing.md": "not-needed: unchanged in this session",
     "docs/prompts.md": "not-needed: unchanged in this session",
     "docs/release-notes/RELEASE_NOTES.md": "not-needed: unchanged in this session",
@@ -49,12 +51,13 @@
     "docs/tui-stream-chunking-validation.md": "not-needed: unchanged in this session",
     "docs/workflows/devops-cycle.md": "not-needed: no workflow changes in this task",
     "docs/workflows/full-dev-cycle.md": "not-needed: no workflow changes in this task",
-    "README.md": "not-needed: not a release task",
+    "README.md": "updated",
+    "docs/install.md": "updated",
     "CHANGELOG.md": "not-needed: root release changelog unchanged for this task"
   },
   "sections": {
     "docs/CHANGELOG.md": {
-      "2026-05-11": "updated"
+      "2026-05-11": "not-needed: changelog unchanged in this session"
     },
     "docs/doc-scheme.md": {
       "Current Shape": "updated",
@@ -65,13 +68,13 @@
       "required_docs": "updated"
     },
     "docs/knowledge/2026-05.md": {
-      "Architecture Patterns": "updated",
-      "Known Gotchas": "updated",
-      "Key Decisions": "updated"
+      "Architecture Patterns": "not-needed: knowledge log unchanged in this session",
+      "Known Gotchas": "not-needed: knowledge log unchanged in this session",
+      "Key Decisions": "not-needed: knowledge log unchanged in this session"
     },
     "docs/lessons/2026-05.md": {
-      "practice:init": "updated",
-      "practice:docs": "updated"
+      "practice:init": "not-needed: lessons log unchanged in this session",
+      "practice:docs": "not-needed: lessons log unchanged in this session"
     },
     "docs/slash-commands.md": {
       "Prompt-Expanding (Multi-Agent)": "updated",

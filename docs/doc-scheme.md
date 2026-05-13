@@ -35,4 +35,5 @@ The initial SB docs set for this init includes:
 - Do not delete user-authored docs during bootstrap or reconciliation
 - Refresh the governed docs in the same session as the checklist so `updated` means "touched now," not "listed only"
 - When config or provider behavior changes, update the docs that describe the behavior and the docs that describe the workflow gate together
+- When install or release packaging changes, keep [`README.md`](../README.md) and `docs/install.md` aligned with the actual shipped assets and install channels
 - For live E2E harnesses, prefer a trusted clean clone of the seed repo so model behavior is measured against the repo's HEAD state rather than a dirty working tree
