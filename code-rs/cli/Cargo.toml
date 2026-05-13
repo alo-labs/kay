@@ -4,8 +4,12 @@ name = "code-cli"
 version = { workspace = true }
 
 [[bin]]
-name = "code"
+name = "kay"
 path = "src/main.rs"
+
+[[bin]]
+name = "code"
+path = "src/bin/code.rs"
 
 [lib]
 name = "code_cli"

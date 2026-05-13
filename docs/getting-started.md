@@ -4,7 +4,7 @@ Kay is a terminal coding agent for local, scriptable, multi-provider workflows. 
 
 ## 1. Install Kay
 
-Kay is distributed through GitHub Releases. Download the asset for your platform from the latest release and run the extracted `code` binary.
+Kay is distributed through GitHub Releases. Download the asset for your platform from the latest release and run the extracted `kay` binary.
 
 If you are building from source:
 
@@ -19,10 +19,10 @@ cd kay
 Start the TUI with:
 
 ```bash
-code
+kay
 ```
 
-If `code` is already taken on your machine, use the `coder` alias instead.
+The legacy `code` command remains available as a compatibility alias where packaging can provide it.
 
 ## 3. Add a provider
 
@@ -43,17 +43,17 @@ Use that screen to add, update, or remove credentials for the supported provider
 You can also provide a key from the CLI instead of typing it into the TUI:
 
 ```bash
-code login --provider opencode-go --api-key <KEY>
-code login --provider minimax --api-key <KEY>
-code login --provider openai --api-key <KEY>
+kay login --provider opencode-go --api-key <KEY>
+kay login --provider minimax --api-key <KEY>
+kay login --provider openai --api-key <KEY>
 ```
 
 If you prefer stdin-safe entry:
 
 ```bash
-printenv OPENCODE_GO_API_KEY | code login --provider opencode-go --with-api-key
-printenv MINIMAX_API_KEY | code login --provider minimax --with-api-key
-printenv OPENAI_API_KEY | code login --provider openai --with-api-key
+printenv OPENCODE_GO_API_KEY | kay login --provider opencode-go --with-api-key
+printenv MINIMAX_API_KEY | kay login --provider minimax --with-api-key
+printenv OPENAI_API_KEY | kay login --provider openai --with-api-key
 ```
 
 ## 4. Choose a model
@@ -83,13 +83,13 @@ There are three common ways to use Kay:
 ### Interactive prompt
 
 ```bash
-code "refactor this module"
+kay "refactor this module"
 ```
 
 ### Non-interactive automation
 
 ```bash
-code exec "run the test suite and summarize the failures"
+kay exec "run the test suite and summarize the failures"
 ```
 
 ### Multi-agent workflows
@@ -118,14 +118,14 @@ You can attach screenshots or other images to a prompt.
 Generate shell completions with:
 
 ```bash
-code completion bash
-code completion zsh
-code completion fish
+kay completion bash
+kay completion zsh
+kay completion fish
 ```
 
 ### Working directory
 
-If it is more convenient than changing directories first, use `code --cd <path>` to start Kay in a specific working root.
+If it is more convenient than changing directories first, use `kay --cd <path>` to start Kay in a specific working root.
 
 ## Where to go next
 

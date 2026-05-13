@@ -7,19 +7,19 @@ If you prefer to pay-as-you-go, you can still authenticate with your OpenAI API 
 - Direct argument, for scripted onboarding:
 
 ```bash
-code login --api-key <KEY>
+kay login --api-key <KEY>
 ```
 
 - stdin, for shell-safe use:
 
 ```shell
-printenv OPENAI_API_KEY | code login --with-api-key
+printenv OPENAI_API_KEY | kay login --with-api-key
 ```
 
 If you are saving a provider-specific key, add `--provider minimax` or `--provider opencode-go` to either form, for example:
 
 ```bash
-code login --provider minimax --api-key <KEY>
+kay login --provider minimax --api-key <KEY>
 ```
 
 The direct argument form is convenient for scripts and one-off onboarding, but it will appear in shell history and process listings. Use the stdin form when you want to keep the secret out of both.
@@ -30,9 +30,9 @@ This key must, at minimum, have write access to the Responses API.
 
 If you've used the Kay CLI before with usage-based billing via an API key and want to switch to using your ChatGPT plan, follow these steps:
 
-1. Update the CLI and ensure `code --version` is `0.5.0` or later
+1. Update the CLI and ensure `kay --version` is `0.5.0` or later
 2. Delete `~/.kay/auth.json` if you want to reset Kay locally. On Windows this lives under `C:\\Users\\USERNAME\\.kay\\auth.json`
-3. Run `code login` again
+3. Run `kay login` again
 
 ## Forcing a specific auth method (advanced)
 
@@ -48,7 +48,7 @@ preferred_auth_method = "apikey"
 Or override ad-hoc via CLI:
 
 ```bash
-code --config preferred_auth_method="apikey"
+kay --config preferred_auth_method="apikey"
 ```
 
 - To prefer ChatGPT auth (default), set:
@@ -87,9 +87,9 @@ Today, the login process entails running a server on `localhost:1455`. If you ar
 
 ### Authenticate locally and copy your credentials to the "headless" machine
 
-The easiest solution is likely to run through the `code login` process on your local machine such that `localhost:1455` _is_ accessible in your web browser. When you complete the authentication process, an `auth.json` file should be available at `$CODE_HOME/auth.json` (defaults to `~/.kay/auth.json`).
+The easiest solution is likely to run through the `kay login` process on your local machine such that `localhost:1455` _is_ accessible in your web browser. When you complete the authentication process, an `auth.json` file should be available at `$CODE_HOME/auth.json` (defaults to `~/.kay/auth.json`).
 
-Because the `auth.json` file is not tied to a specific host, once you complete the authentication flow locally, you can copy the `$CODE_HOME/auth.json` file to the headless machine and then `code` should "just work" on that machine. Note to copy a file to a Docker container, you can do:
+Because the `auth.json` file is not tied to a specific host, once you complete the authentication flow locally, you can copy the `$CODE_HOME/auth.json` file to the headless machine and then `kay` should "just work" on that machine. Note to copy a file to a Docker container, you can do:
 
 ```shell
 # substitute MY_CONTAINER with the name or id of your Docker container:
@@ -120,4 +120,4 @@ If you run Kay on a remote machine (VPS/server) without a local browser, the log
 ssh -L 1455:localhost:1455 <user>@<remote-host>
 ```
 
-Then, in that SSH session, run `code` and select "Sign in with ChatGPT". When prompted, open the printed URL (it will be `http://localhost:1455/...`) in your local browser. The traffic will be tunneled to the remote server.
+Then, in that SSH session, run `kay` and select "Sign in with ChatGPT". When prompted, open the printed URL (it will be `http://localhost:1455/...`) in your local browser. The traffic will be tunneled to the remote server.

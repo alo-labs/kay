@@ -43,7 +43,7 @@ function getCacheDir(version) {
   } else {
     base = process.env.XDG_CACHE_HOME || join(home, '.cache');
   }
-  const dir = join(base, 'alo-labs', 'code', version);
+  const dir = join(base, 'alo-labs', 'kay', version);
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
   return dir;
 }
@@ -51,12 +51,14 @@ function getCacheDir(version) {
 function getCachedBinaryPath(version, targetTriple, isWindows) {
   const ext = isWindows ? '.exe' : '';
   const cacheDir = getCacheDir(version);
-  return join(cacheDir, `code-${targetTriple}${ext}`);
+  return join(cacheDir, `kay-${targetTriple}${ext}`);
 }
 
 const CODE_SHIM_SIGNATURES = [
   '@alo-labs/kay',
   'bin/coder.js',
+  '$(dirname "$0")/kay',
+  '%~dp0kay',
   '$(dirname "$0")/coder',
   '%~dp0coder'
 ];
@@ -317,9 +319,9 @@ export async function runPostinstall(options = {}) {
         if (!looksLikeOurs) {
           console.warn('[notice] Found an existing `code` on PATH at:');
           console.warn(`         ${resolved}`);
-          console.warn('[notice] We will still install our CLI, also available as `coder`.');
-          console.warn('         If `code` runs another tool, prefer using: coder');
-          console.warn('         Or run our CLI explicitly via: npx -y @alo-labs/code');
+          console.warn('[notice] We will still install Kay as `kay`.');
+          console.warn('         If `code` runs another tool, prefer using: kay');
+          console.warn('         Or run Kay explicitly via: npx -y @alo-labs/kay');
         }
       }
     } catch {
@@ -340,10 +342,10 @@ export async function runPostinstall(options = {}) {
   const packageJson = JSON.parse(readFileSync(join(__dirname, 'package.json'), 'utf8'));
   const version = packageJson.version;
   
-  // Download only the primary binary; we'll create wrappers for legacy names.
-  const binaries = ['code'];
+  // Download only the primary binary; wrappers keep legacy command names working.
+  const binaries = ['kay'];
   
-  console.log(`Installing @alo-labs/code v${version} for ${targetTriple}...`);
+  console.log(`Installing @alo-labs/kay v${version} for ${targetTriple}...`);
   
   for (const binary of binaries) {
     const binaryName = `${binary}-${targetTriple}${binaryExt}`;
@@ -381,13 +383,13 @@ export async function runPostinstall(options = {}) {
     const require = createRequire(import.meta.url);
     const platformPkg = (() => {
       const name = (() => {
-        if (isWindows) return '@alo-labs/code-win32-x64';
+        if (isWindows) return '@alo-labs/kay-win32-x64';
         const plt = platform();
         const cpu = arch();
-        if (plt === 'darwin' && cpu === 'arm64') return '@alo-labs/code-darwin-arm64';
-        if (plt === 'darwin' && cpu === 'x64') return '@alo-labs/code-darwin-x64';
-        if (plt === 'linux' && cpu === 'x64') return '@alo-labs/code-linux-x64-musl';
-        if (plt === 'linux' && cpu === 'arm64') return '@alo-labs/code-linux-arm64-musl';
+        if (plt === 'darwin' && cpu === 'arm64') return '@alo-labs/kay-darwin-arm64';
+        if (plt === 'darwin' && cpu === 'x64') return '@alo-labs/kay-darwin-x64';
+        if (plt === 'linux' && cpu === 'x64') return '@alo-labs/kay-linux-x64-musl';
+        if (plt === 'linux' && cpu === 'arm64') return '@alo-labs/kay-linux-arm64-musl';
         return null;
       })();
       if (!name) return null;
@@ -447,12 +449,12 @@ export async function runPostinstall(options = {}) {
       }
     }
     const archiveName = isWin ? `${binaryName}.zip` : (useZst ? `${binaryName}.zst` : `${binaryName}.tar.gz`);
-    const downloadUrl = `https://github.com/alo-labs/code/releases/download/v${version}/${archiveName}`;
+    const downloadUrl = `https://github.com/alo-labs/kay/releases/download/v${version}/${archiveName}`;
 
     console.log(`Downloading ${archiveName}...`);
     try {
       const needsIsolation = isWin || (!isWin && !mirrorToLocal); // Windows or WSL-on-NTFS
-      let safeTempDir = needsIsolation ? join(tmpdir(), 'alo-labs', 'code', version) : binDir;
+      let safeTempDir = needsIsolation ? join(tmpdir(), 'alo-labs', 'kay', version) : binDir;
       // Ensure staging dir exists; if tmp fails (permissions/space), fall back to user cache.
       if (needsIsolation) {
         try {
@@ -555,7 +557,7 @@ export async function runPostinstall(options = {}) {
   }
 
   // Create platform-specific symlink/copy for main binary
-  const mainBinary = `code-${targetTriple}${binaryExt}`;
+  const mainBinary = `kay-${targetTriple}${binaryExt}`;
   const mainBinaryPath = join(binDir, mainBinary);
   
   if (existsSync(mainBinaryPath) || existsSync(getCachedBinaryPath(version, targetTriple, platform() === 'win32'))) {
@@ -565,35 +567,32 @@ export async function runPostinstall(options = {}) {
       if (!stats.size) throw new Error('binary is empty (download likely failed)');
       const valid = validateDownloadedBinary(probePath);
       if (!valid.ok) {
-        console.warn(`⚠ Main code binary appears invalid: ${valid.reason}`);
+        console.warn(`⚠ Main Kay binary appears invalid: ${valid.reason}`);
         console.warn('  Try reinstalling or check your network/proxy settings.');
       }
     } catch (e) {
-      console.warn(`⚠ Main code binary appears invalid: ${e.message}`);
+      console.warn(`⚠ Main Kay binary appears invalid: ${e.message}`);
       console.warn('  Try reinstalling or check your network/proxy settings.');
     }
-    console.log('Setting up main code binary...');
+    console.log('Setting up main Kay binary...');
     
     // On Windows, we can't use symlinks easily, so update the JS wrapper
     // On Unix, the JS wrapper will find the correct binary
     console.log('✓ Installation complete!');
   } else {
-    console.warn('⚠ Main code binary not found. You may need to build from source.');
+    console.warn('⚠ Main Kay binary not found. You may need to build from source.');
   }
 
-  // Handle collisions (e.g., VS Code) and add wrappers. We no longer publish a
-  // `code` bin in package.json. Instead, for global installs we create a `code`
-  // wrapper only when there is no conflicting `code` earlier on PATH. This avoids
-  // hijacking the VS Code CLI while still giving users a friendly name when safe.
-  // For upgrades from older versions that published a `code` bin, we also remove
-  // our old shim if a conflict is detected.
+  // Handle collisions (e.g., VS Code) and add wrappers. `kay` is the primary
+  // command; `code` remains a compatibility alias when it will not hijack an
+  // existing command earlier on PATH.
   if (isGlobal && !isNpx) try {
     const isTTY = process.stdout && process.stdout.isTTY;
     const isWindows = platform() === 'win32';
     const ua = process.env.npm_config_user_agent || '';
     const isBun = ua.includes('bun') || !!process.env.BUN_INSTALL;
 
-    const installedCmds = new Set(['coder']); // global install always exposes coder via package manager
+    const installedCmds = new Set(['kay', 'coder']); // global install exposes both via package manager
     const skippedCmds = [];
 
     // Helper to resolve all 'code' on PATH
@@ -642,14 +641,14 @@ export async function runPostinstall(options = {}) {
         try {
           const wrapperPath = bunShim;
           if (isWindows) {
-            const content = `@echo off\r\n"%~dp0coder" %*\r\n`;
+            const content = `@echo off\r\n"%~dp0kay" %*\r\n`;
             writeFileSync(wrapperPath, content);
           } else {
-            const content = `#!/bin/sh\nexec "$(dirname \"$0\")/coder" "$@"\n`;
+            const content = `#!/bin/sh\nexec "$(dirname \"$0\")/kay" "$@"\n`;
             writeFileSync(wrapperPath, content);
             chmodSync(wrapperPath, 0o755);
           }
-          console.log("✓ Created 'code' wrapper -> coder (bun)");
+          console.log("✓ Created 'code' wrapper -> kay (bun)");
           installedCmds.add('code');
         } catch (e) {
           console.log(`⚠ Failed to create 'code' wrapper (bun): ${e.message}`);
@@ -661,13 +660,13 @@ export async function runPostinstall(options = {}) {
       console.log(`Commands installed (bun): ${list}`);
       if (skippedCmds.length) {
         for (const s of skippedCmds) console.error(`Commands skipped: ${s.name} (${s.reason})`);
-        console.error('→ Use `coder` to run this tool.');
+        console.error('→ Use `kay` to run this tool.');
       }
       // Final friendly usage hint
       if (installedCmds.has('code')) {
-        console.log("Use 'code' to launch Kay.");
+        console.log("Use 'kay' to launch Kay. The 'code' alias is also available.");
       } else {
-        console.log("Use 'coder' to launch Kay.");
+        console.log("Use 'kay' to launch Kay.");
       }
     } else {
       // npm/pnpm/yarn path
@@ -688,14 +687,14 @@ export async function runPostinstall(options = {}) {
         try {
           const wrapperPath = join(globalBin, isWindows ? `${name}.cmd` : name);
           if (isWindows) {
-            const content = `@echo off\r\n"%~dp0${collision ? 'coder' : 'code'}" ${args} %*\r\n`;
+            const content = `@echo off\r\n"%~dp0kay" ${args} %*\r\n`;
             writeFileSync(wrapperPath, content);
           } else {
-            const content = `#!/bin/sh\nexec "$(dirname \"$0\")/${collision ? 'coder' : 'code'}" ${args} "$@"\n`;
+            const content = `#!/bin/sh\nexec "$(dirname \"$0\")/kay" ${args} "$@"\n`;
             writeFileSync(wrapperPath, content);
             chmodSync(wrapperPath, 0o755);
           }
-          console.log(`✓ Created wrapper '${name}' -> ${collision ? 'coder' : 'code'} ${args}`);
+          console.log(`✓ Created wrapper '${name}' -> kay ${args}`);
           installedCmds.add(name);
         } catch (e) {
           console.log(`⚠ Failed to create '${name}' wrapper: ${e.message}`);
@@ -729,20 +728,20 @@ export async function runPostinstall(options = {}) {
           } catch (e) {
             console.error(`⚠ Could not remove npm shim '${ourShim}': ${e.message}`);
           }
-          console.error('→ Use `coder` to run this tool.');
+          console.error('→ Use `kay` to run this tool.');
         } else {
           console.log('Note: could not determine npm global bin; skipping alias creation.');
         }
       } else {
-        // No collision; ensure a 'code' wrapper exists forwarding to 'coder'
+        // No collision; ensure a 'code' wrapper exists forwarding to 'kay'
         if (globalBin) {
           try {
             const content = isWindows
-              ? `@echo off\r\n"%~dp0coder" %*\r\n`
-              : `#!/bin/sh\nexec "$(dirname \"$0\")/coder" "$@"\n`;
+              ? `@echo off\r\n"%~dp0kay" %*\r\n`
+              : `#!/bin/sh\nexec "$(dirname \"$0\")/kay" "$@"\n`;
             writeFileSync(ourShim, content);
             if (!isWindows) chmodSync(ourShim, 0o755);
-            console.log("✓ Created 'code' wrapper -> coder");
+            console.log("✓ Created 'code' wrapper -> kay");
             installedCmds.add('code');
           } catch (e) {
             console.log(`⚠ Failed to create 'code' wrapper: ${e.message}`);
@@ -758,9 +757,9 @@ export async function runPostinstall(options = {}) {
       }
       // Final friendly usage hint
       if (installedCmds.has('code')) {
-        console.log("Use 'code' to launch Kay.");
+        console.log("Use 'kay' to launch Kay. The 'code' alias is also available.");
       } else {
-        console.log("Use 'coder' to launch Kay.");
+        console.log("Use 'kay' to launch Kay.");
       }
     }
   } catch {

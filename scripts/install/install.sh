@@ -5,7 +5,8 @@ set -eu
 RELEASE="latest"
 
 BIN_DIR="${CODEX_INSTALL_DIR:-$HOME/.local/bin}"
-BIN_PATH="$BIN_DIR/code"
+BIN_PATH="$BIN_DIR/kay"
+CODE_ALIAS="$BIN_DIR/code"
 CODEX_ALIAS="$BIN_DIR/codex"
 CODER_ALIAS="$BIN_DIR/coder"
 KAY_HOME_DIR="${KAY_HOME:-$HOME/.kay}"
@@ -443,7 +444,7 @@ version_from_binary() {
 }
 
 current_installed_version() {
-  version="$(version_from_binary "$CURRENT_LINK/code" || true)"
+  version="$(version_from_binary "$CURRENT_LINK/kay" || true)"
   if [ -n "$version" ]; then
     printf '%s\n' "$version"
     return 0
@@ -453,7 +454,7 @@ current_installed_version() {
 }
 
 resolve_existing_codex() {
-  command -v code 2>/dev/null || command -v codex 2>/dev/null || command -v coder 2>/dev/null || true
+  command -v kay 2>/dev/null || command -v code 2>/dev/null || command -v codex 2>/dev/null || command -v coder 2>/dev/null || true
 }
 
 classify_existing_codex() {
@@ -517,23 +518,23 @@ prompt_yes_no() {
 print_launch_instructions() {
   case "$path_action" in
     added)
-      step "Current terminal: export PATH=\"$BIN_DIR:\$PATH\" && code"
-      step "Future terminals: open a new terminal and run: code"
+      step "Current terminal: export PATH=\"$BIN_DIR:\$PATH\" && kay"
+      step "Future terminals: open a new terminal and run: kay"
       step "PATH was added to $path_profile"
       ;;
     updated)
-      step "Current terminal: export PATH=\"$BIN_DIR:\$PATH\" && code"
-      step "Future terminals: open a new terminal and run: code"
+      step "Current terminal: export PATH=\"$BIN_DIR:\$PATH\" && kay"
+      step "Future terminals: open a new terminal and run: kay"
       step "PATH was updated in $path_profile"
       ;;
     configured)
-      step "Current terminal: export PATH=\"$BIN_DIR:\$PATH\" && code"
-      step "Future terminals: open a new terminal and run: code"
+      step "Current terminal: export PATH=\"$BIN_DIR:\$PATH\" && kay"
+      step "Future terminals: open a new terminal and run: kay"
       step "PATH is already configured in $path_profile"
       ;;
     *)
-      step "Current terminal: code"
-      step "Future terminals: open a new terminal and run: code"
+      step "Current terminal: kay"
+      step "Future terminals: open a new terminal and run: kay"
       ;;
   esac
 }
@@ -566,7 +567,7 @@ handle_conflicting_install() {
 
   case "$conflict_manager" in
     brew)
-      uninstall_cmd="brew uninstall --cask code"
+      uninstall_cmd="brew uninstall --cask kay"
       ;;
     bun)
       uninstall_cmd="bun remove -g @alo-labs/kay"
@@ -582,7 +583,7 @@ handle_conflicting_install() {
       warn "Failed to uninstall the existing $conflict_manager-managed Kay. Continuing with the standalone install."
     fi
   else
-    warn "Leaving the existing $conflict_manager-managed Kay installed. PATH order will determine which code runs."
+    warn "Leaving the existing $conflict_manager-managed Kay installed. PATH order will determine which command runs."
   fi
 }
 
@@ -595,14 +596,17 @@ install_release() {
   rm -rf "$stage_release"
   mkdir -p "$stage_release"
 
-  package_bin="$(find "$extracted_root" -maxdepth 1 -type f -name 'code-*' | head -n 1)"
+  package_bin="$(find "$extracted_root" -maxdepth 1 -type f -name 'kay-*' | head -n 1)"
+  if [ -z "$package_bin" ]; then
+    package_bin="$(find "$extracted_root" -maxdepth 1 -type f -name 'code-*' | head -n 1)"
+  fi
   if [ -z "$package_bin" ]; then
     echo "Could not find a release binary in the extracted Kay archive." >&2
     exit 1
   fi
 
-  cp "$package_bin" "$stage_release/code"
-  chmod 0755 "$stage_release/code"
+  cp "$package_bin" "$stage_release/kay"
+  chmod 0755 "$stage_release/kay"
 
   if [ -e "$release_dir" ] || [ -L "$release_dir" ]; then
     rm -rf "$release_dir"
@@ -616,7 +620,7 @@ release_dir_is_complete() {
   expected_target="$3"
 
   [ -d "$release_dir" ] &&
-    [ -x "$release_dir/code" ] &&
+    [ -x "$release_dir/kay" ] &&
     [ "$(basename "$release_dir")" = "$expected_version-$expected_target" ]
 }
 
@@ -629,15 +633,16 @@ update_current_link() {
 
 update_visible_command() {
   mkdir -p "$BIN_DIR"
-  tmp_link="$BIN_DIR/.code.$$"
+  tmp_link="$BIN_DIR/.kay.$$"
 
-  replace_path_with_symlink "$BIN_PATH" "$CURRENT_LINK/code" "$tmp_link"
+  replace_path_with_symlink "$BIN_PATH" "$CURRENT_LINK/kay" "$tmp_link"
 }
 
 update_compat_aliases() {
   mkdir -p "$BIN_DIR"
-  ln -sf "$CURRENT_LINK/code" "$CODEX_ALIAS"
-  ln -sf "$CURRENT_LINK/code" "$CODER_ALIAS"
+  ln -sf "$CURRENT_LINK/kay" "$CODE_ALIAS"
+  ln -sf "$CURRENT_LINK/kay" "$CODEX_ALIAS"
+  ln -sf "$CURRENT_LINK/kay" "$CODER_ALIAS"
 }
 
 verify_visible_command() {
@@ -704,7 +709,7 @@ else
 fi
 
 resolved_version="$(resolve_version)"
-asset="code-$vendor_target.tar.gz"
+asset="kay-$vendor_target.tar.gz"
 download_url="$(release_url_for_asset "$asset" "$resolved_version")"
 release_name="$resolved_version-$vendor_target"
 release_dir="$RELEASES_DIR/$release_name"

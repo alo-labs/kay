@@ -16,7 +16,7 @@ It's possible that your [API account needs to be verified](https://help.openai.c
 
 ### How do I stop Kay from editing my files?
 
-By default, Kay can modify files in your current working directory (Auto mode). To prevent edits, run `code` in read-only mode with the CLI flag `--sandbox read-only`. Alternatively, you can change the approval level mid-conversation with `/approvals`.
+By default, Kay can modify files in your current working directory (Auto mode). To prevent edits, run `kay` in read-only mode with the CLI flag `--sandbox read-only`. Alternatively, you can change the approval level mid-conversation with `/approvals`.
 
 ### Does it work on Windows?
 

@@ -47,8 +47,8 @@ fi
 RELEASE_ASSETS_DIR=${RELEASE_ASSETS_DIR:-"release-assets"}
 
 assets=(
-  "code-aarch64-apple-darwin.tar.gz"
-  "code-x86_64-apple-darwin.tar.gz"
+  "kay-aarch64-apple-darwin.tar.gz"
+  "kay-x86_64-apple-darwin.tar.gz"
 )
 
 sha256_file() {
@@ -96,16 +96,20 @@ cat >> Formula/Kay.rb <<'RUBY'
   end
 
   def install
-    bin.install Dir["code-*"].first => "code"
-    # Provide a compatibility shim
+    bin.install Dir["kay-*"].first => "kay"
+    # Provide compatibility shims for older scripts.
+    (bin/"code").write <<~EOS
+      #!/bin/bash
+      exec "#{bin}/kay" "$@"
+    EOS
     (bin/"coder").write <<~EOS
       #!/bin/bash
-      exec "#{bin}/code" "$@"
+      exec "#{bin}/kay" "$@"
     EOS
   end
 
   test do
-    system "#{bin}/code", "--help"
+    system "#{bin}/kay", "--help"
   end
 end
 RUBY

@@ -14,7 +14,7 @@ Environment flags:
   DETERMINISTIC=1                     Add -C debuginfo=0; promotes to release-prod unless DETERMINISTIC_FORCE_RELEASE=0
   DETERMINISTIC_FORCE_RELEASE=0|1     Keep dev-fast (0) or switch to release-prod (1, default)
   DETERMINISTIC_NO_UUID=1             macOS only: strip LC_UUID on final executables
-  BUILD_FAST_BINS="code code-tui"      Override bins to build (space or comma separated)
+  BUILD_FAST_BINS="kay code code-tui"  Override bins to build (space or comma separated)
   --workspace codex|code|both         Select workspace to build (default: code)
 
 Examples:
@@ -110,10 +110,10 @@ resolve_bin_path() {
   fi
 
   TARGET_DIR_ABS="${target_root}"
-  BIN_CARGO_FILENAME="${CRATE_PREFIX}"
-  BIN_FILENAME="${CRATE_PREFIX}"
+  BIN_CARGO_FILENAME="${PRIMARY_BIN:-${CRATE_PREFIX}}"
+  BIN_FILENAME="${PRIMARY_BIN:-${CRATE_PREFIX}}"
   if [ "$PROFILE" = "perf" ]; then
-    BIN_FILENAME="${CRATE_PREFIX}-perf"
+    BIN_FILENAME="${BIN_FILENAME}-perf"
   fi
   BIN_SUBPATH="${BIN_SUBDIR}/${BIN_FILENAME}"
   BIN_CARGO_SUBPATH="${BIN_SUBDIR}/${BIN_CARGO_FILENAME}"
@@ -321,17 +321,25 @@ if [ -n "${BUILD_FAST_BINS:-}" ]; then
   done
 fi
 if [ "${#TARGET_BINS[@]}" -eq 0 ]; then
-  TARGET_BINS=("${CRATE_PREFIX}")
+  if [ "${CLI_PACKAGE}" = "code-cli" ]; then
+    TARGET_BINS=("kay" "${CRATE_PREFIX}")
+  else
+    TARGET_BINS=("${CRATE_PREFIX}")
+  fi
 fi
 PRIMARY_PRESENT=0
 for candidate in "${TARGET_BINS[@]}"; do
-  if [ "${candidate}" = "${CRATE_PREFIX}" ]; then
+  if [ "${candidate}" = "${PRIMARY_BIN_NAME:-${CRATE_PREFIX}}" ]; then
     PRIMARY_PRESENT=1
     break
   fi
 done
 if [ "$PRIMARY_PRESENT" -eq 0 ]; then
-  TARGET_BINS=("${CRATE_PREFIX}" "${TARGET_BINS[@]}")
+  if [ "${CLI_PACKAGE}" = "code-cli" ]; then
+    TARGET_BINS=("kay" "${TARGET_BINS[@]}")
+  else
+    TARGET_BINS=("${CRATE_PREFIX}" "${TARGET_BINS[@]}")
+  fi
 fi
 PRIMARY_BIN="${TARGET_BINS[0]}"
 
@@ -681,7 +689,7 @@ if [ $? -eq 0 ]; then
 
     SYMLINK_PREFIXES=("${CRATE_PREFIX}")
     if [ "${CRATE_PREFIX}" = "code" ]; then
-      SYMLINK_PREFIXES+=("coder")
+      SYMLINK_PREFIXES+=("kay" "coder")
     fi
 
     create_cli_symlinks() {

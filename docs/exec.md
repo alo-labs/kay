@@ -3,22 +3,22 @@
 Use Kay in non-interactive mode to automate common workflows.
 
 ```shell
-code exec "count the total number of lines of code in this project"
+kay exec "count the total number of lines of code in this project"
 ```
 
 In non-interactive mode, Kay does not ask for command or edit approvals. By default it runs in `read-only` mode, so it cannot edit files or run commands that require network access.
 
-Use `code exec --full-auto` to allow file edits. Use `code exec --sandbox danger-full-access` to allow edits and networked commands.
+Use `kay exec --full-auto` to allow file edits. Use `kay exec --sandbox danger-full-access` to allow edits and networked commands.
 
 ### Default output mode
 
-By default, Kay streams its activity to stderr and only writes the final message from the agent to stdout. This makes it easier to pipe `code exec` into another tool without extra filtering.
+By default, Kay streams its activity to stderr and only writes the final message from the agent to stdout. This makes it easier to pipe `kay exec` into another tool without extra filtering.
 
-To write the output of `code exec` to a file, in addition to using a shell redirect like `>`, there is also a dedicated flag to specify an output file: `-o`/`--output-last-message`.
+To write the output of `kay exec` to a file, in addition to using a shell redirect like `>`, there is also a dedicated flag to specify an output file: `-o`/`--output-last-message`.
 
 ### JSON output mode
 
-`code exec` supports a `--json` mode that streams events to stdout as JSON Lines (JSONL) while the agent runs.
+`kay exec` supports a `--json` mode that streams events to stdout as JSON Lines (JSONL) while the agent runs.
 
 Supported event types:
 
@@ -73,7 +73,7 @@ Sample schema:
 ```
 
 ```shell
-code exec "Extract details of the project" --output-schema ~/schema.json
+kay exec "Extract details of the project" --output-schema ~/schema.json
 ...
 
 {"project_name":"Kay CLI","programming_languages":["Rust","TypeScript","Shell"]}
@@ -83,30 +83,30 @@ Combine `--output-schema` with `-o` to only print the final JSON output. You can
 
 ### Git repository requirement
 
-Kay requires a Git repository to avoid destructive changes. To disable this check, use `code exec --skip-git-repo-check`.
+Kay requires a Git repository to avoid destructive changes. To disable this check, use `kay exec --skip-git-repo-check`.
 
 ### Resuming non-interactive sessions
 
-Resume a previous non-interactive session with `code exec resume <SESSION_ID>` or `code exec resume --last`. This preserves conversation context so you can ask follow-up questions or give new tasks to the agent.
+Resume a previous non-interactive session with `kay exec resume <SESSION_ID>` or `kay exec resume --last`. This preserves conversation context so you can ask follow-up questions or give new tasks to the agent.
 
 ```shell
-code exec "Review the change, look for use-after-free issues"
-code exec resume --last "Fix use-after-free issues"
+kay exec "Review the change, look for use-after-free issues"
+kay exec resume --last "Fix use-after-free issues"
 ```
 
 Only the conversation context is preserved; you must still provide flags to customize Kay behavior.
 
 ```shell
-code exec --model gpt-5.1-codex --json "Review the change, look for use-after-free issues"
-code exec --model gpt-5.1 --json resume --last "Fix use-after-free issues"
+kay exec --model gpt-5.1-codex --json "Review the change, look for use-after-free issues"
+kay exec --model gpt-5.1 --json resume --last "Fix use-after-free issues"
 ```
 
 ## Authentication
 
-By default, `code exec` uses the same authentication method as the TUI and VSCode extension. You can override the API key by setting the `CODEX_API_KEY` environment variable.
+By default, `kay exec` uses the same authentication method as the TUI and VSCode extension. You can override the API key by setting the `CODEX_API_KEY` environment variable.
 
 ```shell
-CODEX_API_KEY=your-api-key-here code exec "Fix merge conflict"
+CODEX_API_KEY=your-api-key-here kay exec "Fix merge conflict"
 ```
 
-NOTE: `CODEX_API_KEY` is only supported in `code exec`.
+NOTE: `CODEX_API_KEY` is only supported in `kay exec`.

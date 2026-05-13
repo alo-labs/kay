@@ -73,19 +73,19 @@ trap 'rm -rf "$ARTIFACTS_DIR"' EXIT
 gh run download --dir "$ARTIFACTS_DIR" --repo alo-labs/kay "$WORKFLOW_ID"
 
 # x64 Linux
-zstd -d "$ARTIFACTS_DIR/x86_64-unknown-linux-musl/code-x86_64-unknown-linux-musl.zst" \
-    -o "$BIN_DIR/code-x86_64-unknown-linux-musl"
+zstd -d "$ARTIFACTS_DIR/x86_64-unknown-linux-musl/kay-x86_64-unknown-linux-musl.zst" \
+    -o "$BIN_DIR/kay-x86_64-unknown-linux-musl"
 # ARM64 Linux
-zstd -d "$ARTIFACTS_DIR/aarch64-unknown-linux-musl/code-aarch64-unknown-linux-musl.zst" \
-    -o "$BIN_DIR/code-aarch64-unknown-linux-musl"
+zstd -d "$ARTIFACTS_DIR/aarch64-unknown-linux-musl/kay-aarch64-unknown-linux-musl.zst" \
+    -o "$BIN_DIR/kay-aarch64-unknown-linux-musl"
 # x64 macOS
-zstd -d "$ARTIFACTS_DIR/x86_64-apple-darwin/code-x86_64-apple-darwin.zst" \
-    -o "$BIN_DIR/code-x86_64-apple-darwin"
+zstd -d "$ARTIFACTS_DIR/x86_64-apple-darwin/kay-x86_64-apple-darwin.zst" \
+    -o "$BIN_DIR/kay-x86_64-apple-darwin"
 # ARM64 macOS
-zstd -d "$ARTIFACTS_DIR/aarch64-apple-darwin/code-aarch64-apple-darwin.zst" \
-    -o "$BIN_DIR/code-aarch64-apple-darwin"
+zstd -d "$ARTIFACTS_DIR/aarch64-apple-darwin/kay-aarch64-apple-darwin.zst" \
+    -o "$BIN_DIR/kay-aarch64-apple-darwin"
 # x64 Windows
-zstd -d "$ARTIFACTS_DIR/x86_64-pc-windows-msvc/code-x86_64-pc-windows-msvc.exe.zst" \
-    -o "$BIN_DIR/code-x86_64-pc-windows-msvc.exe"
+zstd -d "$ARTIFACTS_DIR/x86_64-pc-windows-msvc/kay-x86_64-pc-windows-msvc.exe.zst" \
+    -o "$BIN_DIR/kay-x86_64-pc-windows-msvc.exe"
 
 echo "Installed native dependencies into $BIN_DIR"

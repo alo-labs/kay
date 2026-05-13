@@ -129,13 +129,13 @@ jobs:
         run: |
           set -euo pipefail
           cd code-rs
-          rustup run "$RUST_TOOLCHAIN" cargo build --locked --profile dev-fast --bin code
+          rustup run "$RUST_TOOLCHAIN" cargo build --locked --profile dev-fast --bin kay --bin code
 
       - name: CLI smokes (skip duplicated cargo tests)
         shell: bash
         env:
           SKIP_CARGO_TESTS: "1"
-          CI_CLI_BIN: ${{ env.CARGO_TARGET_DIR }}/dev-fast/code
+          CI_CLI_BIN: ${{ env.CARGO_TARGET_DIR }}/dev-fast/kay
         run: bash scripts/ci-tests.sh
 
       - name: Drop dev-fast artifacts before workspace tests
@@ -237,22 +237,27 @@ jobs:
           # Linux builds
           - os: ubuntu-24.04
             target: x86_64-unknown-linux-musl
-            artifact: code-x86_64-unknown-linux-musl
+            artifact: kay-x86_64-unknown-linux-musl
+            legacy_artifact: code-x86_64-unknown-linux-musl
           - os: ubuntu-24.04-arm
             target: aarch64-unknown-linux-musl
-            artifact: code-aarch64-unknown-linux-musl
+            artifact: kay-aarch64-unknown-linux-musl
+            legacy_artifact: code-aarch64-unknown-linux-musl
           # (GNU variants omitted to reduce asset duplication; npm defaults to musl)
           # macOS builds
           - os: macos-14
             target: x86_64-apple-darwin
-            artifact: code-x86_64-apple-darwin
+            artifact: kay-x86_64-apple-darwin
+            legacy_artifact: code-x86_64-apple-darwin
           - os: macos-14
             target: aarch64-apple-darwin
-            artifact: code-aarch64-apple-darwin
+            artifact: kay-aarch64-apple-darwin
+            legacy_artifact: code-aarch64-apple-darwin
           # Windows build
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-            artifact: code-x86_64-pc-windows-msvc.exe
+            artifact: kay-x86_64-pc-windows-msvc.exe
+            legacy_artifact: code-x86_64-pc-windows-msvc.exe
 
     steps:
       - name: Checkout code
@@ -403,7 +408,7 @@ jobs:
           RUST_BACKTRACE: "1"
         run: |
           cd code-rs
-          rustup run "$RUST_TOOLCHAIN" cargo build --release --frozen --locked --timings --target ${{ matrix.target }} --bin code
+          rustup run "$RUST_TOOLCHAIN" cargo build --release --frozen --locked --timings --target ${{ matrix.target }} --bin kay --bin code
 
       - name: Post-build smoke (run binary) [Unix]
         if: |
@@ -413,7 +418,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          exe="code-rs/target/${{ matrix.target }}/release/code"
+          exe="code-rs/target/${{ matrix.target }}/release/kay"
           "$exe" --version
           "$exe" completion bash > /dev/null
 
@@ -421,7 +426,7 @@ jobs:
         if: matrix.os == 'windows-latest' && matrix.target == 'x86_64-pc-windows-msvc'
         shell: pwsh
         run: |
-          $exe = "code-rs/target/${{ matrix.target }}/release/code.exe"
+          $exe = "code-rs/target/${{ matrix.target }}/release/kay.exe"
           & $exe --version | Out-Null
           & $exe completion bash | Out-Null
 
@@ -434,9 +439,11 @@ jobs:
         run: |
           mkdir -p artifacts
           if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-            cp code-rs/target/${{ matrix.target }}/release/code.exe artifacts/${{ matrix.artifact }}
+            cp code-rs/target/${{ matrix.target }}/release/kay.exe artifacts/${{ matrix.artifact }}
+            cp code-rs/target/${{ matrix.target }}/release/code.exe artifacts/${{ matrix.legacy_artifact }}
           else
-            cp code-rs/target/${{ matrix.target }}/release/code artifacts/${{ matrix.artifact }}
+            cp code-rs/target/${{ matrix.target }}/release/kay artifacts/${{ matrix.artifact }}
+            cp code-rs/target/${{ matrix.target }}/release/code artifacts/${{ matrix.legacy_artifact }}
           fi
 
       - name: Compress artifacts (Windows)
@@ -546,10 +553,10 @@ jobs:
           set -euo pipefail
           mkdir -p release-assets
           shopt -s nullglob
-          # Gather all built "code-*" files (zst/tar.gz/zip or raw) recursively under artifacts/
+          # Gather primary "kay-*" assets and legacy "code-*" compatibility assets.
           while IFS= read -r -d '' f; do
             cp "$f" release-assets/
-          done < <(find artifacts -type f -name 'code-*' -print0)
+          done < <(find artifacts -type f \( -name 'kay-*' -o -name 'code-*' \) -print0)
           # Show what we collected
           ls -la release-assets/ || true
 
@@ -608,14 +615,18 @@ jobs:
           for f in release-assets/*; do
             b="$(basename "$f")"
             # Derive target triple from the filename while preserving optional .exe (Windows):
-            # code-<triple>[.exe].(zst|tar.gz|zip) -> <triple>[.exe]
+            # kay-<triple>[.exe].(zst|tar.gz|zip) -> <triple>[.exe]
             case "$b" in
               *.tar.gz) base="${b%.tar.gz}" ;;
               *.zst)    base="${b%.zst}" ;;
               *.zip)    base="${b%.zip}" ;;
               *)        base="$b" ;;
             esac
-            t="${base#code-}"
+            case "$base" in
+              kay-*) ;;
+              *) echo "Skipping legacy compatibility artifact for npm package: $b"; continue ;;
+            esac
+            t="${base#kay-}"
             meta="$(map_target "$t")" || true
             if [ -z "$meta" ]; then
               echo "Skipping unrecognized artifact: $b"
@@ -703,7 +714,7 @@ jobs:
           fi
           echo "ESM integrity OK for coder.js"
 
-      # Generate CHANGELOG and release notes by running our own `code` CLI in headless mode.
+      # Generate CHANGELOG and release notes by running our own `kay` CLI in headless mode.
       # It will:
       #  - Review changes between the previous tag and the new version
       #  - Update CHANGELOG.md with a new section for vNEW_VERSION
@@ -745,22 +756,22 @@ jobs:
           # Extract a Linux x86_64 Kay binary from artifacts and make it runnable.
           mkdir -p .code-bin docs/release-notes
           : > docs/release-notes/RELEASE_NOTES.md
-          LNX_ZST=$(ls -1 release-assets/code-x86_64-unknown-linux-musl.* 2>/dev/null | head -n1 || true)
+          LNX_ZST=$(ls -1 release-assets/kay-x86_64-unknown-linux-musl.* 2>/dev/null | head -n1 || true)
           if [ -z "$LNX_ZST" ]; then
             echo "Could not find linux x86_64 Kay artifact in release-assets/" >&2
             exit 1
           fi
           case "$LNX_ZST" in
             *.zst)
-              zstd -d -q --force "$LNX_ZST" -o .code-bin/code ;;
+              zstd -d -q --force "$LNX_ZST" -o .code-bin/kay ;;
             *.tar.gz)
-              tar -xzf "$LNX_ZST" -C .code-bin && mv .code-bin/code-x86_64-unknown-linux-musl .code-bin/code ;;
+              tar -xzf "$LNX_ZST" -C .code-bin && mv .code-bin/kay-x86_64-unknown-linux-musl .code-bin/kay ;;
             *.zip)
-              unzip -q -o "$LNX_ZST" -d .code-bin && mv .code-bin/code-x86_64-unknown-linux-musl .code-bin/code ;;
+              unzip -q -o "$LNX_ZST" -d .code-bin && mv .code-bin/kay-x86_64-unknown-linux-musl .code-bin/kay ;;
             *)
-              cp "$LNX_ZST" .code-bin/code ;;
+              cp "$LNX_ZST" .code-bin/kay ;;
           esac
-          chmod +x .code-bin/code
+          chmod +x .code-bin/kay
 
           # Prepare context for the model.
           DATE=$(date -u +%Y-%m-%d)
@@ -804,7 +815,7 @@ jobs:
             4) Section header: ### Install
                Code block with exactly:
                npm install -g @alo-labs/kay@latest
-               code
+               kay
             5) Optional section header: ### Thanks
                - Include ONE line like: "Thanks to @alice and @bob for contributions!"
                - Only include if at least one merged PR in ${RANGE} is authored by an external contributor.
@@ -829,7 +840,7 @@ jobs:
           # Run Kay in fully automated exec mode against the repo root.
           # Note: the working-directory flag is `--cd` on the `exec` subcommand.
           OPENAI_BASE_URL="http://127.0.0.1:5058/v1" \
-          ./.code-bin/code exec --cd "$GITHUB_WORKSPACE" --full-auto --skip-git-repo-check < docs/release-notes/prompt.expanded.txt | tee .github/auto/RELEASE_AGENT_OUT.txt || {
+          ./.code-bin/kay exec --cd "$GITHUB_WORKSPACE" --full-auto --skip-git-repo-check < docs/release-notes/prompt.expanded.txt | tee .github/auto/RELEASE_AGENT_OUT.txt || {
             echo "Kay exec returned non-zero; continuing to check for outputs..." >&2
           }
 

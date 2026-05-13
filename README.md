@@ -31,26 +31,25 @@ Kay is distributed through GitHub Releases. It is not currently published on npm
 
 1. Open the latest release: [alo-labs/kay releases](https://github.com/alo-labs/kay/releases/latest)
 2. Download the asset for your platform:
-   - macOS arm64: `code-aarch64-apple-darwin.tar.gz` or `code-aarch64-apple-darwin.zst`
-   - macOS x64: `code-x86_64-apple-darwin.tar.gz` or `code-x86_64-apple-darwin.zst`
-   - Linux arm64 musl: `code-aarch64-unknown-linux-musl.tar.gz` or `code-aarch64-unknown-linux-musl.zst`
-   - Linux x64 musl: `code-x86_64-unknown-linux-musl.tar.gz` or `code-x86_64-unknown-linux-musl.zst`
-   - Windows x64: `code-x86_64-pc-windows-msvc.exe.zip`
-3. Extract the archive and run the `code` binary.
-4. If `code` is already taken on your machine, use the `coder` alias instead.
+   - macOS arm64: `kay-aarch64-apple-darwin.tar.gz` or `kay-aarch64-apple-darwin.zst`
+   - macOS x64: `kay-x86_64-apple-darwin.tar.gz` or `kay-x86_64-apple-darwin.zst`
+   - Linux arm64 musl: `kay-aarch64-unknown-linux-musl.tar.gz` or `kay-aarch64-unknown-linux-musl.zst`
+   - Linux x64 musl: `kay-x86_64-unknown-linux-musl.tar.gz` or `kay-x86_64-unknown-linux-musl.zst`
+   - Windows x64: `kay-x86_64-pc-windows-msvc.exe.zip`
+3. Extract the archive and run the `kay` binary. Release assets also include `code-*` compatibility archives during the migration.
 
 Example for macOS or Linux:
 
 ```bash
-tar -xzf code-x86_64-apple-darwin.tar.gz
-./code
+tar -xzf kay-x86_64-apple-darwin.tar.gz
+./kay
 ```
 
 Example for Windows PowerShell:
 
 ```powershell
-Expand-Archive .\code-x86_64-pc-windows-msvc.exe.zip
-.\code.exe
+Expand-Archive .\kay-x86_64-pc-windows-msvc.exe.zip
+.\kay.exe
 ```
 
 ## Getting Started
@@ -58,7 +57,7 @@ Expand-Archive .\code-x86_64-pc-windows-msvc.exe.zip
 1. Launch Kay:
 
    ```bash
-   code
+   kay
    ```
 
 2. Set up a provider from inside the TUI with `/provider`.
@@ -66,17 +65,17 @@ Expand-Archive .\code-x86_64-pc-windows-msvc.exe.zip
    - If you prefer to avoid the TUI flow, you can provide the key from the CLI instead:
 
    ```bash
-   code login --provider opencode-go --api-key <KEY>
-   code login --provider minimax --api-key <KEY>
-   code login --provider openai --api-key <KEY>
+   kay login --provider opencode-go --api-key <KEY>
+   kay login --provider minimax --api-key <KEY>
+   kay login --provider openai --api-key <KEY>
    ```
 
    If you want stdin-safe entry:
 
    ```bash
-   printenv OPENCODE_GO_API_KEY | code login --provider opencode-go --with-api-key
-   printenv MINIMAX_API_KEY | code login --provider minimax --with-api-key
-   printenv OPENAI_API_KEY | code login --provider openai --with-api-key
+   printenv OPENCODE_GO_API_KEY | kay login --provider opencode-go --with-api-key
+   printenv MINIMAX_API_KEY | kay login --provider minimax --with-api-key
+   printenv OPENAI_API_KEY | kay login --provider openai --with-api-key
    ```
 
 3. Pick a model with `/model`.
@@ -87,7 +86,7 @@ Expand-Archive .\code-x86_64-pc-windows-msvc.exe.zip
 
 4. Start a task:
    - Type a prompt directly into the TUI, for example: `refactor this module`
-   - Or run a one-shot command with `code exec "..."`.
+   - Or run a one-shot command with `kay exec "..."`.
    - Use `/kay`, `/plan`, `/solve`, or `/auto` when you want a specialized workflow.
 
 5. Review the transcript later if you need provenance or debugging context. Kay stores JSONL transcripts under `~/.kay/`, and the transcript viewer makes them easy to inspect.
@@ -106,7 +105,7 @@ source "$HOME/.cargo/env"
 ./build-fast.sh
 
 # Launch the TUI.
-./target/debug/code -- "explain this codebase to me"
+./target/debug/kay -- "explain this codebase to me"
 ```
 
 ## Provider support
@@ -126,17 +125,17 @@ Manage provider credentials from the TUI with:
 You can also set a provider key directly from the CLI:
 
 ```bash
-code login --provider opencode-go --api-key <KEY>
-code login --provider minimax --api-key <KEY>
-code login --provider openai --api-key <KEY>
+kay login --provider opencode-go --api-key <KEY>
+kay login --provider minimax --api-key <KEY>
+kay login --provider openai --api-key <KEY>
 ```
 
 If you prefer stdin-safe entry:
 
 ```bash
-printenv OPENCODE_GO_API_KEY | code login --provider opencode-go --with-api-key
-printenv MINIMAX_API_KEY | code login --provider minimax --with-api-key
-printenv OPENAI_API_KEY | code login --provider openai --with-api-key
+printenv OPENCODE_GO_API_KEY | kay login --provider opencode-go --with-api-key
+printenv MINIMAX_API_KEY | kay login --provider minimax --with-api-key
+printenv OPENAI_API_KEY | kay login --provider openai --with-api-key
 ```
 
 ## Core capabilities
