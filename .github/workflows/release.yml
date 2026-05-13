@@ -899,7 +899,7 @@ jobs:
             subj=$(git log -1 --pretty=%s || true)
             if ! grep -q '\[skip ci\]' <<<"$subj"; then
               body=$(git log -1 --pretty=%b || true)
-              git commit --amend -m "${subj} [skip ci]" -m "$body"
+              git commit --amend --allow-empty -m "${subj} [skip ci]" -m "$body"
             fi
           fi
 
