@@ -1,86 +1,136 @@
-# Getting started with Codex CLI
+# Getting started with Kay
 
-### CLI usage
+Kay is a terminal coding agent for local, scriptable, multi-provider workflows. This guide walks through the first session, provider setup, model selection, and a few everyday commands.
 
-| Command          | Purpose                            | Example                       |
-| ---------------- | ---------------------------------- | ----------------------------- |
-| `code`           | Interactive TUI                    | `code`                        |
-| `code "..."`     | Initial prompt for interactive TUI | `code "fix lint errors"`      |
-| `code exec "..."` | Non-interactive "automation mode"  | `code exec "explain utils.ts"` |
+## 1. Install Kay
 
-Key flags: `--model/-m`, `--ask-for-approval/-a`.
+Kay is distributed through GitHub Releases. Download the asset for your platform from the latest release and run the extracted `code` binary.
 
-### Running with a prompt as input
-
-You can also run the Kay CLI with a prompt as input:
-
-```shell
-code "explain this codebase to me"
-```
-
-```shell
-code --full-auto "create the fanciest todo-list app"
-```
-
-That's it - Kay will scaffold a file, run it inside a sandbox, install any
-missing dependencies, and show you the live result. Approve the changes and
-they'll be committed to your working directory.
-
-### Example prompts
-
-Below are a few bite-size examples you can copy-paste. Replace the text in quotes with your own task.
-
-| ✨  | What you type                                                              | What happens                                                               |
-| --- | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| 1   | `code "Refactor the Dashboard component to React Hooks"`                     | Kay rewrites the class component, runs `npm test`, and shows the diff.    |
-| 2   | `code "Generate SQL migrations for adding a users table"`                    | Infers your ORM, creates migration files, and runs them in a sandboxed DB. |
-| 3   | `code "Write unit tests for utils/date.ts"`                                  | Generates tests, executes them, and iterates until they pass.              |
-| 4   | `code "Bulk-rename *.jpeg -> *.jpg with git mv"`                             | Safely renames files and updates imports/usages.                           |
-| 5   | `code "Explain what this regex does: ^(?=.*[A-Z]).{8,}$"`                    | Outputs a step-by-step human explanation.                                  |
-| 6   | `code "Carefully review this repo, and propose 3 high impact well-scoped PRs"` | Suggests impactful PRs in the current codebase.                            |
-| 7   | `code "Look for vulnerabilities and create a security review report"`        | Finds and explains security bugs.                                          |
-
-### Memory with AGENTS.md
-
-You can give Kay extra instructions and guidance using `AGENTS.md` files. Kay looks for `AGENTS.md` files in the following places, and merges them top-down:
-
-1. `~/.kay/AGENTS.md` - personal global guidance
-2. `AGENTS.md` at repo root - shared project notes
-3. `AGENTS.md` in the current working directory - sub-folder/feature specifics
-
-For more information on how to use AGENTS.md, see the [official AGENTS.md documentation](https://agents.md/).
-
-### Tips & shortcuts
-
-#### Use `@` for file search
-
-Typing `@` triggers a fuzzy-filename search over the workspace root. Use up/down to select among the results and Tab or Enter to replace the `@` with the selected path. You can use Esc to cancel the search.
-
-#### Image input
-
-Paste images directly into the composer (Ctrl+V / Cmd+V) to attach them to your prompt. You can also attach files via the CLI using `-i/--image` (comma‑separated):
+If you are building from source:
 
 ```bash
-code -i screenshot.png "Explain this error"
-code --image img1.png,img2.jpg "Summarize these diagrams"
+git clone https://github.com/alo-labs/kay.git
+cd kay
+./build-fast.sh
 ```
 
-#### Esc–Esc to edit a previous message
+## 2. Launch Kay
 
-When the chat composer is empty, press Esc to prime “backtrack” mode. Press Esc again to open a transcript preview highlighting the last user message; press Esc repeatedly to step to older user messages. Press Enter to confirm and Kay will fork the conversation from that point, trim the visible transcript accordingly, and pre‑fill the composer with the selected user message so you can edit and resubmit it.
+Start the TUI with:
 
-In the transcript preview, the footer shows an `Esc edit prev` hint while editing is active.
+```bash
+code
+```
 
-#### Shell completions
+If `code` is already taken on your machine, use the `coder` alias instead.
 
-Generate shell completion scripts via:
+## 3. Add a provider
 
-```shell
+Kay is multi-provider. The first thing most users should do is register the provider API key they want to use.
+
+Inside the TUI, open:
+
+```text
+/provider
+```
+
+Use that screen to add, update, or remove credentials for the supported providers:
+
+1. OpenCode Go
+2. MiniMax
+3. OpenAI
+
+You can also provide a key from the CLI instead of typing it into the TUI:
+
+```bash
+code login --provider opencode-go --api-key <KEY>
+code login --provider minimax --api-key <KEY>
+code login --provider openai --api-key <KEY>
+```
+
+If you prefer stdin-safe entry:
+
+```bash
+printenv OPENCODE_GO_API_KEY | code login --provider opencode-go --with-api-key
+printenv MINIMAX_API_KEY | code login --provider minimax --with-api-key
+printenv OPENAI_API_KEY | code login --provider openai --with-api-key
+```
+
+## 4. Choose a model
+
+After at least one provider is configured, open:
+
+```text
+/model
+```
+
+Kay shows only the models that are available for the providers you have configured.
+
+Model availability currently looks like this:
+
+| Provider | Models shown in `/model` |
+| --- | --- |
+| OpenCode Go | `opencode-go/glm-5.1`, `opencode-go/kimi-k2.6`, `opencode-go/mimo-v2.5-pro`, `opencode-go/mimo-v2.5`, `opencode-go/minimax-m2.7`, `opencode-go/qwen3.6-plus`, `opencode-go/deepseek-v4-pro`, `opencode-go/deepseek-v4-flash` |
+| MiniMax | `minimax-m2.7` |
+| OpenAI | The OpenAI models supported by the upstream Codex model list |
+
+Pick the model that matches the provider key you already added. Kay keeps provider selection and model selection separate so you can mix and match supported providers without editing config files by hand.
+
+## 5. Run your first task
+
+There are three common ways to use Kay:
+
+### Interactive prompt
+
+```bash
+code "refactor this module"
+```
+
+### Non-interactive automation
+
+```bash
+code exec "run the test suite and summarize the failures"
+```
+
+### Multi-agent workflows
+
+From the TUI, use the built-in commands when you want a more opinionated workflow:
+
+- `/kay` for the main coding flow
+- `/plan` for collaborative planning
+- `/solve` for fast multi-agent problem solving
+- `/auto` for longer, fully coordinated work
+
+## 6. Review transcripts later
+
+Kay records conversation history as JSONL under `~/.kay/`. That makes it easier to inspect a previous session, understand why a change was made, and review model behavior after the fact.
+
+If you want to inspect a previous run, use the transcript viewer in the TUI or open the JSONL transcript directly.
+
+## Helpful extras
+
+### Image input
+
+You can attach screenshots or other images to a prompt.
+
+### Shell completions
+
+Generate shell completions with:
+
+```bash
 code completion bash
 code completion zsh
 code completion fish
 ```
 
-#### `--cd`/`-C` flag
+### Working directory
 
-Sometimes it is not convenient to `cd` to the directory you want Kay to use as the "working root" before running. Fortunately, `code` supports a `--cd` option so you can specify whatever folder you want. You can confirm that Kay is honoring `--cd` by double-checking the **workdir** it reports in the TUI at the start of a new session.
+If it is more convenient than changing directories first, use `code --cd <path>` to start Kay in a specific working root.
+
+## Where to go next
+
+- [Slash commands](slash-commands.md)
+- [Authentication](authentication.md)
+- [Configuration](config.md)
+- [Testing](TESTING.md)
+- [Install](install.md)
