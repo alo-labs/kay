@@ -107,6 +107,12 @@ jobs:
         with:
           toolchain: ${{ steps.rust_toolchain.outputs.channel }}
 
+      - name: Export Rust toolchain paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "RUSTC=$(rustup which rustc)" >> "$GITHUB_ENV"
+
       - name: Setup Rust Cache
         uses: Swatinem/rust-cache@v2
         with:
@@ -305,6 +311,12 @@ jobs:
           echo "RUSTC_WRAPPER=sccache" >> "$GITHUB_ENV"
           echo "SCCACHE_IDLE_TIMEOUT=1800" >> "$GITHUB_ENV"
           echo "SCCACHE_CACHE_SIZE=10G" >> "$GITHUB_ENV"
+
+      - name: Export Rust toolchain paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "RUSTC=$(rustup which rustc)" >> "$GITHUB_ENV"
 
       # -------- Platform tuning (minimal, proven) --------
 
