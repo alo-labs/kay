@@ -20,8 +20,12 @@ fi
 echo "[ci-tests] CLI smokes with host binary..."
 BIN="${CI_CLI_BIN:-}"
 if [[ -z "${BIN}" ]]; then
-  if [[ -x "$ROOT_DIR/code-rs/target/dev-fast/code" ]]; then
+  if [[ -x "$ROOT_DIR/code-rs/target/dev-fast/kay" ]]; then
+    BIN="$ROOT_DIR/code-rs/target/dev-fast/kay"
+  elif [[ -x "$ROOT_DIR/code-rs/target/dev-fast/code" ]]; then
     BIN="$ROOT_DIR/code-rs/target/dev-fast/code"
+  elif [[ -x "$ROOT_DIR/code-rs/target/debug/kay" ]]; then
+    BIN="$ROOT_DIR/code-rs/target/debug/kay"
   elif [[ -x "$ROOT_DIR/code-rs/target/debug/code" ]]; then
     BIN="$ROOT_DIR/code-rs/target/debug/code"
   fi
@@ -30,9 +34,9 @@ fi
 if [[ -z "${BIN}" || ! -x "${BIN}" ]]; then
   echo "[ci-tests] CLI binary not found; building debug binary..."
   pushd "$ROOT_DIR/code-rs" >/dev/null
-  cargo build --bin code -q
+  cargo build --bin kay -q
   popd >/dev/null
-  BIN="$ROOT_DIR/code-rs/target/debug/code"
+  BIN="$ROOT_DIR/code-rs/target/debug/kay"
 fi
 
 "${BIN}" --version >/dev/null

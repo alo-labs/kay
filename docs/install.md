@@ -10,7 +10,7 @@
 
 ### DotSlash
 
-GitHub Releases also contain a [DotSlash](https://dotslash-cli.com/) shim named `code`. Checking the DotSlash file into your repo pins contributors to the same binary across platforms.
+GitHub Releases contain `kay-*` assets for each supported platform. Legacy `code-*` assets are published during the migration so existing scripts can keep working.
 
 ### Build from source
 
@@ -27,7 +27,7 @@ source "$HOME/.cargo/env"
 ./build-fast.sh
 
 # Launch the TUI with a sample prompt.
-./target/debug/code -- "explain this codebase to me"
+./target/debug/kay -- "explain this codebase to me"
 ```
 
 > [!NOTE]

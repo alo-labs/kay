@@ -31,8 +31,8 @@ use code_tui::ExitSummary;
 use code_tui::resume_command_name;
 use code_tui::run_transcript_viewer;
 use code_tui::TranscriptViewerArgs;
-use llm::LlmCli;
-use llm::run_llm;
+use self::llm::LlmCli;
+use self::llm::run_llm;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json;
@@ -45,9 +45,9 @@ use tokio::runtime::Handle as TokioHandle;
 
 mod mcp_cmd;
 
-use crate::mcp_cmd::McpCli;
+use self::mcp_cmd::McpCli;
 
-const CLI_COMMAND_NAME: &str = "code";
+const CLI_COMMAND_NAME: &str = "kay";
 pub(crate) const CODEX_SECURE_MODE_ENV_VAR: &str = "CODEX_SECURE_MODE";
 
 /// As early as possible in the process lifecycle, apply hardening measures
@@ -69,20 +69,20 @@ fn pre_main_hardening() {
     }
 }
 
-/// Codex CLI
+/// Kay CLI
 ///
 /// If no subcommand is specified, options will be forwarded to the interactive CLI.
 #[derive(Debug, Parser)]
 #[clap(
     author,
-    name = "code",
+    name = "kay",
     version = code_version::version(),
     // If a sub‑command is given, ignore requirements of the default args.
     subcommand_negates_reqs = true,
-    // The executable is sometimes invoked via a platform‑specific name like
-    // `codex-x86_64-unknown-linux-musl`, but the help output should always use
-    // the generic `code` command name that users run.
-    bin_name = "code"
+    // The executable is sometimes invoked through a compatibility alias or a
+    // platform-specific asset name, but help output should always use the
+    // primary `kay` command that users run.
+    bin_name = "kay"
 )]
 struct MultitoolCli {
     #[clap(flatten)]
@@ -105,7 +105,7 @@ struct MultitoolCli {
 
 #[derive(Debug, clap::Subcommand)]
 enum Subcommand {
-    /// Run Codex non-interactively.
+    /// Run Kay non-interactively.
     #[clap(visible_alias = "e")]
     Exec(ExecCli),
 
@@ -119,7 +119,7 @@ enum Subcommand {
     /// Remove stored authentication credentials.
     Logout(LogoutCommand),
 
-    /// [experimental] Run Codex as an MCP server and manage MCP servers.
+    /// [experimental] Run Kay as an MCP server and manage MCP servers.
     #[clap(visible_alias = "acp")]
     Mcp(McpCli),
 
@@ -259,7 +259,7 @@ struct BridgeTailCommand {
     #[arg(long, default_value = "info", value_parser = ["errors", "warn", "info", "trace"])]
     level: String,
 
-    /// Bridge target to use (index from `code bridge list` or metadata path).
+    /// Bridge target to use (index from `kay bridge list` or metadata path).
     #[arg(long = "bridge", value_name = "PATH|INDEX")]
     bridge: Option<String>,
 
@@ -274,7 +274,7 @@ struct BridgeScreenshotCommand {
     #[arg(long, default_value_t = 10)]
     timeout: u64,
 
-    /// Bridge target to use (index from `code bridge list` or metadata path).
+    /// Bridge target to use (index from `kay bridge list` or metadata path).
     #[arg(long = "bridge", value_name = "PATH|INDEX")]
     bridge: Option<String>,
 }
@@ -288,7 +288,7 @@ struct BridgeJavascriptCommand {
     #[arg(long, default_value_t = 10)]
     timeout: u64,
 
-    /// Bridge target to use (index from `code bridge list` or metadata path).
+    /// Bridge target to use (index from `kay bridge list` or metadata path).
     #[arg(long = "bridge", value_name = "PATH|INDEX")]
     bridge: Option<String>,
 }
@@ -330,7 +330,7 @@ struct LoginCommand {
 
     #[arg(
         long = "with-api-key",
-        help = "Read the API key from stdin for shell-safe use (e.g. `printenv OPENAI_API_KEY | code login --with-api-key`, `printenv MINIMAX_API_KEY | code login --provider minimax --with-api-key`, or `printenv OPENCODE_GO_API_KEY | code login --provider opencode-go --with-api-key`)"
+        help = "Read the API key from stdin for shell-safe use (e.g. `printenv OPENAI_API_KEY | kay login --with-api-key`, `printenv MINIMAX_API_KEY | kay login --provider minimax --with-api-key`, or `printenv OPENCODE_GO_API_KEY | kay login --provider opencode-go --with-api-key`)"
     )]
     with_api_key: bool,
 
@@ -345,7 +345,7 @@ struct LoginCommand {
     #[arg(
         long = "api-key",
         value_name = "API_KEY",
-        help = "Pass the API key directly on the command line for scripted onboarding (e.g. `code login --api-key <KEY>`)",
+        help = "Pass the API key directly on the command line for scripted onboarding (e.g. `kay login --api-key <KEY>`)",
         conflicts_with = "with_api_key"
     )]
     api_key: Option<String>,
@@ -422,7 +422,7 @@ struct TranscriptCommand {
     path: Option<PathBuf>,
 }
 
-fn main() -> anyhow::Result<()> {
+pub(crate) fn main() -> anyhow::Result<()> {
     arg0_dispatch_or_else(|code_linux_sandbox_exe| async move {
         cli_main(code_linux_sandbox_exe).await?;
         Ok(())
@@ -922,7 +922,7 @@ fn select_bridge_target(selector: Option<&str>) -> anyhow::Result<bridge::Bridge
     }
 
     anyhow::bail!(
-        "No bridge matched '{selector}'. Use `code bridge list` to see available bridges."
+        "No bridge matched '{selector}'. Use `kay bridge list` to see available bridges."
     );
 }
 
@@ -1110,7 +1110,7 @@ fn apply_resume_directives(
         }
         (None, true) => {
             let path = resolve_resume_path(None, true)?.ok_or_else(|| {
-                anyhow!("No recent sessions found to resume. Start a session with `code` first.")
+                anyhow!("No recent sessions found to resume. Start a session with `kay` first.")
             })?;
             interactive.resume_last = true;
             push_experimental_resume_override(interactive, &path);
@@ -1398,9 +1398,12 @@ async fn preview_main(args: PreviewArgs) -> anyhow::Result<()> {
     // Try to download the best asset for this platform; prefer .tar.gz on Unix and .zip on Windows; fallback to .zst.
     let mut urls: Vec<String> = vec![];
     if cfg!(windows) {
+        urls.push(format!("{base}/kay-x86_64-pc-windows-msvc.exe.zip"));
         urls.push(format!("{base}/code-x86_64-pc-windows-msvc.exe.zip"));
     } else {
         // tar.gz first, then zst
+        urls.push(format!("{base}/kay-{target}.tar.gz"));
+        urls.push(format!("{base}/kay-{target}.zst"));
         urls.push(format!("{base}/code-{target}.tar.gz"));
         urls.push(format!("{base}/code-{target}.zst"));
     }
@@ -1434,7 +1437,7 @@ async fn preview_main(args: PreviewArgs) -> anyhow::Result<()> {
     }
 
     // Determine output directory
-    // Default: ~/.code/bin
+    // Default: ~/.kay/bin
     let out_dir = if let Some(dir) = args.out_dir {
         dir
     } else {
@@ -1446,7 +1449,7 @@ async fn preview_main(args: PreviewArgs) -> anyhow::Result<()> {
         let base = home
             .map(PathBuf::from)
             .unwrap_or_else(|| PathBuf::from("."));
-        base.join(".code").join("bin")
+        base.join(".kay").join("bin")
     };
     let _ = fs::create_dir_all(&out_dir);
 
@@ -1467,10 +1470,12 @@ async fn preview_main(args: PreviewArgs) -> anyhow::Result<()> {
             let mut ar = tar::Archive::new(gz);
             ar.unpack(&out_dir)?;
             // Find extracted binary
-            let bin = first_match(&out_dir, "code-").unwrap_or(out_dir.join("code"));
+            let bin = first_match(&out_dir, "kay-")
+                .or_else(|| first_match(&out_dir, "code-"))
+                .unwrap_or(out_dir.join("kay"));
             let dest_name = format!(
                 "{}-{}",
-                bin.file_name().and_then(|s| s.to_str()).unwrap_or("code"),
+                bin.file_name().and_then(|s| s.to_str()).unwrap_or("kay"),
                 slug
             );
             let dest = out_dir.join(dest_name);
@@ -1491,16 +1496,18 @@ async fn preview_main(args: PreviewArgs) -> anyhow::Result<()> {
             let f = fs::File::open(&path)?;
             let mut z = ZipArchive::new(f)?;
             z.extract(&out_dir)?;
-            let exe = first_match(&out_dir, "code-").unwrap_or(out_dir.join("code.exe"));
+            let exe = first_match(&out_dir, "kay-")
+                .or_else(|| first_match(&out_dir, "code-"))
+                .unwrap_or(out_dir.join("kay.exe"));
             // Append slug before extension if present
             let dest = match exe.extension().and_then(|e| e.to_str()) {
                 Some(ext) => {
-                    let stem = exe.file_stem().and_then(|s| s.to_str()).unwrap_or("code");
+                    let stem = exe.file_stem().and_then(|s| s.to_str()).unwrap_or("kay");
                     out_dir.join(format!("{}-{}.{}", stem, slug, ext))
                 }
                 None => out_dir.join(format!(
                     "{}-{}",
-                    exe.file_name().and_then(|s| s.to_str()).unwrap_or("code"),
+                    exe.file_name().and_then(|s| s.to_str()).unwrap_or("kay"),
                     slug
                 )),
             };
@@ -1518,17 +1525,17 @@ async fn preview_main(args: PreviewArgs) -> anyhow::Result<()> {
         }
     }
 
-    // Fallback: raw 'code' file (after .zst) if present
+    // Fallback: raw 'kay' file (after .zst) if present
     if path
         .file_name()
         .and_then(|s| s.to_str())
         .map(|n| n.ends_with(".zst"))
         .unwrap_or(false)
     {
-        // Try to decompress .zst to 'code'
+        // Try to decompress .zst to 'kay'
         if which::which("zstd").is_ok() {
-            // Derive base name from archive (e.g., code-aarch64-apple-darwin.zst -> code-aarch64-apple-darwin-<slug>.{exe?})
-            let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("code");
+            // Derive base name from archive (e.g., kay-aarch64-apple-darwin.zst -> kay-aarch64-apple-darwin-<slug>.{exe?})
+            let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("kay");
             let dest = if cfg!(windows) {
                 out_dir.join(format!("{}-{}.exe", stem, slug))
             } else {
@@ -1555,7 +1562,7 @@ async fn preview_main(args: PreviewArgs) -> anyhow::Result<()> {
         bail!(
             "Downloaded .zst but 'zstd' is not installed. Install zstd or download the .tar.gz/.zip asset instead."
         );
-    } else if let Some(bin) = first_match(tmp.path(), "code") {
+    } else if let Some(bin) = first_match(tmp.path(), "kay").or_else(|| first_match(tmp.path(), "code")) {
         let dest = out_dir.join(bin.file_name().unwrap_or_default());
         fs::copy(&bin, &dest)?;
         make_exec(&dest);
@@ -1580,7 +1587,7 @@ async fn doctor_main() -> anyhow::Result<()> {
     let exe = std::env::current_exe()
         .map(|p| p.display().to_string())
         .unwrap_or_else(|_| "<unknown>".to_string());
-    println!("code version: {}", code_version::version());
+    println!("kay version: {}", code_version::version());
     println!("current_exe: {}", exe);
 
     // PATH
@@ -1624,10 +1631,19 @@ async fn doctor_main() -> anyhow::Result<()> {
         }
     };
 
-    // Gather candidates for code/coder
+    // Gather candidates for kay/code/coder
+    let kay_paths = which_all("kay").await;
     let code_paths = which_all("code").await;
     let coder_paths = which_all("coder").await;
 
+    println!("\nFound 'kay' on PATH (in order):");
+    if kay_paths.is_empty() {
+        println!("  <none>");
+    } else {
+        for p in &kay_paths {
+            println!("  {}", p);
+        }
+    }
     println!("\nFound 'code' on PATH (in order):");
     if code_paths.is_empty() {
         println!("  <none>");
@@ -1657,6 +1673,7 @@ async fn doctor_main() -> anyhow::Result<()> {
             }
         }
     }
+    show_versions("kay --version by path", &kay_paths).await;
     show_versions("code --version by path", &code_paths).await;
     show_versions("coder --version by path", &coder_paths).await;
 
@@ -1690,7 +1707,7 @@ async fn doctor_main() -> anyhow::Result<()> {
         if brew_code.is_some() && vscode_code.is_some() {
             println!("\nHomebrew 'code' precedes VS Code CLI in PATH.");
             println!(
-                "Suggestion: uninstall Homebrew formula 'code' (brew uninstall code) or reorder PATH so /usr/local/bin comes before /usr/local/homebrew/bin."
+                "Suggestion: use the primary 'kay' command, remove the old Homebrew 'code' shim if it is ours, or reorder PATH so VS Code's command wins."
             );
         }
     }
@@ -1708,8 +1725,8 @@ async fn doctor_main() -> anyhow::Result<()> {
     println!("\nIf versions differ, remove older installs and keep one package manager:");
     println!("  - Bun: bun remove -g @alo-labs/kay");
     println!("  - npm/pnpm: npm uninstall -g @alo-labs/kay");
-    println!("  - Homebrew: brew uninstall code");
-    println!("  - Prefer using 'coder' to avoid conflicts with VS Code's 'code'.");
+    println!("  - Homebrew: brew uninstall kay");
+    println!("  - Prefer using 'kay'. The 'code' command remains a compatibility alias when available.");
 
     Ok(())
 }
@@ -1741,17 +1758,17 @@ mod tests {
     use code_protocol::protocol::UserMessageEvent;
 
     #[test]
-    fn bash_completion_uses_code_command_name() {
+    fn bash_completion_uses_kay_command_name() {
         let mut buf = Vec::new();
         write_completion(Shell::Bash, &mut buf);
         let script = String::from_utf8(buf).expect("completion output should be valid UTF-8");
         assert!(
-            script.contains("_code()"),
-            "expected bash completion function to be named _code"
+            script.contains("_kay()"),
+            "expected bash completion function to be named _kay"
         );
         assert!(
-            !script.contains("_codex()"),
-            "bash completion output should not use legacy codex prefix"
+            !script.contains("_code()"),
+            "bash completion output should not use legacy code prefix"
         );
     }
 

@@ -18,12 +18,12 @@ and update the `url`/`sha256` if needed.
 
 ```
 brew tap just-every/tap
-brew install code
+brew install kay
 ```
 
 Notes
 
 - The formula expects release assets named like:
-  - `code-aarch64-apple-darwin.tar.gz`
-  - `code-x86_64-apple-darwin.tar.gz`
-- The CLI is installed as `code` and `coder` shims for compatibility.
+  - `kay-aarch64-apple-darwin.tar.gz`
+  - `kay-x86_64-apple-darwin.tar.gz`
+- The CLI is installed as `kay`, with `code` and `coder` shims for compatibility where possible.

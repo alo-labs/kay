@@ -74,9 +74,10 @@ if (!targetTriple) {
   throw new Error(`Unsupported platform: ${platform} (${arch})`);
 }
 
-// Prefer new 'code-*' binary names; fall back to legacy 'coder-*' if missing.
-let binaryPath = path.join(__dirname, "..", "bin", `code-${targetTriple}`);
-let legacyBinaryPath = path.join(__dirname, "..", "bin", `coder-${targetTriple}`);
+// Prefer new 'kay-*' binary names; fall back to legacy names if missing.
+let binaryPath = path.join(__dirname, "..", "bin", `kay-${targetTriple}`);
+let legacyBinaryPath = path.join(__dirname, "..", "bin", `code-${targetTriple}`);
+let olderLegacyBinaryPath = path.join(__dirname, "..", "bin", `coder-${targetTriple}`);
 
 // --- Bootstrap helper (runs if the binary is missing, e.g. Bun blocked postinstall) ---
 import { existsSync, chmodSync, statSync, openSync, readSync, closeSync, mkdirSync, copyFileSync, readFileSync, unlinkSync, createWriteStream } from "fs";
@@ -121,7 +122,7 @@ const getCacheDir = (version) => {
   } else {
     base = process.env.XDG_CACHE_HOME || path.join(home, ".cache");
   }
-  const dir = path.join(base, "just-every", "code", version);
+  const dir = path.join(base, "alo-labs", "kay", version);
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
   return dir;
 };
@@ -130,7 +131,7 @@ const getCachedBinaryPath = (version) => {
   // targetTriple already includes the proper extension on Windows ("...msvc.exe").
   // Do not append another suffix; just use the exact targetTriple-derived name.
   const cacheDir = getCacheDir(version);
-  return path.join(cacheDir, `code-${targetTriple}`);
+  return path.join(cacheDir, `kay-${targetTriple}`);
 };
 
 let lastBootstrapError = null;
@@ -202,10 +203,12 @@ const tryBootstrapBinary = async () => {
         try {
           const pkgJson = req.resolve(`${name}/package.json`);
           const pkgDir = path.dirname(pkgJson);
-          const src = path.join(pkgDir, "bin", `code-${targetTriple}`);
-          if (existsSync(src)) {
+          const src = path.join(pkgDir, "bin", `kay-${targetTriple}`);
+          const legacySrc = path.join(pkgDir, "bin", `code-${targetTriple}`);
+          const packageBinary = existsSync(src) ? src : legacySrc;
+          if (existsSync(packageBinary)) {
             // Always ensure cache has the binary; on Unix mirror into node_modules
-            copyFileSync(src, cachePath);
+            copyFileSync(packageBinary, cachePath);
             if (platform !== "win32") {
               copyFileSync(cachePath, binaryPath);
               try { chmodSync(binaryPath, 0o755); } catch {}
@@ -219,8 +222,8 @@ const tryBootstrapBinary = async () => {
     // 4) Download from GitHub release
     const isWin = platform === "win32";
     const archiveName = isWin
-      ? `code-${targetTriple}.zip`
-      : (() => { try { execSync("zstd --version", { stdio: "ignore", shell: true }); return `code-${targetTriple}.zst`; } catch { return `code-${targetTriple}.tar.gz`; } })();
+      ? `kay-${targetTriple}.zip`
+      : (() => { try { execSync("zstd --version", { stdio: "ignore", shell: true }); return `kay-${targetTriple}.zst`; } catch { return `kay-${targetTriple}.tar.gz`; } })();
     const url = `https://github.com/alo-labs/kay/releases/download/v${version}/${archiveName}`;
     const tmp = path.join(binDir, `.${archiveName}.part`);
     return httpsDownload(url, tmp)
@@ -271,7 +274,7 @@ const tryBootstrapBinary = async () => {
 };
 
 // If missing, attempt to bootstrap into place (helps when Bun blocks postinstall)
-let binaryReady = existsSync(binaryPath) || existsSync(legacyBinaryPath);
+let binaryReady = existsSync(binaryPath) || existsSync(legacyBinaryPath) || existsSync(olderLegacyBinaryPath);
 if (!binaryReady) {
   let runtimePostinstallError = null;
   try {
@@ -280,16 +283,18 @@ if (!binaryReady) {
     runtimePostinstallError = err;
   }
 
-  binaryReady = existsSync(binaryPath) || existsSync(legacyBinaryPath);
+  binaryReady = existsSync(binaryPath) || existsSync(legacyBinaryPath) || existsSync(olderLegacyBinaryPath);
   if (!binaryReady) {
     const ok = await tryBootstrapBinary();
     if (!ok) {
       if (runtimePostinstallError && !lastBootstrapError) {
         lastBootstrapError = runtimePostinstallError;
       }
-      // retry legacy name in case archive provided coder-*
+      // retry legacy names in case archive provided code-* or coder-*
       if (existsSync(legacyBinaryPath) && !existsSync(binaryPath)) {
         binaryPath = legacyBinaryPath;
+      } else if (existsSync(olderLegacyBinaryPath) && !existsSync(binaryPath)) {
+        binaryPath = olderLegacyBinaryPath;
       }
     }
   }
@@ -305,6 +310,8 @@ try {
     binaryPath = cached;
   } else if (!existsSync(binaryPath) && existsSync(legacyBinaryPath)) {
     binaryPath = legacyBinaryPath;
+  } else if (!existsSync(binaryPath) && existsSync(olderLegacyBinaryPath)) {
+    binaryPath = olderLegacyBinaryPath;
   }
 } catch {
   // ignore

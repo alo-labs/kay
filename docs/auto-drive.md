@@ -4,7 +4,7 @@ What Auto Drive is, how to start it, and how it behaves in Kay.
 
 ## Start points
 - TUI: `/auto <goal>`. If you omit the goal and there is recent history, Kay proposes one for you. `/auto settings` jumps straight to the Auto Drive pane.
-- CLI: `code exec --auto "<goal>"` or `code exec "/auto <goal>"`. A goal is required when launching headless.
+- CLI: `kay exec --auto "<goal>"` or `kay exec "/auto <goal>"`. A goal is required when launching headless.
 - Precondition: Full Auto mode (danger-full-access + approval=never) must be selected in the TUI; otherwise you’ll see a warning and Auto Drive will not start.
 
 ## Goal handling
@@ -71,6 +71,6 @@ What Auto Drive is, how to start it, and how it behaves in Kay.
 - All of these can be changed from `/auto settings` in the TUI or directly in `config.toml`.
 
 ## Tips
-- Stay in the TUI if you want countdowns and visual status; use `code exec --auto` for CI or scripted flows.
+- Stay in the TUI if you want countdowns and visual status; use `kay exec --auto` for CI or scripted flows.
 - If Auto Drive stops because it couldn’t derive a goal, rerun `/auto <goal>` with a short, specific instruction.
 - Turn off agents in `/auto settings` if you want a single-model run.
