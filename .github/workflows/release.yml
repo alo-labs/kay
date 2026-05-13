@@ -375,6 +375,7 @@ jobs:
         working-directory: code-rs
         env:
           CARGO_NET_GIT_FETCH_WITH_CLI: "true"
+          RUSTC_WRAPPER: ""
         run: rustup run "$RUST_TOOLCHAIN" cargo fetch --locked
 
       # Inject the display version without touching Cargo manifests
