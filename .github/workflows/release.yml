@@ -407,8 +407,19 @@ jobs:
           CARGO_INCREMENTAL: "0"   # keep off in CI; release builds + sccache
           RUST_BACKTRACE: "1"
         run: |
+          set -euo pipefail
           cd code-rs
-          rustup run "$RUST_TOOLCHAIN" cargo build --release --frozen --locked --timings --target ${{ matrix.target }} --bin kay --bin code
+          (
+            while sleep 60; do
+              echo "cargo release build still running for ${{ matrix.target }}..."
+            done
+          ) &
+          heartbeat_pid=$!
+          trap 'kill "$heartbeat_pid" 2>/dev/null || true' EXIT
+
+          rustup run "$RUST_TOOLCHAIN" cargo build --release --frozen --locked --timings --target ${{ matrix.target }} --bin kay --bin code &
+          build_pid=$!
+          wait "$build_pid"
 
       - name: Post-build smoke (run binary) [Unix]
         if: |
