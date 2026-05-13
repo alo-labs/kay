@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="docs/images/logo.png" alt="Kay" width="280">
-</p>
-
 # Kay
 
 Kay is a terminal coding agent for people who want a local, scriptable, multi-provider workflow without giving up the ergonomics of the original Codex CLI lineage.
