@@ -8,7 +8,7 @@ Kay supports several mechanisms for setting config values:
 - A generic `-c`/`--config` flag that takes a `key=value` pair, such as `--config model="o3"`.
   - The key can contain dots to set a value deeper than the root, e.g. `--config model_providers.openai.wire_api="chat"`.
   - For consistency with `config.toml`, values are a string in TOML format rather than JSON format, so use `key='{a = 1, b = 2}'` rather than `key='{"a": 1, "b": 2}'`.
-    - The quotes around the value are necessary, as without them your shell would split the config argument on spaces, resulting in `code` receiving `-c key={a` with (invalid) additional arguments `=`, `1,`, `b`, `=`, `2}`.
+    - The quotes around the value are necessary, as without them your shell would split the config argument on spaces, resulting in `kay` receiving `-c key={a` with (invalid) additional arguments `=`, `1,`, `b`, `=`, `2}`.
   - Values can contain any TOML object, such as `--config shell_environment_policy.include_only='["PATH", "HOME", "USER"]'`.
   - If `value` cannot be parsed as a valid TOML value, it is treated as a string value. This means that `-c model='"o3"'` and `-c model=o3` are equivalent.
     - In the first case, the value is the TOML string `"o3"`, while in the second the value is `o3`, which is not valid TOML and therefore treated as the TOML string `"o3"`.
@@ -546,24 +546,24 @@ You can also manage these entries from the CLI:
 
 ```shell
 # Add a server (env can be repeated; `--` separates the launcher command)
-code mcp add docs -- docs-server --port 4000
+kay mcp add docs -- docs-server --port 4000
 
 # List configured servers (pretty table or JSON)
-code mcp list
-code mcp list --json
+kay mcp list
+kay mcp list --json
 
 # Show one server (table or JSON)
-code mcp get docs
-code mcp get docs --json
+kay mcp get docs
+kay mcp get docs --json
 
 # Remove a server
-code mcp remove docs
+kay mcp remove docs
 
 # Log in to a streamable HTTP server that supports oauth
-code mcp login SERVER_NAME
+kay mcp login SERVER_NAME
 
 # Log out from a streamable HTTP server that supports oauth
-code mcp logout SERVER_NAME
+kay mcp logout SERVER_NAME
 ```
 
 ## shell_environment_policy

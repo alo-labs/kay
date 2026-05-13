@@ -61,14 +61,14 @@ The orchestrator fans out agents, waits for results, and merges reasoning accord
 - If PATH is unreliable, use absolute `command` paths in `[[agents]]`.
 
 ## Notifications and reasoning visibility
-- `hide_agent_reasoning = true` removes agent reasoning streams in both the TUI and `code exec`.
+- `hide_agent_reasoning = true` removes agent reasoning streams in both the TUI and `kay exec`.
 - `show_raw_agent_reasoning = true` surfaces raw chains-of-thought when provided by the model.
 - Notification filtering is controlled via `/notifications` or `config.toml` `notify` / `tui.notifications`.
 
-## Headless `code exec`
-- `code exec --json` streams JSONL events (agent turns included).
+## Headless `kay exec`
+- `kay exec --json` streams JSONL events (agent turns included).
 - `--output-schema <schema.json>` enforces structured JSON output; combine with `--output-last-message` to capture only the final payload.
-- `code exec` defaults to read-only; add `--full-auto` plus a writable sandbox to permit edits.
+- `kay exec` defaults to read-only; add `--full-auto` plus a writable sandbox to permit edits.
 
 ## Quick examples
 - Custom agent:

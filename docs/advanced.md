@@ -9,7 +9,7 @@ Run Kay headless in pipelines. Example GitHub Action step:
   run: |
     npm install -g @alo-labs/kay
     export OPENAI_API_KEY="${{ secrets.OPENAI_KEY }}"
-    code exec --full-auto "update CHANGELOG for next release"
+    kay exec --full-auto "update CHANGELOG for next release"
 ```
 
 ### Resuming non-interactive sessions
@@ -19,26 +19,26 @@ You can resume a previous headless run to continue the same conversation context
 Interactive TUI equivalent:
 
 ```shell
-code resume             # picker
-code resume --last      # most recent
-code resume <SESSION_ID>
+kay resume             # picker
+kay resume --last      # most recent
+kay resume <SESSION_ID>
 ```
 
 Compatibility:
 
-- Latest source builds include `code exec resume` (examples below).
-- If `code exec --help` shows no `resume`, update to the latest release; the flag ships in v0.5.0 and newer.
+- Latest source builds include `kay exec resume` (examples below).
+- If `kay exec --help` shows no `resume`, update to the latest release; the flag ships in v0.5.0 and newer.
 
 ```shell
 # Resume the most recent recorded session and run with a new prompt
-code exec "ship a release draft changelog" resume --last
+kay exec "ship a release draft changelog" resume --last
 
 # Alternatively, pass the prompt via stdin
 # Note: omit the trailing '-' to avoid it being parsed as a SESSION_ID
-echo "ship a release draft changelog" | code exec resume --last
+echo "ship a release draft changelog" | kay exec resume --last
 
 # Or resume a specific session by id (UUID)
-code exec resume 7f9f9a2e-1b3c-4c7a-9b0e-123456789abc "continue the task"
+kay exec resume 7f9f9a2e-1b3c-4c7a-9b0e-123456789abc "continue the task"
 ```
 
 Notes:
@@ -77,7 +77,7 @@ existing timestamped filenames.
 Without `--debug`, Kay only writes critical crash/error logs to
 `~/.kay/debug_logs/critical.log.*`; routine log output is suppressed.
 
-By comparison, the non-interactive mode (`code exec`) defaults to `RUST_LOG=error`, but messages are printed inline, so there is no need to monitor a separate file.
+By comparison, the non-interactive mode (`kay exec`) defaults to `RUST_LOG=error`, but messages are printed inline, so there is no need to monitor a separate file.
 
 See the Rust documentation on [`RUST_LOG`](https://docs.rs/env_logger/latest/env_logger/#enabling-logging) for more information on the configuration options.
 
@@ -95,4 +95,4 @@ env = { "API_KEY" = "value" }
 
 ## Using Kay as an MCP Server
 > [!TIP]
-> It is somewhat experimental, but the Kay CLI can also be run as an MCP _server_ via `code mcp`. If you launch it with an MCP client such as `npx @modelcontextprotocol/inspector code mcp` and send it a `tools/list` request, you will see that there is only one tool, `code`, that accepts a grab-bag of inputs, including a catch-all `config` map for anything you might want to override. Feel free to play around with it and provide feedback via GitHub issues. 
+> It is somewhat experimental, but the Kay CLI can also be run as an MCP _server_ via `kay mcp`. If you launch it with an MCP client such as `npx @modelcontextprotocol/inspector kay mcp` and send it a `tools/list` request, you will see that there is only one tool, `code`, that accepts a grab-bag of inputs, including a catch-all `config` map for anything you might want to override. Feel free to play around with it and provide feedback via GitHub issues.

@@ -13,7 +13,7 @@ This release adds OpenCode Go as a built-in provider, normalizes provider-prefix
 
 ```bash
 npm install -g @alo-labs/kay@latest
-code
+kay
 ```
 
 Compare: https://github.com/alo-labs/kay/compare/v0.6.99...v0.6.100

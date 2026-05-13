@@ -61,10 +61,10 @@ function Get-ReleaseAssetMetadata {
         [string]$ResolvedVersion
     )
 
-    $release = Invoke-RestMethod -Uri "https://api.github.com/repos/openai/codex/releases/tags/rust-v$ResolvedVersion"
+    $release = Invoke-RestMethod -Uri "https://api.github.com/repos/alo-labs/kay/releases/tags/v$ResolvedVersion"
     $asset = $release.assets | Where-Object { $_.name -eq $AssetName } | Select-Object -First 1
     if ($null -eq $asset) {
-        throw "Could not find release asset $AssetName for Codex $ResolvedVersion."
+        throw "Could not find release asset $AssetName for Kay $ResolvedVersion."
     }
 
     $digestMatch = [regex]::Match([string]$asset.digest, "^sha256:([0-9a-fA-F]{64})$")
@@ -86,7 +86,7 @@ function Test-ArchiveDigest {
 
     $actualDigest = (Get-FileHash -LiteralPath $ArchivePath -Algorithm SHA256).Hash.ToLowerInvariant()
     if ($actualDigest -ne $ExpectedDigest) {
-        throw "Downloaded Codex archive checksum did not match release metadata. Expected $ExpectedDigest but got $actualDigest."
+        throw "Downloaded Kay archive checksum did not match release metadata. Expected $ExpectedDigest but got $actualDigest."
     }
 }
 
@@ -154,9 +154,9 @@ function Resolve-Version {
         return $normalizedVersion
     }
 
-    $release = Invoke-RestMethod -Uri "https://api.github.com/repos/openai/codex/releases/latest"
+    $release = Invoke-RestMethod -Uri "https://api.github.com/repos/alo-labs/kay/releases/latest"
     if (-not $release.tag_name) {
-        Write-Error "Failed to resolve the latest Codex release version."
+        Write-Error "Failed to resolve the latest Kay release version."
         exit 1
     }
 
@@ -165,15 +165,15 @@ function Resolve-Version {
 
 function Get-VersionFromBinary {
     param(
-        [string]$CodexPath
+        [string]$KayPath
     )
 
-    if (-not (Test-Path -LiteralPath $CodexPath -PathType Leaf)) {
+    if (-not (Test-Path -LiteralPath $KayPath -PathType Leaf)) {
         return $null
     }
 
     try {
-        $versionOutput = & $CodexPath --version 2>$null
+        $versionOutput = & $KayPath --version 2>$null
     } catch {
         return $null
     }
@@ -190,7 +190,7 @@ function Get-CurrentInstalledVersion {
         [string]$StandaloneCurrentDir
     )
 
-    $standaloneVersion = Get-VersionFromBinary -CodexPath (Join-Path $StandaloneCurrentDir "codex.exe")
+    $standaloneVersion = Get-VersionFromBinary -KayPath (Join-Path $StandaloneCurrentDir "kay.exe")
     if (-not [string]::IsNullOrWhiteSpace($standaloneVersion)) {
         return $standaloneVersion
     }
@@ -224,11 +224,10 @@ function Test-OldStandaloneBinLayout {
     }
 
     $knownFiles = @(
+        "kay.exe",
+        "code.exe",
         "codex.exe",
-        "rg.exe",
-        "codex-command-runner.exe",
-        "codex-windows-sandbox.exe",
-        "codex-windows-sandbox-setup.exe"
+        "coder.exe"
     )
     foreach ($child in Get-ChildItem -LiteralPath $VisibleBinDir -Force) {
         if ($child.PSIsContainer) {
@@ -252,9 +251,9 @@ function Move-OldStandaloneBinIfApproved {
         return $null
     }
 
-    Write-Step "We found an older Codex install at $VisibleBinDir"
-    Write-WarningStep "To continue, Codex needs to update the install at this path."
-    if (-not (Prompt-YesNo "Replace it with the current Codex setup now?")) {
+    Write-Step "We found an older Kay install at $VisibleBinDir"
+    Write-WarningStep "To continue, Kay needs to update the install at this path."
+    if (-not (Prompt-YesNo "Replace it with the current Kay setup now?")) {
         throw "Cannot replace older standalone install without confirmation: $VisibleBinDir"
     }
 
@@ -461,10 +460,10 @@ function Test-ReleaseIsComplete {
     }
 
     $expectedFiles = @(
+        "kay.exe",
+        "code.exe",
         "codex.exe",
-        "codex-resources\codex-command-runner.exe",
-        "codex-resources\codex-windows-sandbox-setup.exe",
-        "codex-resources\rg.exe"
+        "coder.exe"
     )
     foreach ($name in $expectedFiles) {
         if (-not (Test-Path -LiteralPath (Join-Path $ReleaseDir $name) -PathType Leaf)) {
@@ -475,8 +474,11 @@ function Test-ReleaseIsComplete {
     return (Split-Path -Leaf $ReleaseDir) -eq "$ExpectedVersion-$ExpectedTarget"
 }
 
-function Get-ExistingCodexCommand {
-    $existing = Get-Command codex -ErrorAction SilentlyContinue
+function Get-ExistingKayCommand {
+    $existing = Get-Command kay -ErrorAction SilentlyContinue
+    if ($null -eq $existing) {
+        $existing = Get-Command code -ErrorAction SilentlyContinue
+    }
     if ($null -eq $existing) {
         return $null
     }
@@ -484,7 +486,7 @@ function Get-ExistingCodexCommand {
     return $existing.Source
 }
 
-function Get-ExistingCodexManager {
+function Get-ExistingKayManager {
     param(
         [string]$ExistingPath,
         [string]$VisibleBinDir
@@ -514,14 +516,14 @@ function Get-ConflictingInstall {
         [string]$VisibleBinDir
     )
 
-    $existingPath = Get-ExistingCodexCommand
-    $manager = Get-ExistingCodexManager -ExistingPath $existingPath -VisibleBinDir $VisibleBinDir
+    $existingPath = Get-ExistingKayCommand
+    $manager = Get-ExistingKayManager -ExistingPath $existingPath -VisibleBinDir $VisibleBinDir
     if ($null -eq $manager) {
         return $null
     }
 
-    Write-Step "Detected existing $manager-managed Codex at $existingPath"
-    Write-WarningStep "Multiple managed Codex installs can be ambiguous because PATH order decides which one runs."
+    Write-Step "Detected existing $manager-managed Kay at $existingPath"
+    Write-WarningStep "Multiple managed Kay installs can be ambiguous because PATH order decides which one runs."
 
     return [PSCustomObject]@{
         Manager = $manager
@@ -541,33 +543,33 @@ function Maybe-HandleConflictingInstall {
     $manager = $Conflict.Manager
 
     $uninstallArgs = if ($manager -eq "bun") {
-        @("remove", "-g", "@openai/codex")
+        @("remove", "-g", "@alo-labs/kay")
     } else {
-        @("uninstall", "-g", "@openai/codex")
+        @("uninstall", "-g", "@alo-labs/kay")
     }
     $uninstallCommand = if ($manager -eq "bun") { "bun" } else { "npm" }
 
-    if (Prompt-YesNo "Uninstall the existing $manager-managed Codex now?") {
+    if (Prompt-YesNo "Uninstall the existing $manager-managed Kay now?") {
         Write-Step "Running: $uninstallCommand $($uninstallArgs -join ' ')"
         try {
             & $uninstallCommand @uninstallArgs
         } catch {
-            Write-WarningStep "Failed to uninstall the existing $manager-managed Codex. Continuing with the standalone install."
+            Write-WarningStep "Failed to uninstall the existing $manager-managed Kay. Continuing with the standalone install."
         }
     } else {
-        Write-WarningStep "Leaving the existing $manager-managed Codex installed. PATH order will determine which codex runs."
+        Write-WarningStep "Leaving the existing $manager-managed Kay installed. PATH order will determine which command runs."
     }
 }
 
-function Test-VisibleCodexCommand {
+function Test-VisibleKayCommand {
     param(
         [string]$VisibleBinDir
     )
 
-    $codexCommand = Join-Path $VisibleBinDir "codex.exe"
-    & $codexCommand --version *> $null
+    $kayCommand = Join-Path $VisibleBinDir "kay.exe"
+    & $kayCommand --version *> $null
     if ($LASTEXITCODE -ne 0) {
-        throw "Installed Codex command failed verification: $codexCommand --version"
+        throw "Installed Kay command failed verification: $kayCommand --version"
     }
 }
 
@@ -577,7 +579,7 @@ if ($env:OS -ne "Windows_NT") {
 }
 
 if (-not [Environment]::Is64BitOperatingSystem) {
-    Write-Error "Codex requires a 64-bit version of Windows."
+    Write-Error "Kay requires a 64-bit version of Windows."
     exit 1
 }
 
@@ -612,8 +614,10 @@ $releasesDir = Join-Path $standaloneRoot "releases"
 $currentDir = Join-Path $standaloneRoot "current"
 $lockPath = Join-Path $standaloneRoot "install.lock"
 
-$defaultVisibleBinDir = Join-Path $env:LOCALAPPDATA "Programs\OpenAI\Codex\bin"
-if ([string]::IsNullOrWhiteSpace($env:CODEX_INSTALL_DIR)) {
+$defaultVisibleBinDir = Join-Path $env:LOCALAPPDATA "Programs\Alo Labs\Kay\bin"
+if (-not [string]::IsNullOrWhiteSpace($env:KAY_INSTALL_DIR)) {
+    $visibleBinDir = $env:KAY_INSTALL_DIR
+} elseif ([string]::IsNullOrWhiteSpace($env:CODEX_INSTALL_DIR)) {
     $visibleBinDir = $defaultVisibleBinDir
 } else {
     $visibleBinDir = $env:CODEX_INSTALL_DIR
@@ -625,11 +629,11 @@ $releaseName = "$resolvedVersion-$target"
 $releaseDir = Join-Path $releasesDir $releaseName
 
 if (-not [string]::IsNullOrWhiteSpace($currentVersion) -and $currentVersion -ne $resolvedVersion) {
-    Write-Step "Updating Codex CLI from $currentVersion to $resolvedVersion"
+    Write-Step "Updating Kay CLI from $currentVersion to $resolvedVersion"
 } elseif (-not [string]::IsNullOrWhiteSpace($currentVersion)) {
-    Write-Step "Updating Codex CLI"
+    Write-Step "Updating Kay CLI"
 } else {
-    Write-Step "Installing Codex CLI"
+    Write-Step "Installing Kay CLI"
 }
 Write-Step "Detected platform: $platformLabel"
 Write-Step "Resolved version: $resolvedVersion"
@@ -637,8 +641,8 @@ Write-Step "Resolved version: $resolvedVersion"
 $conflictingInstall = Get-ConflictingInstall -VisibleBinDir $visibleBinDir
 $oldStandaloneBackup = $null
 
-$packageAsset = "codex-npm-$npmTag-$resolvedVersion.tgz"
-$tempDir = Join-Path ([System.IO.Path]::GetTempPath()) ("codex-install-" + [System.Guid]::NewGuid().ToString("N"))
+$packageAsset = "kay-$target.exe.zip"
+$tempDir = Join-Path ([System.IO.Path]::GetTempPath()) ("kay-install-" + [System.Guid]::NewGuid().ToString("N"))
 New-Item -ItemType Directory -Force -Path $tempDir | Out-Null
 
 try {
@@ -655,7 +659,7 @@ try {
             $stagingDir = Join-Path $releasesDir ".staging.$releaseName.$PID"
             $assetMetadata = Get-ReleaseAssetMetadata -AssetName $packageAsset -ResolvedVersion $resolvedVersion
 
-            Write-Step "Downloading Codex CLI"
+            Write-Step "Downloading Kay CLI"
             Invoke-WebRequest -Uri $assetMetadata.Url -OutFile $archivePath
             Test-ArchiveDigest -ArchivePath $archivePath -ExpectedDigest $assetMetadata.Sha256
 
@@ -667,19 +671,17 @@ try {
             New-Item -ItemType Directory -Force -Path $stagingDir | Out-Null
             tar -xzf $archivePath -C $extractDir
 
-            $vendorRoot = Join-Path $extractDir "package/vendor/$target"
-            $resourcesDir = Join-Path $stagingDir "codex-resources"
-            New-Item -ItemType Directory -Force -Path $resourcesDir | Out-Null
+            $vendorRoot = $extractDir
             $copyMap = @{
-                "codex/codex.exe" = "codex.exe"
-                "codex/codex-command-runner.exe" = "codex-resources\codex-command-runner.exe"
-                "codex/codex-windows-sandbox-setup.exe" = "codex-resources\codex-windows-sandbox-setup.exe"
-                "path/rg.exe" = "codex-resources\rg.exe"
+                "kay-$target.exe" = "kay.exe"
             }
 
             foreach ($relativeSource in $copyMap.Keys) {
                 Copy-Item -LiteralPath (Join-Path $vendorRoot $relativeSource) -Destination (Join-Path $stagingDir $copyMap[$relativeSource])
             }
+            Copy-Item -LiteralPath (Join-Path $stagingDir "kay.exe") -Destination (Join-Path $stagingDir "code.exe")
+            Copy-Item -LiteralPath (Join-Path $stagingDir "kay.exe") -Destination (Join-Path $stagingDir "codex.exe")
+            Copy-Item -LiteralPath (Join-Path $stagingDir "kay.exe") -Destination (Join-Path $stagingDir "coder.exe")
 
             if (Test-Path -LiteralPath $releaseDir) {
                 Remove-Item -LiteralPath $releaseDir -Recurse -Force
@@ -695,7 +697,7 @@ try {
         $oldStandaloneBackup = Move-OldStandaloneBinIfApproved -VisibleBinDir $visibleBinDir -DefaultVisibleBinDir $defaultVisibleBinDir
         try {
             Ensure-Junction -LinkPath $visibleBinDir -TargetPath $currentDir -InstallerOwnedTargetPrefix $standaloneRoot
-            Test-VisibleCodexCommand -VisibleBinDir $visibleBinDir
+            Test-VisibleKayCommand -VisibleBinDir $visibleBinDir
         } catch {
             if ($null -ne $oldStandaloneBackup -and (Test-Path -LiteralPath $oldStandaloneBackup)) {
                 if (Test-Path -LiteralPath $visibleBinDir) {
@@ -739,12 +741,12 @@ if (-not (Path-Contains -PathValue $env:Path -Entry $visibleBinDir)) {
     }
 }
 
-Write-Step "Current PowerShell session: codex"
-Write-Step "Future PowerShell windows: open a new PowerShell window and run: codex"
-Write-Host "Codex CLI $resolvedVersion installed successfully."
+Write-Step "Current PowerShell session: kay"
+Write-Step "Future PowerShell windows: open a new PowerShell window and run: kay"
+Write-Host "Kay CLI $resolvedVersion installed successfully."
 
-$codexCommand = Join-Path $visibleBinDir "codex.exe"
-if (Prompt-YesNo "Start Codex now?") {
-    Write-Step "Launching Codex"
-    & $codexCommand
+$kayCommand = Join-Path $visibleBinDir "kay.exe"
+if (Prompt-YesNo "Start Kay now?") {
+    Write-Step "Launching Kay"
+    & $kayCommand
 }
