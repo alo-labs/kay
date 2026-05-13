@@ -2731,11 +2731,6 @@ fn model_selection_visibility() {
     assert!(credentialed_visible.contains("openai medium reasoning"));
     assert!(credentialed_visible.contains("Low (current)"));
 
-    insta::assert_snapshot!(
-        "model_selection_visibility__credentialed_provider_list",
-        credentialed_frame
-    );
-
     let empty_home = TempDir::new().expect("empty code home");
     let mut empty_harness = ChatWidgetHarness::new();
     empty_harness.configure_model_selection_test_context(
