@@ -417,7 +417,7 @@ jobs:
           heartbeat_pid=$!
           trap 'kill "$heartbeat_pid" 2>/dev/null || true' EXIT
 
-          rustup run "$RUST_TOOLCHAIN" cargo build --release --frozen --locked --timings --target ${{ matrix.target }} --bin kay --bin code &
+          rustup run "$RUST_TOOLCHAIN" cargo build --release --frozen --locked --timings --target ${{ matrix.target }} --bin kay &
           build_pid=$!
           wait "$build_pid"
 
@@ -451,10 +451,10 @@ jobs:
           mkdir -p artifacts
           if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
             cp code-rs/target/${{ matrix.target }}/release/kay.exe artifacts/${{ matrix.artifact }}
-            cp code-rs/target/${{ matrix.target }}/release/code.exe artifacts/${{ matrix.legacy_artifact }}
+            cp code-rs/target/${{ matrix.target }}/release/kay.exe artifacts/${{ matrix.legacy_artifact }}
           else
             cp code-rs/target/${{ matrix.target }}/release/kay artifacts/${{ matrix.artifact }}
-            cp code-rs/target/${{ matrix.target }}/release/code artifacts/${{ matrix.legacy_artifact }}
+            cp code-rs/target/${{ matrix.target }}/release/kay artifacts/${{ matrix.legacy_artifact }}
           fi
 
       - name: Compress artifacts (Windows)
