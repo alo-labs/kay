@@ -385,6 +385,7 @@ jobs:
       # Prefetch deps so --frozen works even with git deps
       - name: Prefetch dependencies (git + registry)
         working-directory: code-rs
+        shell: bash
         env:
           CARGO_NET_GIT_FETCH_WITH_CLI: "true"
           RUSTC_WRAPPER: ""
