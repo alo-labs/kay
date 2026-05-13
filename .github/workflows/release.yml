@@ -123,7 +123,7 @@ jobs:
         run: |
           set -euo pipefail
           cd code-rs
-          cargo build --locked --profile dev-fast --bin code
+          rustup run "$RUST_TOOLCHAIN" cargo build --locked --profile dev-fast --bin code
 
       - name: CLI smokes (skip duplicated cargo tests)
         shell: bash
@@ -148,7 +148,7 @@ jobs:
         shell: bash
         run: |
           cd code-rs
-          cargo nextest run --no-fail-fast --locked
+          rustup run "$RUST_TOOLCHAIN" cargo nextest run --no-fail-fast --locked
 
       - name: Free disk after tests
         if: always()
@@ -375,7 +375,7 @@ jobs:
         working-directory: code-rs
         env:
           CARGO_NET_GIT_FETCH_WITH_CLI: "true"
-        run: cargo fetch --locked
+        run: rustup run "$RUST_TOOLCHAIN" cargo fetch --locked
 
       # Inject the display version without touching Cargo manifests
       - name: Export CODE_VERSION for Rust build
@@ -389,7 +389,7 @@ jobs:
           RUST_BACKTRACE: "1"
         run: |
           cd code-rs
-          cargo build --release --frozen --locked --timings --target ${{ matrix.target }} --bin code
+          rustup run "$RUST_TOOLCHAIN" cargo build --release --frozen --locked --timings --target ${{ matrix.target }} --bin code
 
       - name: Post-build smoke (run binary) [Unix]
         if: |
