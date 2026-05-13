@@ -145,7 +145,7 @@ fn run_notes_feature_turn(
         .arg("exec")
         .arg("--json")
         .arg("--max-seconds")
-        .arg("420")
+        .arg("1800")
         .arg("--cd")
         .arg(repo_dir)
         .arg("--output-schema")
@@ -202,6 +202,18 @@ Use these exact current names: `state.selectedId`, `state.notes`,
 `noteTags`, `notePinned`, and `noteArchived`.
 Do not invent alternate names like `deleteBtn`, `selectedNoteId`, `pin`, or
 `archive`.
+
+Output contract:
+- Return exactly one JSON object and nothing else.
+- The JSON object must contain only `summary` and `touched_files`.
+- If the edit succeeds, `touched_files` must be exactly
+  `["src/public/index.html", "src/public/notes-ui.js"]`.
+- Put the exact `*** Begin Patch` / `*** End Patch` blocks inside the
+  `summary` string after a short human summary; do not emit patch blocks
+  outside the JSON object.
+- Keep each patch block minimal and target one file per block.
+- If you cannot complete the task, return a JSON object with an empty
+  `touched_files` array and a `summary` that explains the blocker.
 
 The exact current editor markup and JS wiring look like this:
 ```html
@@ -409,15 +421,9 @@ fn apply_duplicate_note_fallback(repo_dir: &Path) {
 }
 
 fn apply_model_patch_blocks(repo_dir: &Path, raw_message: &str, summary: &str) {
-    let mut patch_blocks = extract_patch_blocks(raw_message);
-    if patch_blocks.is_empty()
-        && let Ok(value) = serde_json::from_str::<serde_json::Value>(raw_message)
-        && let Some(patch) = value.get("patch").and_then(|patch| patch.as_str())
-    {
-        patch_blocks = extract_patch_blocks(patch);
-    }
+    let mut patch_blocks = extract_patch_blocks(summary);
     if patch_blocks.is_empty() {
-        patch_blocks = extract_patch_blocks(summary);
+        patch_blocks = extract_patch_blocks(raw_message);
     }
     assert!(
         !patch_blocks.is_empty(),
