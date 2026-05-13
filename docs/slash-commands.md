@@ -57,7 +57,7 @@ Notes
 
 - `/theme`: customize the app theme.
 - `/verbosity (high|medium|low)`: change text verbosity.
-- `/model`: choose your default model.
+- `/model`: choose your default model from the providers you have configured.
 - `/fast`: open the model selector and toggle Fast mode.
 - `/reasoning (minimal|low|medium|high)`: change reasoning effort.
 - `/prompts`: manage custom prompts.
@@ -124,6 +124,9 @@ Implementation Notes
   Provider credential CRUD lives in `/provider`, which is the shared entry
   point for adding, updating, or removing OpenCode Go, MiniMax, and OpenAI API
   keys.
+  The end-user install and release docs should stay aligned with the shipped
+  assets in GitHub Releases, not with the presence or absence of npm registry
+  publication.
   When no `[[agents]]` are configured, the orchestrator advertises the
   following model slugs to the LLM for multi-agent runs: `code-gpt-5.4`,
   `code-gpt-5.3-codex`, `claude-opus-4.6`, `gemini-3-pro`,
