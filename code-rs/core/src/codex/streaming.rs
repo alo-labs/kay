@@ -2742,6 +2742,10 @@ async fn run_agent(
                             .await;
                     }
                 }
+                remember_last_task_message_from_turn(
+                    &mut last_task_message,
+                    &items_to_record_in_conversation_history,
+                );
 
                 // Check whether we should proactively compact before queuing follow-up work.
                 // Upstream codex-rs compacts as soon as usage hits the configured threshold,
@@ -2815,9 +2819,6 @@ async fn run_agent(
 
                 if responses.is_empty() {
                     debug!("Turn completed");
-                    last_task_message = get_last_assistant_message_from_turn(
-                        &items_to_record_in_conversation_history,
-                    );
                     if let Some(m) = last_task_message.as_ref() {
                         tracing::info!("core.turn completed: last_assistant_message.len={}", m.len());
                     }
@@ -8124,7 +8125,10 @@ fn autonomous_runtime_failure_message(error: &CodexErr) -> String {
 #[cfg(test)]
 mod kay_runtime_regression_tests {
     use super::autonomous_runtime_failure_message;
+    use super::remember_last_task_message_from_turn;
     use super::normalize_exec_command_argv;
+    use super::ContentItem;
+    use super::ResponseItem;
     use crate::error::CodexErr;
     use crate::error::UnexpectedResponseError;
     use reqwest::StatusCode;
@@ -8160,6 +8164,38 @@ mod kay_runtime_regression_tests {
         assert!(message.contains("Kay runtime error"));
         assert!(message.contains("unexpected status 400"));
         assert!(message.contains("invalid function arguments json string"));
+    }
+
+    #[test]
+    fn last_task_message_survives_later_iterations_without_messages() {
+        let mut last_task_message = None;
+
+        remember_last_task_message_from_turn(
+            &mut last_task_message,
+            &[assistant_message("I will inspect the Silver Bullet router.")],
+        );
+        remember_last_task_message_from_turn(
+            &mut last_task_message,
+            &[assistant_message("\n\n")],
+        );
+        remember_last_task_message_from_turn(&mut last_task_message, &[]);
+
+        assert_eq!(
+            last_task_message.as_deref(),
+            Some("I will inspect the Silver Bullet router.")
+        );
+    }
+
+    fn assistant_message(text: &str) -> ResponseItem {
+        ResponseItem::Message {
+            id: None,
+            role: "assistant".to_string(),
+            content: vec![ContentItem::OutputText {
+                text: text.to_string(),
+            }],
+            end_turn: None,
+            phase: None,
+        }
     }
 }
 
@@ -11403,7 +11439,11 @@ pub(super) fn get_last_assistant_message_from_turn(responses: &[ResponseItem]) -
             if role == "assistant" {
                 content.iter().rev().find_map(|ci| {
                     if let ContentItem::OutputText { text } = ci {
-                        Some(text.clone())
+                        if text.trim().is_empty() {
+                            None
+                        } else {
+                            Some(text.clone())
+                        }
                     } else {
                         None
                     }
@@ -11415,6 +11455,15 @@ pub(super) fn get_last_assistant_message_from_turn(responses: &[ResponseItem]) -
             None
         }
     })
+}
+
+fn remember_last_task_message_from_turn(
+    last_task_message: &mut Option<String>,
+    responses: &[ResponseItem],
+) {
+    if let Some(message) = get_last_assistant_message_from_turn(responses) {
+        *last_task_message = Some(message);
+    }
 }
 
 /// Capture a screenshot from the browser and store it for the next model request
