@@ -49,6 +49,8 @@ enum AgentTaskKind {
 
 const SEARCH_TOOL_DEVELOPER_INSTRUCTIONS: &str =
     include_str!("../../templates/search_tool/developer_instructions.md");
+const NO_ASK_AUTONOMY_DEVELOPER_INSTRUCTIONS: &str =
+    "SYSTEM: approval_policy is never. Do not ask the user whether to proceed. Continue with non-destructive requested work autonomously; report blockers only when the runtime cannot proceed.";
 const TOOL_SEARCH_TOOL_NAME: &str = "tool_search";
 const LEGACY_SEARCH_TOOL_BM25_TOOL_NAME: &str = "search_tool_bm25";
 const CODEX_APPS_TOOL_PREFIX: &str = "mcp__codex_apps__";
@@ -716,6 +718,7 @@ pub(super) async fn submission_loop(
                     config.tools_web_search_allowed_domains.clone();
                 tools_config.web_search_external = config.tools_web_search_external;
                 tools_config.search_tool = config.tools_search_tool;
+                tools_config.set_agent_tool_enabled(config.subagents_enabled);
 
                 let auth_mode = auth_manager
                     .as_ref()
@@ -2833,6 +2836,15 @@ async fn run_agent(
                     EventMsg::Error(ErrorEvent { message: e.to_string() }),
                 );
                 sess.tx_event.send(event).await.ok();
+                let failure_message = autonomous_runtime_failure_message(&e);
+                let event = sess.make_event(
+                    &sub_id,
+                    EventMsg::AgentMessage(AgentMessageEvent {
+                        message: failure_message.clone(),
+                    }),
+                );
+                sess.tx_event.send(event).await.ok();
+                last_task_message = Some(failure_message);
                 if is_review_mode && !review_exit_emitted {
                     exit_review_mode(sess.clone(), sub_id.clone(), None).await;
                     review_exit_emitted = true;
@@ -2978,6 +2990,9 @@ async fn run_turn(
             .collect();
         if should_inject_html_sanitizer_guardrails(&attempt_input) {
             prepend_developer_messages.push(HTML_SANITIZER_GUARDRAILS_MESSAGE.to_string());
+        }
+        if matches!(tc.approval_policy, AskForApproval::Never) {
+            prepend_developer_messages.push(NO_ASK_AUTONOMY_DEVELOPER_INSTRUCTIONS.to_string());
         }
         if tc.client.memories_enabled() && tc.client.memories_use_enabled() {
             if let Some(memory_prompt) =
@@ -7893,7 +7908,7 @@ fn to_exec_params(params: ShellToolCallParams, sess: &Session) -> ExecParams {
         .sandbox_permissions
         .and_then(|p| p.requires_escalated_permissions().then_some(true));
     ExecParams {
-        command: params.command,
+        command: normalize_exec_command_argv(params.command),
         shell_script: None,
         cwd: sess.resolve_path(params.workdir.clone()),
         timeout_ms,
@@ -7901,6 +7916,40 @@ fn to_exec_params(params: ShellToolCallParams, sess: &Session) -> ExecParams {
         with_escalated_permissions,
         justification: params.justification,
     }
+}
+
+fn normalize_exec_command_argv(command: Vec<String>) -> Vec<String> {
+    if command.len() != 1 {
+        return command;
+    }
+
+    let Some(script) = command.first() else {
+        return command;
+    };
+    let trimmed = script.trim();
+    if trimmed.is_empty() || !trimmed.chars().any(char::is_whitespace) {
+        return command;
+    }
+
+    if looks_like_shell_script(trimmed) {
+        return vec!["bash".to_string(), "-lc".to_string(), trimmed.to_string()];
+    }
+
+    shlex_split(trimmed).unwrap_or_else(|| {
+        vec!["bash".to_string(), "-lc".to_string(), trimmed.to_string()]
+    })
+}
+
+fn looks_like_shell_script(script: &str) -> bool {
+    script.contains('|')
+        || script.contains(';')
+        || script.contains('<')
+        || script.contains('>')
+        || script.contains("&&")
+        || script.contains("||")
+        || script.contains("$(")
+        || script.contains('`')
+        || script.contains('\n')
 }
 
 fn to_exec_params_from_shell_command(params: ShellCommandToolCallParams, sess: &Session) -> ExecParams {
@@ -8066,6 +8115,54 @@ fn parse_shell_command_arguments(
     }
 }
 
+fn autonomous_runtime_failure_message(error: &CodexErr) -> String {
+    format!(
+        "Kay runtime error: {error}\n\nThe provider or runtime aborted this turn before a final assistant response was produced. The task did not complete; inspect the error above and retry after fixing the provider/tool-call issue."
+    )
+}
+
+#[cfg(test)]
+mod kay_runtime_regression_tests {
+    use super::autonomous_runtime_failure_message;
+    use super::normalize_exec_command_argv;
+    use crate::error::CodexErr;
+    use crate::error::UnexpectedResponseError;
+    use reqwest::StatusCode;
+
+    #[test]
+    fn single_string_argv_is_split_when_it_is_simple() {
+        assert_eq!(
+            normalize_exec_command_argv(vec!["cat /tmp/SKILL.md".to_string()]),
+            vec!["cat".to_string(), "/tmp/SKILL.md".to_string()]
+        );
+    }
+
+    #[test]
+    fn single_string_argv_with_shell_syntax_runs_through_shell() {
+        assert_eq!(
+            normalize_exec_command_argv(vec!["rg foo | head -20".to_string()]),
+            vec![
+                "bash".to_string(),
+                "-lc".to_string(),
+                "rg foo | head -20".to_string()
+            ]
+        );
+    }
+
+    #[test]
+    fn runtime_failure_message_is_usable_as_terminal_assistant_text() {
+        let message = autonomous_runtime_failure_message(&CodexErr::UnexpectedStatus(UnexpectedResponseError {
+            status: StatusCode::BAD_REQUEST,
+            body: "invalid params, invalid function arguments json string".to_string(),
+            request_id: Some("req-1".to_string()),
+        }));
+
+        assert!(message.contains("Kay runtime error"));
+        assert!(message.contains("unexpected status 400"));
+        assert!(message.contains("invalid function arguments json string"));
+    }
+}
+
 fn agent_tool_failure(ctx: &ToolCallCtx, message: impl Into<String>) -> ResponseInputItem {
     ResponseInputItem::FunctionCallOutput {
         call_id: ctx.call_id.clone(),
@@ -8080,6 +8177,13 @@ pub(crate) async fn handle_agent_tool(
     ctx: &ToolCallCtx,
     arguments: String,
 ) -> ResponseInputItem {
+    if !sess.tools_config.agent_tool_enabled {
+        return agent_tool_failure(
+            ctx,
+            "agent delegation is disabled for this Kay session",
+        );
+    }
+
     let parsed = serde_json::from_str::<AgentToolRequest>(&arguments);
     let mut req = match parsed {
         Ok(req) => req,

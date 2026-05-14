@@ -238,6 +238,17 @@ impl UnifiedExecSessionManager {
 
                 let notified = wait_for_output.unwrap_or_else(|| output_notify.notified());
                 tokio::pin!(notified);
+                if new_session
+                    .as_ref()
+                    .is_some_and(ManagedUnifiedExecSession::has_exited)
+                {
+                    let grace = remaining.min(Duration::from_millis(20));
+                    tokio::select! {
+                        _ = &mut notified => {}
+                        _ = tokio::time::sleep(grace) => break,
+                    }
+                    continue;
+                }
                 tokio::select! {
                     _ = &mut notified => {}
                     _ = tokio::time::sleep(remaining) => break,
@@ -337,6 +348,7 @@ async fn create_unified_exec_session(
 
     let (writer_tx, mut writer_rx) = mpsc::channel::<Vec<u8>>(128);
     let (output_tx, _) = tokio::sync::broadcast::channel::<Vec<u8>>(256);
+    let initial_output_rx = output_tx.subscribe();
 
     let mut reader = pair
         .master
@@ -398,6 +410,7 @@ async fn create_unified_exec_session(
         writer_handle,
         wait_handle,
         exit_status,
+        initial_output_rx,
     );
     Ok((session, initial_output_rx))
 }

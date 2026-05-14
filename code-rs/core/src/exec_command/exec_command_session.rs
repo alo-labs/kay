@@ -38,8 +38,8 @@ impl ExecCommandSession {
         writer_handle: JoinHandle<()>,
         wait_handle: JoinHandle<()>,
         exit_status: std::sync::Arc<std::sync::atomic::AtomicBool>,
+        initial_output_rx: broadcast::Receiver<Vec<u8>>,
     ) -> (Self, broadcast::Receiver<Vec<u8>>) {
-        let initial_output_rx = output_tx.subscribe();
         (
             Self {
                 writer_tx,
