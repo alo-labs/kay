@@ -135,3 +135,5 @@ Implementation Notes
   `cloud-gpt-5.1-codex-max` gated by `CODE_ENABLE_CLOUD_AGENT_MODEL`). (`gemini`
   resolves to `gemini-3-flash`.) You can replace or pin this set via
   `[[agents]]` or per-command `[[subagents.commands]].agents`.
+  Set `[subagents].enabled = false` to remove the runtime `agent` tool when a
+  run must stay pinned to one provider/model.

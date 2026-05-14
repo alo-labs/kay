@@ -82,6 +82,36 @@ fn semantic_tokens(command: &[String]) -> Option<Vec<String>> {
     Some(command.to_vec())
 }
 
+pub(super) fn resolve_path_against_cwd(
+    cwd: &std::path::Path,
+    path: Option<String>,
+) -> std::path::PathBuf {
+    let Some(path) = path else {
+        return cwd.to_path_buf();
+    };
+
+    let trimmed = path.trim();
+    let unquoted = if trimmed.len() >= 2
+        && ((trimmed.starts_with('"') && trimmed.ends_with('"'))
+            || (trimmed.starts_with('\'') && trimmed.ends_with('\'')))
+    {
+        &trimmed[1..trimmed.len() - 1]
+    } else {
+        trimmed
+    };
+
+    if unquoted.is_empty() {
+        return cwd.to_path_buf();
+    }
+
+    let path = std::path::PathBuf::from(unquoted);
+    if path.is_absolute() {
+        path
+    } else {
+        cwd.join(path)
+    }
+}
+
 #[derive(Clone)]
 pub(super) struct RunningExecMeta {
     pub(super) sub_id: String,
@@ -765,9 +795,7 @@ impl Session {
     }
 
     pub(super) fn resolve_path(&self, path: Option<String>) -> PathBuf {
-        path.as_ref()
-            .map(PathBuf::from)
-            .map_or_else(|| self.cwd.clone(), |p| self.cwd.join(p))
+        resolve_path_against_cwd(&self.cwd, path)
     }
 
     pub(crate) async fn maybe_parse_apply_patch_verified(
@@ -2635,5 +2663,30 @@ impl State {
             context_stream_ids: self.context_stream_ids.clone(),
             ..Default::default()
         }
+    }
+}
+
+#[cfg(test)]
+mod kay_path_regression_tests {
+    use super::resolve_path_against_cwd;
+    use std::path::Path;
+    use std::path::PathBuf;
+
+    #[test]
+    fn quoted_absolute_workdir_stays_absolute() {
+        let cwd = Path::new("/tmp/project");
+        assert_eq!(
+            resolve_path_against_cwd(cwd, Some("\"/tmp/project\"".to_string())),
+            PathBuf::from("/tmp/project")
+        );
+    }
+
+    #[test]
+    fn relative_workdir_still_resolves_against_cwd() {
+        let cwd = Path::new("/tmp/project");
+        assert_eq!(
+            resolve_path_against_cwd(cwd, Some("src".to_string())),
+            PathBuf::from("/tmp/project/src")
+        );
     }
 }

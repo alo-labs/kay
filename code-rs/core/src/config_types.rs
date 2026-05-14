@@ -513,6 +513,10 @@ pub struct SubagentCommandConfig {
 #[derive(Deserialize, Debug, Clone, PartialEq, Default)]
 #[serde(rename_all = "kebab-case")]
 pub struct SubagentsToml {
+    /// When false, Kay does not advertise or execute the runtime agent tool.
+    #[serde(default)]
+    pub enabled: Option<bool>,
+
     /// Maximum nesting depth for agent-spawned agent runs.
     /// `1` allows root sessions to spawn agents, but blocks further nesting.
     #[serde(default)]

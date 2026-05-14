@@ -2632,12 +2632,33 @@ mod tests {
             while !stop_thread.load(Ordering::Relaxed) && Instant::now() < deadline {
                 match listener.accept() {
                     Ok((mut stream, _)) => {
+                        let _ = stream.set_read_timeout(Some(Duration::from_millis(500)));
+                        let mut request = Vec::with_capacity(1024);
                         let mut buffer = [0u8; 1024];
-                        let _ = stream.read(&mut buffer);
+                        loop {
+                            match stream.read(&mut buffer) {
+                                Ok(0) => break,
+                                Ok(n) => {
+                                    request.extend_from_slice(&buffer[..n]);
+                                    if request.windows(4).any(|window| window == b"\r\n\r\n")
+                                        || request.len() > 8192
+                                    {
+                                        break;
+                                    }
+                                }
+                                Err(err)
+                                    if err.kind() == std::io::ErrorKind::WouldBlock
+                                        || err.kind() == std::io::ErrorKind::TimedOut =>
+                                {
+                                    break;
+                                }
+                                Err(_) => break,
+                            }
+                        }
 
                         let body = format!(r#"{{"webSocketDebuggerUrl":"{ws_url}"}}"#);
                         let response = format!(
-                            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{}",
+                            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
                             body.len(),
                             body
                         );

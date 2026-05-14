@@ -516,6 +516,9 @@ pub struct Config {
     /// the built-in defaults for that slash command.
     pub subagent_commands: Vec<crate::config_types::SubagentCommandConfig>,
 
+    /// Whether runtime agent delegation is enabled.
+    pub subagents_enabled: bool,
+
     /// Maximum allowed nesting depth for agent-spawned agent runs.
     /// `1` allows root sessions to spawn agents, and blocks deeper nesting.
     pub subagent_max_depth: i32,
@@ -1577,6 +1580,11 @@ impl Config {
             .as_ref()
             .and_then(|subagents| subagents.max_depth)
             .unwrap_or(DEFAULT_SUBAGENT_MAX_DEPTH);
+        let subagents_enabled = cfg
+            .subagents
+            .as_ref()
+            .and_then(|subagents| subagents.enabled)
+            .unwrap_or(true);
         if subagent_max_depth < 1 {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,
@@ -1728,8 +1736,10 @@ impl Config {
             validation: cfg.validation.unwrap_or_default(),
             subagent_commands: cfg
                 .subagents
-                .map(|s| s.commands)
+                .as_ref()
+                .map(|s| s.commands.clone())
                 .unwrap_or_default(),
+            subagents_enabled,
             subagent_max_depth,
             experimental_resume: cfg.experimental_resume,
             max_run_seconds: None,
@@ -3078,6 +3088,28 @@ model_verbosity = "high"
                 .any(|entry| entry.enabled),
             "at least one routing entry should be enabled when routing is enabled"
         );
+        Ok(())
+    }
+
+    #[test]
+    fn subagents_can_be_disabled_from_config() -> std::io::Result<()> {
+        let fixture = create_test_fixture()?;
+        let mut cfg = fixture.cfg.clone();
+        cfg.subagents = Some(crate::config_types::SubagentsToml {
+            enabled: Some(false),
+            max_depth: None,
+            commands: Vec::new(),
+        });
+
+        let overrides = ConfigOverrides {
+            cwd: Some(fixture.cwd()),
+            ..Default::default()
+        };
+
+        let config =
+            Config::load_from_base_config_with_overrides(cfg, overrides, fixture.code_home())?;
+
+        assert!(!config.subagents_enabled);
         Ok(())
     }
 
