@@ -48,6 +48,7 @@ The orchestrator fans out agents, waits for results, and merges reasoning accord
 
 ## Auto Drive interaction
 - Auto Drive uses the `agents_enabled` toggle in its settings pane; when off, the coordinator skips agent batches.
+- For runtime isolation outside Auto Drive, set `[subagents].enabled = false` in `config.toml` to remove the `agent` tool for the session.
 - If no git repo exists, Auto Drive instructs all agents to run read-only.
 - `AUTO_AGENTS.md` is read alongside `AGENTS.md` for Auto Drive–specific guidance.
 
