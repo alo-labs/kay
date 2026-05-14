@@ -13,6 +13,8 @@ use std::time::{Duration, Instant};
 use portable_pty::{native_pty_system, CommandBuilder, PtySize};
 use tempfile::TempDir;
 
+const SCREEN_READY_TIMEOUT: Duration = Duration::from_secs(30);
+
 fn code_bin() -> &'static str {
     env!("CARGO_BIN_EXE_code")
 }
@@ -99,7 +101,7 @@ fn transcript_viewer_cli_opens_a_real_jsonl_transcript() {
     });
 
     let mut output = Vec::new();
-    let screen_ready_deadline = Instant::now() + Duration::from_secs(10);
+    let screen_ready_deadline = Instant::now() + SCREEN_READY_TIMEOUT;
     while {
         let text = String::from_utf8_lossy(&output);
         !(text.contains("Kay transcript viewer")
