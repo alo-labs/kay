@@ -1,7 +1,7 @@
 {
   "task_id": "github-issues-12-19-runtime-fixes",
   "task_granularity": 2,
-  "updated_at": "2026-05-14T20:24:41Z",
+  "updated_at": "2026-05-14T21:49:32Z",
   "_notes": [
     "Refreshed during the Kay slash-command rename and intro-banner cleanup in the current session.",
     "Refreshed again during the final docs-gate reconciliation so the current-session freshness ledger matches the governed docs.",
@@ -10,7 +10,8 @@
     "Refreshed during the Kay README multi-provider and getting-started rewrite in the current session.",
     "This checklist records every governed doc key present under docs/ plus root README.md and CHANGELOG.md.",
     "Refreshed during the primary binary rename from code to kay, including install, release, and command docs.",
-    "Refreshed during MiniMax/runtime-isolation fixes for GitHub issues #12 and #15-#19."
+    "Refreshed during MiniMax/runtime-isolation fixes for GitHub issues #12 and #15-#19.",
+    "Reconciled the docs governance contract so doc-scheme files are updated only when governance changes, matching this hook remediation."
   ],
   "docs": {
     "docs/ARCHITECTURE.md": "not-needed: no architecture changes in this task",
