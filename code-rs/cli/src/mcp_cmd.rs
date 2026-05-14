@@ -17,7 +17,7 @@ use code_core::config_types::McpServerTransportConfig;
 /// - `serve`  — run the MCP server on stdio
 /// - `list`   — list configured servers (with `--json`)
 /// - `get`    — show a single server (with `--json`)
-/// - `add`    — add a server launcher entry to `~/.code/config.toml` (Kay also reads legacy `~/.codex/config.toml`)
+/// - `add`    — add a server launcher entry to `~/.kay/config.toml`
 /// - `remove` — delete a server entry
 #[derive(Debug, clap::Parser)]
 pub struct McpCli {
