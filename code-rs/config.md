@@ -8,7 +8,7 @@ This file has moved. Please see the latest configuration documentation here:
   - Values can contain objects, such as `--config shell_environment_policy.include_only=["PATH", "HOME", "USER"]`.
   - For consistency with `config.toml`, values are in TOML format rather than JSON format, so use `{a = 1, b = 2}` rather than `{"a": 1, "b": 2}`.
   - If `value` cannot be parsed as a valid TOML value, it is treated as a string value. This means that both `-c model="o3"` and `-c model=o3` are equivalent.
-- The `$CODE_HOME/config.toml` configuration file. `CODE_HOME` defaults to `~/.code`; Kay also reads from `$CODEX_HOME`/`~/.codex` for backwards compatibility but only writes to `~/.code`. (Logs and other state use the same directory.)
+- The `$CODE_HOME/config.toml` configuration file. `CODE_HOME` defaults to `~/.kay`. If `config.toml` is absent, Kay also reads `$CODE_HOME/kay.toml` provider defaults for compatibility. (Logs and other state use the same directory.)
 
 Both the `--config` flag and the `config.toml` file support the following options:
 
@@ -30,7 +30,7 @@ Built-in provider IDs:
 - `oss`: local OpenAI-compatible OSS provider, usually Ollama.
 - `minimax`: MiniMax Chat Completions provider, default base URL `https://api.minimax.io/v1`.
 
-The built-in `minimax` provider reads credentials from `~/.code/auth.json` under
+The built-in `minimax` provider reads credentials from `~/.kay/auth.json` under
 `provider_credentials.minimax.api_key`, with `MINIMAX_API_KEY` as an environment
 fallback. To store the key persistently:
 
@@ -397,7 +397,7 @@ This config option is comparable to how Claude and Cursor define `mcpServers` in
 }
 ```
 
-Should be represented as follows in `~/.code/config.toml` (Kay will also read the legacy `~/.codex/config.toml` if it exists):
+Should be represented as follows in `~/.kay/config.toml`:
 
 ```toml
 # IMPORTANT: the top-level key is `mcp_servers` rather than `mcpServers`.
@@ -675,7 +675,7 @@ if __name__ == "__main__":
     sys.exit(main())
 ```
 
-To have Codex use this script for notifications, you would configure it via `notify` in `~/.code/config.toml` (legacy `~/.codex/config.toml` is still read) using the appropriate path to `notify.py` on your computer:
+To have Kay use this script for notifications, you would configure it via `notify` in `~/.kay/config.toml` using the appropriate path to `notify.py` on your computer:
 
 ```toml
 notify = ["python3", "/Users/mbolin/.codex/notify.py"]

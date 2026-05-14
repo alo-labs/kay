@@ -18,9 +18,10 @@ use toml::Value;
 #[derive(Parser, Debug, Default, Clone)]
 pub struct CliConfigOverrides {
     /// Override a configuration value that would otherwise be loaded from
-    /// `~/.code/config.toml` (Kay also reads legacy `~/.codex/config.toml`). Use a dotted path (`foo.bar.baz`) to override
-    /// nested values. The `value` portion is parsed as JSON. If it fails to
-    /// parse as JSON, the raw string is used as a literal.
+    /// `~/.kay/config.toml` (or compatibility `~/.kay/kay.toml`). Use a dotted
+    /// path (`foo.bar.baz`) to override nested values. The `value` portion is
+    /// parsed as TOML. If it fails to parse as TOML, the raw string is used as
+    /// a literal.
     ///
     /// Examples:
     ///   - `-c model="o3"`
