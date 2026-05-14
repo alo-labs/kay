@@ -4,7 +4,15 @@ Kay is a terminal coding agent for local, scriptable, multi-provider workflows. 
 
 ## 1. Install Kay
 
-Kay is distributed through GitHub Releases. Download the asset for your platform from the latest release and run the extracted `kay` binary.
+Install Kay from npm:
+
+```bash
+npm install -g @alo-labs/kay
+```
+
+The primary command is `kay`. The package also installs `codex` and `coder` aliases, and installs the legacy `code` alias when doing so would not override another `code` command already on PATH.
+
+You can also download a standalone `kay-*` archive from the [latest GitHub release](https://github.com/alo-labs/kay/releases/latest).
 
 If you are building from source:
 

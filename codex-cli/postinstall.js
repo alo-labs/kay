@@ -76,6 +76,16 @@ function looksLikeOurCodeShim(path) {
   }
 }
 
+export function writeWrapperFile(wrapperPath, content, isWindows) {
+  try {
+    unlinkSync(wrapperPath);
+  } catch (e) {
+    if (e?.code !== 'ENOENT') throw e;
+  }
+  writeFileSync(wrapperPath, content);
+  if (!isWindows) chmodSync(wrapperPath, 0o755);
+}
+
 function isWSL() {
   if (platform() !== 'linux') return false;
   try {
@@ -642,11 +652,10 @@ export async function runPostinstall(options = {}) {
           const wrapperPath = bunShim;
           if (isWindows) {
             const content = `@echo off\r\n"%~dp0kay" %*\r\n`;
-            writeFileSync(wrapperPath, content);
+            writeWrapperFile(wrapperPath, content, true);
           } else {
             const content = `#!/bin/sh\nexec "$(dirname \"$0\")/kay" "$@"\n`;
-            writeFileSync(wrapperPath, content);
-            chmodSync(wrapperPath, 0o755);
+            writeWrapperFile(wrapperPath, content, false);
           }
           console.log("✓ Created 'code' wrapper -> kay (bun)");
           installedCmds.add('code');
@@ -688,11 +697,10 @@ export async function runPostinstall(options = {}) {
           const wrapperPath = join(globalBin, isWindows ? `${name}.cmd` : name);
           if (isWindows) {
             const content = `@echo off\r\n"%~dp0kay" ${args} %*\r\n`;
-            writeFileSync(wrapperPath, content);
+            writeWrapperFile(wrapperPath, content, true);
           } else {
             const content = `#!/bin/sh\nexec "$(dirname \"$0\")/kay" ${args} "$@"\n`;
-            writeFileSync(wrapperPath, content);
-            chmodSync(wrapperPath, 0o755);
+            writeWrapperFile(wrapperPath, content, false);
           }
           console.log(`✓ Created wrapper '${name}' -> kay ${args}`);
           installedCmds.add(name);
@@ -739,8 +747,7 @@ export async function runPostinstall(options = {}) {
             const content = isWindows
               ? `@echo off\r\n"%~dp0kay" %*\r\n`
               : `#!/bin/sh\nexec "$(dirname \"$0\")/kay" "$@"\n`;
-            writeFileSync(ourShim, content);
-            if (!isWindows) chmodSync(ourShim, 0o755);
+            writeWrapperFile(ourShim, content, isWindows);
             console.log("✓ Created 'code' wrapper -> kay");
             installedCmds.add('code');
           } catch (e) {
