@@ -201,15 +201,34 @@ async fn discover_ws_via_host_port(host: &str, port: u16) -> Result<String> {
         .map_err(|e| BrowserError::CdpError(format!("Failed to build HTTP client: {}", e)))?;
     debug!("HTTP client created in {:?}", client_start.elapsed());
 
-    let req_start = tokio::time::Instant::now();
-    let resp = client.get(&url).send().await.map_err(|e| {
-        BrowserError::CdpError(format!("Failed to connect to Chrome debug port: {}", e))
-    })?;
-    debug!(
-        "HTTP request completed in {:?}, status: {}",
-        req_start.elapsed(),
-        resp.status()
-    );
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(5);
+    let resp = loop {
+        let req_start = tokio::time::Instant::now();
+        match client.get(&url).send().await {
+            Ok(resp) => {
+                debug!(
+                    "HTTP request completed in {:?}, status: {}",
+                    req_start.elapsed(),
+                    resp.status()
+                );
+                break resp;
+            }
+            Err(err) if tokio::time::Instant::now() < deadline => {
+                debug!(
+                    "Chrome debug port request failed in {:?}; retrying: {}",
+                    req_start.elapsed(),
+                    err
+                );
+                tokio::time::sleep(Duration::from_millis(50)).await;
+            }
+            Err(err) => {
+                return Err(BrowserError::CdpError(format!(
+                    "Failed to connect to Chrome debug port: {}",
+                    err
+                )));
+            }
+        }
+    };
 
     if !resp.status().is_success() {
         return Err(BrowserError::CdpError(format!(
