@@ -2680,10 +2680,14 @@ mod tests {
     #[ignore]
     #[tokio::test]
     async fn cdp_discovery_ignores_proxy_env_vars_child() {
-        let target_port: u16 = std::env::var("CODE_BROWSER_TEST_TARGET_PORT")
-            .expect("CODE_BROWSER_TEST_TARGET_PORT")
-            .parse()
-            .expect("valid port");
+        let target_port: u16 = match std::env::var("CODE_BROWSER_TEST_TARGET_PORT") {
+            Ok(value) => value.parse().unwrap_or_else(|err| panic!("valid port: {err}")),
+            Err(std::env::VarError::NotPresent) => {
+                cdp_discovery_ignores_proxy_env_vars();
+                return;
+            }
+            Err(err) => panic!("CODE_BROWSER_TEST_TARGET_PORT: {err}"),
+        };
 
         let url = format!("http://127.0.0.1:{target_port}/json/version");
         let default_client = reqwest::Client::builder()

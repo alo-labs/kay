@@ -1691,7 +1691,7 @@ async fn doctor_main() -> anyhow::Result<()> {
         let bun_code = format!("{}/code", bun_bin);
         if code_paths.iter().any(|p| p == &bun_code) {
             println!("Bun shim detected for 'code': {}", bun_code);
-            println!("Suggestion: prefer 'coder' or remove Bun shim if it conflicts.");
+            println!("Suggestion: prefer 'kay' or remove Bun shim if it conflicts.");
         }
     }
 

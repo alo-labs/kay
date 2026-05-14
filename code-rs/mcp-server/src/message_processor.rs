@@ -420,7 +420,7 @@ impl MessageProcessor {
         let auth_methods = serde_json::json!([{
             "id": "code-login",
             "name": "Use Kay login",
-            "description": "Run `code login` (ChatGPT or API key) before connecting."
+            "description": "Run `kay login` (ChatGPT or API key) before connecting."
         }]);
 
         let result = serde_json::json!({

@@ -98,18 +98,19 @@ cat >> Formula/Kay.rb <<'RUBY'
   def install
     bin.install Dir["kay-*"].first => "kay"
     # Provide compatibility shims for older scripts.
-    (bin/"code").write <<~EOS
-      #!/bin/bash
-      exec "#{bin}/kay" "$@"
-    EOS
-    (bin/"coder").write <<~EOS
-      #!/bin/bash
-      exec "#{bin}/kay" "$@"
-    EOS
+    ["code", "codex", "coder"].each do |name|
+      (bin/name).write <<~EOS
+        #!/bin/bash
+        exec "#{bin}/kay" "$@"
+      EOS
+    end
   end
 
   test do
-    system "#{bin}/kay", "--help"
+    system "#{bin}/kay", "--version"
+    system "#{bin}/code", "--version"
+    system "#{bin}/codex", "--version"
+    system "#{bin}/coder", "--version"
   end
 end
 RUBY

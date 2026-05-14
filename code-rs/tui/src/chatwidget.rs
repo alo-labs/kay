@@ -3662,7 +3662,7 @@ impl ChatWidget<'_> {
                     app_event_tx_clone.send_background_event_with_ticket(
                         &ticket,
                         format!(
-                            "❌ Failed to initialize model session: {}.\n• Ensure an OpenAI API key is set (CODE_OPENAI_API_KEY / OPENAI_API_KEY) or run `code login`.\n• Also verify config.cwd is an absolute path.",
+                            "❌ Failed to initialize model session: {}.\n• Ensure an OpenAI API key is set (CODE_OPENAI_API_KEY / OPENAI_API_KEY) or run `kay login`.\n• Also verify config.cwd is an absolute path.",
                             e
                         ),
                     );
