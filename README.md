@@ -27,7 +27,15 @@ It carries forward the ergonomics of the Codex CLI lineage and the multi-provide
 
 ## Install
 
-Kay is distributed through GitHub Releases. It is not currently published on npm, so `npm install -g @alo-labs/kay` will return a 404.
+Install Kay from npm:
+
+```bash
+npm install -g @alo-labs/kay
+```
+
+The primary command is `kay`. The package also installs `codex` and `coder` aliases, and installs the legacy `code` alias when doing so would not override another `code` command already on PATH.
+
+GitHub Releases also provide standalone archives.
 
 1. Open the latest release: [alo-labs/kay releases](https://github.com/alo-labs/kay/releases/latest)
 2. Download the asset for your platform:

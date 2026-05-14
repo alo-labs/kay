@@ -8,7 +8,15 @@
 | Git (optional, recommended) | 2.23+ for built-in PR helpers                                   |
 | RAM                         | 4-GB minimum (8-GB recommended)                                 |
 
-### DotSlash
+### npm
+
+```bash
+npm install -g @alo-labs/kay
+```
+
+Use `kay` to launch the CLI. The npm package also provides `codex` and `coder` aliases, plus a `code` compatibility alias when no existing `code` command would be shadowed.
+
+### Release Archives
 
 GitHub Releases contain `kay-*` assets for each supported platform. Legacy `code-*` assets are published during the migration so existing scripts can keep working.
 
