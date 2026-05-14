@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated_at": "2026-05-13T07:30:43Z",
+  "updated_at": "2026-05-14T21:49:32Z",
   "sync": {
     "doc_scheme_md_path": "docs/doc-scheme.md",
     "task_checklist_path": "docs/task-doc-checklist.json"
@@ -10,8 +10,6 @@
     "granularity_levels": [2, 3]
   },
   "mandatory_updated_docs": [
-    "docs/doc-scheme.md",
-    "docs/doc-scheme.json",
     "docs/slash-commands.md",
     "docs/task-doc-checklist.json"
   ],
@@ -83,7 +81,7 @@
     },
     {
       "key": "docs/doc-scheme.md",
-      "mandatory_updated": true,
+      "mandatory_updated": false,
       "required_sections": [
         "Current Shape",
         "Governed Documents"
@@ -91,7 +89,7 @@
     },
     {
       "key": "docs/doc-scheme.json",
-      "mandatory_updated": true,
+      "mandatory_updated": false,
       "required_sections": [
         "version",
         "required_docs"
