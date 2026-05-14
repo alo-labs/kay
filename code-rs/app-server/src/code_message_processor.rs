@@ -1935,7 +1935,7 @@ mod tests {
         let (outgoing_tx, outgoing_rx) = mpsc::unbounded_channel();
         let outgoing = Arc::new(OutgoingMessageSender::new(outgoing_tx));
         let config = Arc::new(
-            Config::load_with_cli_overrides(Vec::new(), ConfigOverrides::default())
+            Config::load_default_with_cli_overrides(Vec::new(), ConfigOverrides::default())
                 .expect("load default config"),
         );
         let auth_manager = AuthManager::shared_with_mode_and_originator(
@@ -1969,7 +1969,7 @@ mod tests {
         let (outgoing_tx, outgoing_rx) = mpsc::unbounded_channel();
         let outgoing = Arc::new(OutgoingMessageSender::new(outgoing_tx));
         let config = Arc::new(
-            Config::load_with_cli_overrides(Vec::new(), ConfigOverrides::default())
+            Config::load_default_with_cli_overrides(Vec::new(), ConfigOverrides::default())
                 .expect("load default config"),
         );
         let conversation_manager = Arc::new(ConversationManager::new(
