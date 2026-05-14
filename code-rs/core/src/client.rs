@@ -36,7 +36,7 @@ use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::tungstenite::Error as WsError;
 use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 
-const AUTH_REQUIRED_MESSAGE: &str = "Authentication required. Run `code login` to continue.";
+const AUTH_REQUIRED_MESSAGE: &str = "Authentication required. Run `kay login` to continue.";
 
 use crate::agent_defaults::{
     default_agent_configs,

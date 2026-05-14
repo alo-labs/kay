@@ -28,7 +28,7 @@ fn run_login(code_home: &TempDir, args: &[&str], stdin: Option<&str>) -> std::pr
         command.arg(arg);
     }
 
-    let mut child = command.spawn().expect("spawn code login");
+    let mut child = command.spawn().expect("spawn kay login");
 
     if let Some(input) = stdin {
         child
@@ -39,7 +39,7 @@ fn run_login(code_home: &TempDir, args: &[&str], stdin: Option<&str>) -> std::pr
             .expect("write api key");
     }
 
-    child.wait_with_output().expect("wait for code login")
+    child.wait_with_output().expect("wait for kay login")
 }
 
 fn auth_state(code_home: &TempDir) -> code_core::auth::AuthDotJson {
@@ -65,7 +65,7 @@ fn provider_api_key_entry_help_shows_both_modes() {
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .output()
-        .expect("run code login --help");
+        .expect("run kay login --help");
 
     assert_success(&output);
 

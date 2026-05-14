@@ -17,7 +17,7 @@ body:
     id: version
     attributes:
       label: What version of Kay is running?
-      description: Copy the output of `code --version` (or `coder --version`)
+      description: Copy the output of `kay --version` (or `code --version` for compatibility installs)
   - type: input
     id: model
     attributes:

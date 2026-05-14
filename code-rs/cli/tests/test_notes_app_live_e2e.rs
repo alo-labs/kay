@@ -76,7 +76,7 @@ fn login_opencode_go(code_home: &TempDir, api_key: &str) {
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .expect("spawn code login");
+        .expect("spawn kay login");
 
     child
         .stdin
@@ -85,10 +85,10 @@ fn login_opencode_go(code_home: &TempDir, api_key: &str) {
         .write_all(api_key.as_bytes())
         .expect("write opencode-go api key");
 
-    let output = child.wait_with_output().expect("wait for code login");
+    let output = child.wait_with_output().expect("wait for kay login");
     assert!(
         output.status.success(),
-        "code login failed\nstdout:\n{}\nstderr:\n{}",
+        "kay login failed\nstdout:\n{}\nstderr:\n{}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
@@ -161,11 +161,11 @@ fn run_notes_feature_turn(
         .env_remove("OPENAI_API_KEY")
         .stdin(Stdio::null())
         .output()
-        .expect("run code exec");
+        .expect("run kay exec");
 
     assert!(
         output.status.success(),
-        "code exec failed\nstdout:\n{}\nstderr:\n{}",
+        "kay exec failed\nstdout:\n{}\nstderr:\n{}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
@@ -175,7 +175,7 @@ fn run_notes_feature_turn(
 
     let raw_message = fs::read_to_string(last_message_path).expect("read last message file");
     let response = parse_notes_work_response(&raw_message)
-        .unwrap_or_else(|| panic!("expected trailing JSON output from code exec, got:\n{raw_message}"));
+        .unwrap_or_else(|| panic!("expected trailing JSON output from kay exec, got:\n{raw_message}"));
     let applied = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         apply_model_patch_blocks(repo_dir, &raw_message, &response.summary);
     }));

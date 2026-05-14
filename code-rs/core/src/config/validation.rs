@@ -94,7 +94,7 @@ fn warn_on_unknown_cli_overrides(cli_paths: &[String], ignored_paths: &[String])
             continue;
         }
 
-        eprintln!("Warning: unknown config override `{cli_path}` (ignored). See `code exec --help` for valid keys.");
+        eprintln!("Warning: unknown config override `{cli_path}` (ignored). See `kay exec --help` for valid keys.");
     }
 }
 

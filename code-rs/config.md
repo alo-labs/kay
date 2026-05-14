@@ -35,7 +35,7 @@ The built-in `minimax` provider reads credentials from `~/.code/auth.json` under
 fallback. To store the key persistently:
 
 ```bash
-printenv MINIMAX_API_KEY | code login --provider minimax --with-api-key
+printenv MINIMAX_API_KEY | kay login --provider minimax --with-api-key
 ```
 
 To use MiniMax M2.7:
