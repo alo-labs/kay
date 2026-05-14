@@ -32,7 +32,7 @@ pub(crate) async fn chatgpt_get_request<T: DeserializeOwned>(
 
     let token = auth.get_token_data().await?;
     let account_id = token.account_id.ok_or_else(|| {
-        anyhow::anyhow!("ChatGPT account ID not available, please re-run `code login`")
+        anyhow::anyhow!("ChatGPT account ID not available, please re-run `kay login`")
     })?;
 
     let mut request = client

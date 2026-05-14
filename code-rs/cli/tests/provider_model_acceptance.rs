@@ -59,7 +59,7 @@ fn login_provider(code_home: &TempDir, provider_id: &str, api_key: &str) {
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .expect("spawn code login");
+        .expect("spawn kay login");
 
     child
         .stdin
@@ -68,10 +68,10 @@ fn login_provider(code_home: &TempDir, provider_id: &str, api_key: &str) {
         .write_all(api_key.as_bytes())
         .expect("write api key");
 
-    let output = child.wait_with_output().expect("wait for code login");
+    let output = child.wait_with_output().expect("wait for kay login");
     assert!(
         output.status.success(),
-        "code login failed\nstdout:\n{}\nstderr:\n{}",
+        "kay login failed\nstdout:\n{}\nstderr:\n{}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
@@ -99,11 +99,11 @@ fn run_exec_prompt(
         .env_remove("OPENAI_API_KEY")
         .stdin(Stdio::null())
         .output()
-        .expect("run code exec");
+        .expect("run kay exec");
 
     assert!(
         output.status.success(),
-        "code exec failed\nstdout:\n{}\nstderr:\n{}",
+        "kay exec failed\nstdout:\n{}\nstderr:\n{}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
@@ -136,11 +136,11 @@ fn run_exec_prompt_with_demo(
         .env_remove("OPENAI_API_KEY")
         .stdin(Stdio::null())
         .output()
-        .expect("run code exec with demo");
+        .expect("run kay exec with demo");
 
     assert!(
         output.status.success(),
-        "code exec with demo failed\nstdout:\n{}\nstderr:\n{}",
+        "kay exec with demo failed\nstdout:\n{}\nstderr:\n{}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
@@ -173,11 +173,11 @@ fn run_exec_prompt_with_output_schema(
         .env_remove("OPENAI_API_KEY")
         .stdin(Stdio::null())
         .output()
-        .expect("run code exec with output schema");
+        .expect("run kay exec with output schema");
 
     assert!(
         output.status.success(),
-        "code exec with output schema failed\nstdout:\n{}\nstderr:\n{}",
+        "kay exec with output schema failed\nstdout:\n{}\nstderr:\n{}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );

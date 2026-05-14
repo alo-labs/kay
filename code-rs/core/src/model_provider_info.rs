@@ -482,7 +482,7 @@ impl ModelProviderInfo {
         CodexErr::EnvVar(EnvVarError {
             var,
             instructions: Some(format!(
-                "Set an environment variable for this provider or run `code login --provider {credential_ref} --with-api-key`."
+                "Set an environment variable for this provider or run `kay login --provider {credential_ref} --with-api-key`."
             )),
         })
     }
@@ -877,7 +877,7 @@ pub fn create_minimax_provider() -> ModelProviderInfo {
         base_url: Some(base_url),
         env_key: Some("MINIMAX_API_KEY".into()),
         env_key_instructions: Some(
-            "Set MINIMAX_API_KEY or run `code login --provider minimax --with-api-key`."
+            "Set MINIMAX_API_KEY or run `kay login --provider minimax --with-api-key`."
                 .to_string(),
         ),
         experimental_bearer_token: None,
@@ -903,7 +903,7 @@ pub fn create_opencode_go_provider() -> ModelProviderInfo {
         base_url: Some(OPENCODE_GO_DEFAULT_BASE_URL.to_string()),
         env_key: Some("OPENCODE_GO_API_KEY".into()),
         env_key_instructions: Some(
-            "Set OPENCODE_GO_API_KEY or run `code login --provider opencode-go --with-api-key`."
+            "Set OPENCODE_GO_API_KEY or run `kay login --provider opencode-go --with-api-key`."
                 .to_string(),
         ),
         experimental_bearer_token: None,
