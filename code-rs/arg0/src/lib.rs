@@ -113,8 +113,8 @@ const ILLEGAL_ENV_VAR_PREFIX: &str = "CODEX_";
 /// with names starting with `CODEX_`.
 fn load_dotenv() {
     // 1) Load from the Kay home .env first.
-    if let Ok(code_home) = code_core::config::find_code_home() {
-        let global_env_path = resolve_code_path_for_read(&code_home, Path::new(".env"));
+    if let Ok(kay_home) = code_core::config::find_kay_home() {
+        let global_env_path = resolve_code_path_for_read(&kay_home, Path::new(".env"));
         if let Ok(iter) = dotenvy::from_path_iter(global_env_path) {
             // Global env may legitimately contain provider keys for Kay usage.
             set_filtered(iter);

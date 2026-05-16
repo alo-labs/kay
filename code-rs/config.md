@@ -8,7 +8,7 @@ This file has moved. Please see the latest configuration documentation here:
   - Values can contain objects, such as `--config shell_environment_policy.include_only=["PATH", "HOME", "USER"]`.
   - For consistency with `config.toml`, values are in TOML format rather than JSON format, so use `{a = 1, b = 2}` rather than `{"a": 1, "b": 2}`.
   - If `value` cannot be parsed as a valid TOML value, it is treated as a string value. This means that both `-c model="o3"` and `-c model=o3` are equivalent.
-- The `$CODE_HOME/config.toml` configuration file. `CODE_HOME` defaults to `~/.kay`. If `config.toml` is absent, Kay also reads `$CODE_HOME/kay.toml` provider defaults for compatibility. (Logs and other state use the same directory.)
+- The `$KAY_HOME/config.toml` configuration file. `KAY_HOME` defaults to `~/.kay`. If `config.toml` is absent, Kay also reads `$KAY_HOME/kay.toml` provider defaults. (Logs and other state use the same directory.)
 
 Both the `--config` flag and the `config.toml` file support the following options:
 
@@ -683,7 +683,7 @@ notify = ["python3", "/Users/mbolin/.codex/notify.py"]
 
 ## history
 
-By default, Codex CLI records messages sent to the model in `$CODEX_HOME/history.jsonl`. Note that on UNIX, the file permissions are set to `o600`, so it should only be readable and writable by the owner.
+By default, Codex CLI records messages sent to the model in `$KAY_HOME/history.jsonl`. Note that on UNIX, the file permissions are set to `o600`, so it should only be readable and writable by the owner.
 
 To disable this behavior, configure `[history]` as follows:
 

@@ -1,5 +1,5 @@
 // Forbid accidental stdout/stderr writes in the *library* portion of the TUI.
-// The standalone `codex-tui` binary prints a short help message before the
+// The standalone `kay-tui` binary prints a short help message before the
 // alternate‑screen mode starts; that file opts‑out locally via `allow`.
 #![deny(clippy::print_stdout, clippy::print_stderr)]
 #![deny(clippy::disallowed_methods)]
@@ -19,7 +19,7 @@ use code_core::config::set_cached_terminal_background;
 use code_core::config::Config;
 use code_core::config::ConfigOverrides;
 use code_core::config::ConfigToml;
-use code_core::config::find_code_home;
+use code_core::config::find_kay_home;
 use code_core::config::load_config_as_toml;
 use code_core::config::load_config_as_toml_with_cli_overrides;
 use code_core::protocol::AskForApproval;
@@ -478,11 +478,11 @@ pub async fn run_main(
         .iter()
         .any(|(path, _)| path.starts_with("tui.theme"));
 
-    let code_home = match find_code_home() {
+    let code_home = match find_kay_home() {
         Ok(code_home) => code_home,
         #[allow(clippy::print_stderr)]
         Err(err) => {
-            eprintln!("Error finding codex home: {err}");
+            eprintln!("Error finding Kay home: {err}");
             std::process::exit(1);
         }
     };
@@ -931,8 +931,10 @@ fn print_timing_summary(summary: &str) {
 #[allow(clippy::print_stdout, clippy::print_stderr)]
 fn cleanup_session_worktrees_and_print() {
     let pid = std::process::id();
-    let home = match std::env::var_os("HOME") { Some(h) => std::path::PathBuf::from(h), None => return };
-    let session_dir = home.join(".code").join("working").join("_session");
+    let session_dir = match code_core::config::find_kay_home() {
+        Ok(home) => home.join("working").join("_session"),
+        Err(_) => return,
+    };
     let file = session_dir.join(format!("pid-{}.txt", pid));
     reclaim_worktrees_from_file(&file, "current session");
 }

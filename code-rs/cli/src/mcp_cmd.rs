@@ -7,7 +7,7 @@ use anyhow::bail;
 use code_common::CliConfigOverrides;
 use code_core::config::Config;
 use code_core::config::ConfigOverrides;
-use code_core::config::find_code_home;
+use code_core::config::find_kay_home;
 use code_core::config::load_global_mcp_servers;
 use code_core::config::write_global_mcp_servers;
 use code_core::config_types::McpServerConfig;
@@ -183,7 +183,7 @@ fn run_add(config_overrides: &CliConfigOverrides, add_args: AddArgs) -> Result<(
         Some(map)
     };
 
-    let code_home = find_code_home().context("failed to resolve CODEX_HOME")?;
+    let code_home = find_kay_home().context("failed to resolve KAY_HOME")?;
     let mut servers = load_global_mcp_servers(&code_home)
         .with_context(|| format!("failed to load MCP servers from {}", code_home.display()))?;
 
@@ -268,7 +268,7 @@ fn run_remove(config_overrides: &CliConfigOverrides, remove_args: RemoveArgs) ->
 
     validate_server_name(&name)?;
 
-    let code_home = find_code_home().context("failed to resolve CODEX_HOME")?;
+    let code_home = find_kay_home().context("failed to resolve KAY_HOME")?;
     let mut servers = load_global_mcp_servers(&code_home)
         .with_context(|| format!("failed to load MCP servers from {}", code_home.display()))?;
 

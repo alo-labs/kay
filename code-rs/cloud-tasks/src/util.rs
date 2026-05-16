@@ -68,8 +68,8 @@ fn resolve_log_path() -> Option<PathBuf> {
 
     let base = if let Ok(dir) = std::env::var("CODEX_CLOUD_TASKS_LOG_DIR") {
         PathBuf::from(dir)
-    } else if let Ok(home) = std::env::var("CODE_HOME").or_else(|_| std::env::var("CODEX_HOME")) {
-        PathBuf::from(home).join("debug_logs")
+    } else if let Ok(home) = code_core::config::find_kay_home() {
+        home.join("debug_logs")
     } else if let Some(home) = user_home_dir() {
         home.join(".code").join("debug_logs")
     } else {
@@ -263,7 +263,7 @@ pub async fn build_chatgpt_headers() -> HeaderMap {
         USER_AGENT,
         HeaderValue::from_str(&ua).unwrap_or(HeaderValue::from_static("codex-cli")),
     );
-    if let Ok(home) = code_core::config::find_code_home() {
+    if let Ok(home) = code_core::config::find_kay_home() {
         let am = code_login::AuthManager::new(
             home,
             code_login::AuthMode::ChatGPT,

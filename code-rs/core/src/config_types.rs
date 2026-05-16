@@ -764,7 +764,7 @@ impl UriBasedFileOpener {
     }
 }
 
-/// Settings that govern if and what will be written to `~/.code/history.jsonl`
+/// Settings that govern if and what will be written to `KAY_HOME/history.jsonl`
 /// (Kay still reads legacy `~/.codex/history.jsonl`).
 #[derive(Deserialize, Debug, Clone, PartialEq, Default)]
 pub struct History {
@@ -871,7 +871,7 @@ pub struct Tui {
 // Important: Provide a manual Default so that when no config file exists and we
 // construct `Config` via `unwrap_or_default()`, we still honor the intended
 // default of `alternate_screen = true`. Deriving `Default` would set booleans to
-// `false`, which caused fresh installs (or a temporary CODEX_HOME) to start in
+// `false`, which caused fresh installs (or a temporary KAY_HOME) to start in
 // standard-terminal mode until the user pressed Ctrl+T.
 impl Default for Tui {
     fn default() -> Self {

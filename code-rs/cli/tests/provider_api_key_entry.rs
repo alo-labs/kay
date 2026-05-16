@@ -14,7 +14,7 @@ fn run_login(code_home: &TempDir, args: &[&str], stdin: Option<&str>) -> std::pr
     let mut command = Command::new(code_bin());
     command
         .arg("login")
-        .env("CODE_HOME", code_home.path())
+        .env("KAY_HOME", code_home.path())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
 
@@ -87,7 +87,7 @@ fn provider_api_key_entry_help_shows_both_modes() {
 
 #[test]
 fn provider_api_key_entry_direct_openai_uses_openai_login_path() {
-    let code_home = TempDir::new().expect("temp CODE_HOME");
+    let code_home = TempDir::new().expect("temp KAY_HOME");
 
     let output = run_login(&code_home, &["--api-key", "sk-openai"], None);
     assert_success(&output);
@@ -99,7 +99,7 @@ fn provider_api_key_entry_direct_openai_uses_openai_login_path() {
 
 #[test]
 fn provider_api_key_entry_direct_minimax_uses_provider_storage() {
-    let code_home = TempDir::new().expect("temp CODE_HOME");
+    let code_home = TempDir::new().expect("temp KAY_HOME");
 
     let output = run_login(
         &code_home,
@@ -119,7 +119,7 @@ fn provider_api_key_entry_direct_minimax_uses_provider_storage() {
 
 #[test]
 fn provider_api_key_entry_stdin_openai_uses_openai_login_path() {
-    let code_home = TempDir::new().expect("temp CODE_HOME");
+    let code_home = TempDir::new().expect("temp KAY_HOME");
 
     let output = run_login(&code_home, &["--with-api-key"], Some("sk-openai"));
     assert_success(&output);
@@ -131,7 +131,7 @@ fn provider_api_key_entry_stdin_openai_uses_openai_login_path() {
 
 #[test]
 fn provider_api_key_entry_stdin_opencode_go_uses_provider_storage() {
-    let code_home = TempDir::new().expect("temp CODE_HOME");
+    let code_home = TempDir::new().expect("temp KAY_HOME");
 
     let output = run_login(
         &code_home,

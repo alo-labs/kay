@@ -9,8 +9,8 @@ use std::process::Command;
 use tempfile::TempDir;
 
 fn set_code_home(path: &std::path::Path) {
-    // SAFETY: tests run in a single thread and isolate CODE_HOME per test case.
-    unsafe { std::env::set_var("CODE_HOME", path); }
+    // SAFETY: tests run in a single thread and isolate KAY_HOME per test case.
+    unsafe { std::env::set_var("KAY_HOME", path); }
 }
 
 // Integration-style coverage of lock contention and stale-epoch handling across components.
