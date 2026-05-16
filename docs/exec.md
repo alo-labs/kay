@@ -97,7 +97,7 @@ kay exec resume --last "Fix use-after-free issues"
 Only the conversation context is preserved; you must still provide flags to customize Kay behavior.
 
 ```shell
-kay exec --model gpt-5.1-codex --json "Review the change, look for use-after-free issues"
+kay exec --model gpt-5.1 --json "Review the change, look for use-after-free issues"
 kay exec --model gpt-5.1 --json resume --last "Fix use-after-free issues"
 ```
 

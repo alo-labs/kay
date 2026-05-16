@@ -72,6 +72,7 @@ This log tracks the merge of upstream changes into the fork.
 
 - [ ] Review diff summary (\`diff-crates.sh --all\`)
 - [ ] Identify critical changes (\`highlight-critical-changes.sh --all\`)
+- [ ] Classify any high-risk upstream changes and assign an owner for follow-up
 - [ ] Plan integration approach
 - [ ] Apply changes crate-by-crate
 - [ ] Verify build and tests
@@ -153,6 +154,7 @@ finalize_log() {
 ### Post-Merge Checklist
 
 - [ ] All critical changes reviewed and integrated
+- [ ] Any untriaged high-risk upstream changes recorded as follow-up items, not release blockers by themselves
 - [ ] Build passes (\`./build-fast.sh\`)
 - [ ] Tests pass (\`./scripts/ci-tests.sh\`)
 - [ ] Verification guards pass (\`./scripts/upstream-merge/verify.sh\`)

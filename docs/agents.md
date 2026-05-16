@@ -19,7 +19,7 @@ instructions = "Preamble added to this agent’s prompt"
 Field recap: `name` (slug/alias), `command` (absolute paths ok), `args*` (RO/RW lists override base), `env`, `read_only`, `enabled`, optional `description` and `instructions`.
 
 ### Built-in defaults
-If no `[[agents]]` are configured, Kay advertises built-ins (gated by env `CODE_ENABLE_CLOUD_AGENT_MODEL` for cloud variants): `code-gpt-5.4`, `code-gpt-5.3-codex`, `claude-opus-4.6`, `gemini-3-pro`, `code-gpt-5.1-codex-mini`, `claude-sonnet-4.5`, `gemini-3-flash`, `claude-haiku-4.5`, `qwen-3-coder`, `cloud-gpt-5.1-codex-max`. Built-ins strip any user `--model/-m` flags to avoid conflicts and inject their own.
+If no `[[agents]]` are configured, Kay advertises built-ins (gated by the legacy env `CODE_ENABLE_CLOUD_AGENT_MODEL` for cloud variants): `code-gpt-5.4`, `code-gpt-5.3-codex`, `claude-opus-4.6`, `gemini-3-pro`, `code-gpt-5.1-codex-mini`, `claude-sonnet-4.5`, `gemini-3-flash`, `claude-haiku-4.5`, `qwen-3-coder`, `cloud-gpt-5.1-codex-max`. Built-ins strip any user `--model/-m` flags to avoid conflicts and inject their own.
 
 Tip: `gemini` resolves to `gemini-3-flash` (fast/cheap). Use `gemini-3-pro` when you want the higher-capacity Gemini option.
 

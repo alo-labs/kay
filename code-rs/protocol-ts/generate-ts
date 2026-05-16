@@ -5,6 +5,6 @@ set -euo pipefail
 cd "$(dirname "$0")"/..
 
 tmpdir=$(mktemp -d)
-just codex generate-ts --prettier ../node_modules/.bin/prettier --out "$tmpdir"
+just kay generate-ts --prettier ../node_modules/.bin/prettier --out "$tmpdir"
 
 echo "wrote output to $tmpdir"

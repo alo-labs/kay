@@ -10,7 +10,7 @@ Install Kay from npm:
 npm install -g @alo-labs/kay
 ```
 
-The primary command is `kay`. The package also installs `codex` and `coder` aliases, and installs the legacy `code` alias when doing so would not override another `code` command already on PATH.
+The primary command is `kay`. The package also installs compatibility aliases `codex` and `coder`, and installs the legacy `code` alias when doing so would not override another `code` command already on PATH.
 
 You can also download a standalone `kay-*` archive from the [latest GitHub release](https://github.com/alo-labs/kay/releases/latest).
 
@@ -80,7 +80,7 @@ Model availability currently looks like this:
 | --- | --- |
 | OpenCode Go | `opencode-go/glm-5.1`, `opencode-go/kimi-k2.6`, `opencode-go/mimo-v2.5-pro`, `opencode-go/mimo-v2.5`, `opencode-go/minimax-m2.7`, `opencode-go/qwen3.6-plus`, `opencode-go/deepseek-v4-pro`, `opencode-go/deepseek-v4-flash` |
 | MiniMax | `minimax-m2.7` |
-| OpenAI | The OpenAI models supported by the upstream Codex model list |
+| OpenAI | The OpenAI models supported by the upstream model list |
 
 Pick the model that matches the provider key you already added. Kay keeps provider selection and model selection separate so you can mix and match supported providers without editing config files by hand.
 

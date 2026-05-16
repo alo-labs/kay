@@ -15,7 +15,7 @@ Environment flags:
   DETERMINISTIC_FORCE_RELEASE=0|1     Keep dev-fast (0) or switch to release-prod (1, default)
   DETERMINISTIC_NO_UUID=1             macOS only: strip LC_UUID on final executables
   BUILD_FAST_BINS="kay code code-tui"  Override bins to build (space or comma separated)
-  --workspace codex|code|both         Select workspace to build (default: code)
+  --workspace kay|code|codex|both     Select workspace to build (default: kay)
 
 Examples:
   ./build-fast.sh
@@ -167,7 +167,7 @@ while [ $# -gt 0 ]; do
 done
 
 if [ -z "$WORKSPACE_CHOICE" ]; then
-  WORKSPACE_CHOICE="code"
+  WORKSPACE_CHOICE="kay"
 fi
 
 if [ "$ARG_PROFILE" = "pref" ]; then
@@ -185,7 +185,7 @@ else
   CALLER_CWD="$(pwd)"
 fi
 
-if [[ "${SCRIPT_DIR}" == */.code/working/*/branches/* ]]; then
+if [[ "${SCRIPT_DIR}" == */.kay/working/*/branches/* || "${SCRIPT_DIR}" == */.code/working/*/branches/* ]]; then
   WORKTREE_PARENT="${SCRIPT_DIR%/branches/*}"
   REPO_NAME="$(basename "${WORKTREE_PARENT}")"
 else
@@ -194,12 +194,12 @@ fi
 
 REPO_ROOT="${SCRIPT_DIR}"
 
-# Guard against regressions where a code-rs crate references ../codex-rs.
-if [ "${BUILD_FAST_SKIP_CODEX_GUARD:-0}" != "1" ]; then
-  echo "Running codex path dependency guard..."
+# Guard against regressions where the Kay workspace references the legacy ../codex-rs mirror.
+if [ "${BUILD_FAST_SKIP_KAY_GUARD:-${BUILD_FAST_SKIP_CODEX_GUARD:-0}}" != "1" ]; then
+  echo "Running Kay path dependency guard..."
   (
     cd "$REPO_ROOT"
-    scripts/check-codex-path-deps.sh
+    scripts/check-kay-path-deps.sh
   )
 fi
 
@@ -208,21 +208,23 @@ if [ "$WORKSPACE_CHOICE" = "both" ]; then
     echo "Error: --workspace both cannot be combined with 'run'." >&2
     exit 1
   fi
-  for ws in codex code; do
+  for ws in kay codex; do
     WORKSPACE="$ws" "$0" "${PASSTHROUGH_ARGS[@]}" --workspace "$ws"
   done
   exit 0
 fi
 
-if [ -n "${CODE_HOME:-}" ] && [ -n "${CODE_HOME}" ]; then
+if [ -n "${KAY_HOME:-}" ] && [ -n "${KAY_HOME}" ]; then
+  CACHE_HOME="${KAY_HOME%/}"
+elif [ -n "${CODE_HOME:-}" ] && [ -n "${CODE_HOME}" ]; then
   CACHE_HOME="${CODE_HOME%/}"
 elif [ -n "${CODEX_HOME:-}" ] && [ -n "${CODEX_HOME}" ]; then
   CACHE_HOME="${CODEX_HOME%/}"
 else
   if [ -d "/mnt/data" ] && [ -w "/mnt/data" ]; then
-    CACHE_HOME="/mnt/data/.code"
+    CACHE_HOME="/mnt/data/.kay"
   else
-    CACHE_HOME="${REPO_ROOT}/.code"
+    CACHE_HOME="${REPO_ROOT}/.kay"
   fi
 fi
 case "${CACHE_HOME}" in
@@ -233,16 +235,16 @@ case "${CACHE_HOME}" in
 esac
 
 case "$WORKSPACE_CHOICE" in
+  kay|code|code-rs)
+    WORKSPACE_DIR="code-rs"
+    CRATE_PREFIX="code"
+    ;;
   codex|codex-rs)
     WORKSPACE_DIR="codex-rs"
     CRATE_PREFIX="codex"
     ;;
-  code|code-rs)
-    WORKSPACE_DIR="code-rs"
-    CRATE_PREFIX="code"
-    ;;
   *)
-    echo "Error: Unknown workspace '${WORKSPACE_CHOICE}'. Use codex, code, or both." >&2
+    echo "Error: Unknown workspace '${WORKSPACE_CHOICE}'. Use kay, code, codex, or both." >&2
     exit 1
     ;;
 esac
@@ -583,8 +585,8 @@ if [ "${TRACE_BUILD:-}" = "1" ]; then
     rustup run "$TOOLCHAIN" cargo -vV || true
   fi
   echo "CANONICAL_ENV_APPLIED: ${CANONICAL_ENV_APPLIED} (KEEP_ENV=${KEEP_ENV})"
-  echo "Filtered env (CARGO|RUST*|PROFILE|CODE_HOME|CODEX_HOME):"
-  env | egrep '^(CARGO|RUST|RUSTUP|PROFILE|CODE_HOME|CODEX_HOME)=' | sort || true
+  echo "Filtered env (CARGO|RUST*|PROFILE|KAY_HOME|CODE_HOME|CODEX_HOME):"
+  env | egrep '^(CARGO|RUST|RUSTUP|PROFILE|KAY_HOME|CODE_HOME|CODEX_HOME)=' | sort || true
   echo "--------------------------------"
 fi
 

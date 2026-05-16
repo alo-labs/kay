@@ -62,9 +62,9 @@ fn parse_tui_inserts(path: &Path) -> Result<Vec<InsertLog>> {
 
 fn main() -> Result<()> {
     let mut args = std::env::args().skip(1);
-    eprintln!("order-replay: usage: order_replay <response.json> <codex-tui.log>");
+    eprintln!("order-replay: usage: order_replay <response.json> <kay-tui.log>");
     let response = args.next().context("missing response.json path")?;
-    let log = args.next().context("missing codex-tui.log path")?;
+    let log = args.next().context("missing kay-tui.log path")?;
 
     let expected = parse_response_expected(Path::new(&response))?;
     let actual = parse_tui_inserts(Path::new(&log))?;

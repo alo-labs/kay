@@ -8,7 +8,7 @@ Full-screen settings panel for Kay’s TUI. Use it to change models, themes, Aut
 - Overlay is modal: chat input is blocked while it is visible. It remembers the last active section on reopen (`pending_settings_return`).
 
 ## Persistence
-- Changes write to `CODE_HOME/config.toml` when available; if that directory is missing you’ll see a warning and the changes remain session-only.
+- Changes write to `KAY_HOME/config.toml` when available; if that directory is missing you’ll see a warning and the changes remain session-only.
 - Access mode can be stored per workspace; other settings apply globally unless your config file overrides them per project.
 - Agent and MCP edits also live in the same config directory.
 
@@ -33,9 +33,9 @@ Full-screen settings panel for Kay’s TUI. Use it to change models, themes, Aut
 - Sections mark completion via their content structs; the overlay closes when a section reports `is_complete` (e.g., Chrome option chosen).
 
 ## Scope reminders
-- Global defaults live in `CODE_HOME/config.toml`.
+- Global defaults live in `KAY_HOME/config.toml`.
 - Workspace overrides are honored where setters accept `cwd` (access mode) or when project-level config files exist. The UI always renders merged effective values.
-- Agent commands and MCP servers are stored under `CODE_HOME` and apply to all workspaces unless overridden by project config.
+- Agent commands and MCP servers are stored under `KAY_HOME` and apply to all workspaces unless overridden by project config.
 
 ## Commands
 - `/settings [section]`
