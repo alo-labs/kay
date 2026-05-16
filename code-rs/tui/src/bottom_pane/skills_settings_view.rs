@@ -1,5 +1,5 @@
 use std::fs;
-use code_core::config::find_code_home;
+use code_core::config::find_kay_home;
 use code_core::protocol::Op;
 use code_protocol::skills::{Skill, SkillScope};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
@@ -389,11 +389,11 @@ impl SkillsSettingsView {
             return;
         }
 
-        let code_home = match find_code_home() {
+        let code_home = match find_kay_home() {
             Ok(path) => path,
             Err(err) => {
                 self.status = Some((
-                    format!("CODE_HOME unavailable: {err}"),
+                    format!("Kay home unavailable: {err}"),
                     Style::default().fg(colors::error()),
                 ));
                 return;

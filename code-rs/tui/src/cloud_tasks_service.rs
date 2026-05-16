@@ -221,7 +221,7 @@ async fn load_config() -> Result<CloudTasksConfig> {
         });
     }
 
-    let code_home = code_core::config::find_code_home()
+    let code_home = code_core::config::find_kay_home()
         .context("determine codex home directory")?;
     let auth_manager = AuthManager::new(
         code_home,

@@ -3,9 +3,9 @@
 Use this example configuration as a starting point. For an explanation of each field and additional context, see [Configuration](./config.md). Copy the snippet below to `~/.kay/config.toml` and adjust values as needed.
 
 ```toml
-# Codex example configuration (config.toml)
+# Kay example configuration (config.toml)
 #
-# This file lists all keys Codex reads from config.toml, their default values,
+# This file lists all keys Kay reads from config.toml, their default values,
 # and concise explanations. Values here mirror the effective defaults compiled
 # into the CLI. Adjust as needed.
 #
@@ -18,7 +18,7 @@ Use this example configuration as a starting point. For an explanation of each f
 # Core Model Selection
 ################################################################################
 
-# Primary model used by Codex. Default: "gpt-5.1-codex-max" on all platforms.
+# Primary model used by Kay. Default: "gpt-5.1-codex-max" on all platforms.
 model = "gpt-5.1-codex-max"
 
 # Model used by the /review feature (code reviews). Default: "gpt-5.1-codex-max".
@@ -27,7 +27,7 @@ review_model = "gpt-5.1-codex-max"
 # Provider id selected from [model_providers]. Default: "openai".
 model_provider = "openai"
 
-# Optional manual model metadata. When unset, Codex auto-detects from model.
+# Optional manual model metadata. When unset, Kay auto-detects from model.
 # Uncomment to force values.
 # model_context_window = 128000       # tokens; default: auto for model
 # model_auto_compact_token_limit = 0  # disable/override auto; default: model family specific
@@ -152,10 +152,10 @@ disable_paste_burst = false
 windows_wsl_setup_acknowledged = false
 
 # External notifier program (argv array). When unset: disabled.
-# Example: notify = ["notify-send", "Codex"]
+# Example: notify = ["notify-send", "Kay"]
 # notify = [ ]
 
-# In-product notices (mostly set automatically by Codex).
+# In-product notices (mostly set automatically by Kay).
 [notice]
 # hide_full_access_warning = true
 # hide_rate_limit_model_nudge = true
@@ -173,7 +173,7 @@ chatgpt_base_url = "https://chatgpt.com/backend-api/"
 # Restrict ChatGPT login to a specific workspace id. Default: unset.
 # forced_chatgpt_workspace_id = ""
 
-# Force login mechanism when Codex would normally auto-select. Default: unset.
+# Force login mechanism when Kay would normally auto-select. Default: unset.
 # Allowed values: chatgpt | api
 # forced_login_method = "chatgpt"
 
@@ -366,6 +366,6 @@ exporter = "none"
 
 # [otel.exporter."otlp-http".tls]
 # ca-certificate = "certs/otel-ca.pem"
-# client-certificate = "/etc/codex/certs/client.pem"
-# client-private-key = "/etc/codex/certs/client-key.pem"
+# client-certificate = "/etc/kay/certs/client.pem"
+# client-private-key = "/etc/kay/certs/client-key.pem"
 ```

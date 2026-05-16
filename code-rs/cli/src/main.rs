@@ -123,7 +123,7 @@ enum Subcommand {
     #[clap(visible_alias = "acp")]
     Mcp(McpCli),
 
-    /// [experimental] Run the Codex MCP server (stdio transport).
+    /// [experimental] Run the Kay MCP server (stdio transport).
     McpServer,
 
     /// [experimental] Run the app server.
@@ -139,7 +139,7 @@ enum Subcommand {
     #[clap(hide = false)]
     OrderReplay(OrderReplayArgs),
 
-    /// Apply the latest diff produced by Codex agent as a `git apply` to your local working tree.
+    /// Apply the latest diff produced by the Kay agent as a `git apply` to your local working tree.
     #[clap(visible_alias = "a")]
     Apply(ApplyCommand),
 
@@ -149,7 +149,7 @@ enum Subcommand {
     /// Internal: generate TypeScript protocol bindings.
     #[clap(hide = true)]
     GenerateTs(GenerateTsCommand),
-    /// [EXPERIMENTAL] Browse tasks from Codex Cloud and apply changes locally.
+    /// [EXPERIMENTAL] Browse tasks from Kay Cloud and apply changes locally.
     #[clap(name = "cloud", alias = "cloud-tasks")]
     Cloud(CloudTasksCli),
 
@@ -393,8 +393,8 @@ struct GenerateTsCommand {
 
 #[derive(Debug, Parser)]
 struct OrderReplayArgs {
-    /// Path to a response.json captured under ~/.code/debug_logs/*_response.json
-    /// (legacy ~/.codex/debug_logs/ is still read).
+    /// Path to a response.json captured under ~/.kay/debug_logs/*_response.json
+    /// (legacy ~/.code/debug_logs/ and ~/.codex/debug_logs/ are still read).
     response_json: std::path::PathBuf,
     /// Path to kay-tui.log (typically ~/.kay/debug_logs/kay-tui.log).
     tui_log: std::path::PathBuf,
@@ -445,7 +445,7 @@ async fn cli_main(code_linux_sandbox_exe: Option<PathBuf>) -> anyhow::Result<()>
     // housekeeping early so stale worktrees/branches don't accumulate.
     let housekeeping_handle = match &subcommand {
         Some(Subcommand::Exec(_)) | Some(Subcommand::Auto(_)) => {
-            match code_core::config::find_code_home() {
+            match code_core::config::find_kay_home() {
                 Ok(code_home) => Some(std::thread::spawn(move || {
                     if let Err(err) = code_core::run_housekeeping_if_due(&code_home) {
                         tracing::warn!("code home housekeeping failed: {err}");
@@ -1017,7 +1017,7 @@ fn find_code_dir(start: &Path) -> Option<PathBuf> {
     None
 }
 
-/// Build the final `TuiCli` for a `codex resume` invocation.
+/// Build the final `TuiCli` for a `kay resume` invocation.
 fn finalize_resume_interactive(
     mut interactive: TuiCli,
     root_config_overrides: CliConfigOverrides,
@@ -1045,7 +1045,7 @@ fn finalize_resume_interactive(
     interactive
 }
 
-/// Merge flags provided to `codex resume` so they take precedence over any
+/// Merge flags provided to `kay resume` so they take precedence over any
 /// root-level flags. Only overrides fields explicitly set on the resume-scoped
 /// CLI. Also appends `-c key=value` overrides with highest precedence.
 fn merge_resume_cli_flags(interactive: &mut TuiCli, resume_cli: TuiCli) {
@@ -1129,7 +1129,7 @@ fn resolve_resume_path(session_id: Option<&str>, last: bool) -> anyhow::Result<O
     }
 
     let code_home =
-        code_core::config::find_code_home().context("failed to locate Codex home directory")?;
+        code_core::config::find_kay_home().context("failed to locate Kay home directory")?;
 
     let sess = session_id.map(|s| s.to_string());
     let fetch = async move {
@@ -1812,30 +1812,24 @@ mod tests {
         assert_eq!(interactive.resume_session_id, None);
     }
 
-    static CODE_HOME_MUTEX: Mutex<()> = Mutex::new(());
+    static KAY_HOME_MUTEX: Mutex<()> = Mutex::new(());
 
-    fn with_temp_code_home<F, R>(f: F) -> R
+    fn with_temp_kay_home<F, R>(f: F) -> R
     where
         F: FnOnce(&Path) -> R,
     {
-        let _guard = CODE_HOME_MUTEX
+        let _guard = KAY_HOME_MUTEX
             .lock()
             .unwrap_or_else(|poison| poison.into_inner());
-        let temp_home = TempDir::new().expect("temp code home");
-        let prev_code_home = std::env::var("CODE_HOME").ok();
-        let prev_codex_home = std::env::var("CODEX_HOME").ok();
-        set_env_var("CODE_HOME", temp_home.path());
-        remove_env_var("CODEX_HOME");
+        let temp_home = TempDir::new().expect("temp kay home");
+        let prev_kay_home = std::env::var("KAY_HOME").ok();
+        set_env_var("KAY_HOME", temp_home.path());
 
         let result = f(temp_home.path());
 
-        match prev_code_home {
-            Some(val) => set_env_var("CODE_HOME", val),
-            None => remove_env_var("CODE_HOME"),
-        }
-        match prev_codex_home {
-            Some(val) => set_env_var("CODEX_HOME", val),
-            None => remove_env_var("CODEX_HOME"),
+        match prev_kay_home {
+            Some(val) => set_env_var("KAY_HOME", val),
+            None => remove_env_var("KAY_HOME"),
         }
 
         result
@@ -1959,7 +1953,7 @@ mod tests {
 
     #[test]
     fn resume_picker_logic_last() {
-        with_temp_code_home(|code_home| {
+        with_temp_kay_home(|code_home| {
             let session_id = Uuid::new_v4();
             create_session_fixture(code_home, &session_id);
 
@@ -1972,7 +1966,7 @@ mod tests {
 
     #[test]
     fn resume_picker_logic_with_session_id() {
-        with_temp_code_home(|code_home| {
+        with_temp_kay_home(|code_home| {
             let session_id = Uuid::new_v4();
             let session_id_str = session_id.to_string();
             create_session_fixture(code_home, &session_id);
@@ -1996,7 +1990,7 @@ mod tests {
 
     #[test]
     fn resolve_resume_path_uses_catalog_for_last() {
-        with_temp_code_home(|code_home| {
+        with_temp_kay_home(|code_home| {
             let cwd = Path::new("/project");
             let older_id = Uuid::parse_str("11111111-1111-4111-8111-111111111111").unwrap();
             let newer_id = Uuid::parse_str("22222222-2222-4222-8222-222222222222").unwrap();
@@ -2034,7 +2028,7 @@ mod tests {
 
     #[test]
     fn resolve_resume_path_prefix_lookup() {
-        with_temp_code_home(|code_home| {
+        with_temp_kay_home(|code_home| {
             let cwd = Path::new("/project");
             let session_id = Uuid::parse_str("33333333-3333-4333-8333-333333333333").unwrap();
             create_session_fixture_with_details(
@@ -2061,7 +2055,7 @@ mod tests {
 
     #[test]
     fn resolve_resume_path_handles_sync_like_mtime() {
-        with_temp_code_home(|code_home| {
+        with_temp_kay_home(|code_home| {
             let cwd = Path::new("/project");
             let older_id = Uuid::parse_str("44444444-4444-4444-8444-444444444444").unwrap();
             let newer_id = Uuid::parse_str("55555555-5555-4555-8555-555555555555").unwrap();
@@ -2111,7 +2105,7 @@ mod tests {
 
     #[test]
     fn resume_merges_option_flags_and_full_auto() {
-        with_temp_code_home(|code_home| {
+        with_temp_kay_home(|code_home| {
             let session_id = Uuid::new_v4();
             let session_id_str = session_id.to_string();
             create_session_fixture(code_home, &session_id);

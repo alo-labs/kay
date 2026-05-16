@@ -216,10 +216,6 @@ fi
 
 if [ -n "${KAY_HOME:-}" ] && [ -n "${KAY_HOME}" ]; then
   CACHE_HOME="${KAY_HOME%/}"
-elif [ -n "${CODE_HOME:-}" ] && [ -n "${CODE_HOME}" ]; then
-  CACHE_HOME="${CODE_HOME%/}"
-elif [ -n "${CODEX_HOME:-}" ] && [ -n "${CODEX_HOME}" ]; then
-  CACHE_HOME="${CODEX_HOME%/}"
 else
   if [ -d "/mnt/data" ] && [ -w "/mnt/data" ]; then
     CACHE_HOME="/mnt/data/.kay"
@@ -585,8 +581,8 @@ if [ "${TRACE_BUILD:-}" = "1" ]; then
     rustup run "$TOOLCHAIN" cargo -vV || true
   fi
   echo "CANONICAL_ENV_APPLIED: ${CANONICAL_ENV_APPLIED} (KEEP_ENV=${KEEP_ENV})"
-  echo "Filtered env (CARGO|RUST*|PROFILE|KAY_HOME|CODE_HOME|CODEX_HOME):"
-  env | egrep '^(CARGO|RUST|RUSTUP|PROFILE|KAY_HOME|CODE_HOME|CODEX_HOME)=' | sort || true
+  echo "Filtered env (CARGO|RUST*|PROFILE|KAY_HOME):"
+  env | egrep '^(CARGO|RUST|RUSTUP|PROFILE|KAY_HOME)=' | sort || true
   echo "--------------------------------"
 fi
 
@@ -619,8 +615,6 @@ SCCACHE=${SCCACHE:-}
 SCCACHE_BIN=${SCCACHE_BIN:-}
 CARGO_INCREMENTAL=${CARGO_INCREMENTAL:-}
 MACOSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET:-}
-CODE_HOME=${CODE_HOME:-}
-CODEX_HOME=${CODEX_HOME:-}
 FP
 }
 

@@ -6,7 +6,7 @@ Kay can enforce your own rules-based execution policy before it runs shell comma
 
 ### TUI interactions
 
-Codex CLI will present the option to whitelist commands when a command causes a prompt.
+Kay CLI will present the option to whitelist commands when a command causes a prompt.
 
 <img width="513" height="168" alt="Screenshot 2025-12-04 at 9 23 54 AM" src="https://github.com/user-attachments/assets/4c8ee8ea-3101-4a81-bb13-3f4a9aa02502" />
 

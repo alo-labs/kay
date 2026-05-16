@@ -65,13 +65,13 @@ fn selected_models() -> Vec<&'static str> {
         .collect()
 }
 
-fn login_opencode_go(code_home: &TempDir, api_key: &str) {
+fn login_opencode_go(kay_home: &TempDir, api_key: &str) {
     let mut child = Command::new(code_bin())
         .arg("login")
         .arg("--provider")
         .arg("opencode-go")
         .arg("--with-api-key")
-        .env("CODE_HOME", code_home.path())
+        .env("KAY_HOME", kay_home.path())
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -119,7 +119,7 @@ fn clone_repo() -> (TempDir, PathBuf) {
 }
 
 fn run_notes_feature_turn(
-    code_home: &TempDir,
+    kay_home: &TempDir,
     repo_dir: &Path,
     model: &str,
     prompt: &str,
@@ -137,7 +137,7 @@ fn run_notes_feature_turn(
             }
         }
     });
-    let schema_path = code_home.path().join("notes-app-output-schema.json");
+    let schema_path = kay_home.path().join("notes-app-output-schema.json");
     fs::write(&schema_path, serde_json::to_string_pretty(&schema).unwrap())
         .expect("write output schema");
 
@@ -157,7 +157,7 @@ fn run_notes_feature_turn(
         .arg("-c")
         .arg(format!("model={model}"))
         .arg(prompt)
-        .env("CODE_HOME", code_home.path())
+        .env("KAY_HOME", kay_home.path())
         .env_remove("OPENAI_API_KEY")
         .stdin(Stdio::null())
         .output()
@@ -595,7 +595,7 @@ fn parse_notes_work_response(input: &str) -> Option<NotesWorkResponse> {
     None
 }
 
-fn latest_session_jsonl(code_home: &Path) -> Option<PathBuf> {
+fn latest_session_jsonl(kay_home: &Path) -> Option<PathBuf> {
     fn visit(dir: &Path, newest: &mut Option<PathBuf>) {
         let Ok(entries) = fs::read_dir(dir) else {
             return;
@@ -636,19 +636,19 @@ fn latest_session_jsonl(code_home: &Path) -> Option<PathBuf> {
     }
 
     let mut newest = None;
-    visit(code_home, &mut newest);
+    visit(kay_home, &mut newest);
     newest
 }
 
-fn copy_transcript(code_home: &Path, repo_dir: &Path, model: &str) -> PathBuf {
+fn copy_transcript(kay_home: &Path, repo_dir: &Path, model: &str) -> PathBuf {
     let transcripts_dir = repo_dir.join("transcripts");
     fs::create_dir_all(&transcripts_dir).expect("create transcripts dir");
     let safe_model = model.replace('/', "_");
     let dest = transcripts_dir.join(format!("{safe_model}.jsonl"));
-    if let Some(transcript) = latest_session_jsonl(code_home) {
+    if let Some(transcript) = latest_session_jsonl(kay_home) {
         fs::copy(&transcript, &dest).expect("copy transcript");
     } else if !dest.exists() {
-        panic!("no transcript JSONL found under {}", code_home.display());
+        panic!("no transcript JSONL found under {}", kay_home.display());
     }
     dest
 }
@@ -705,8 +705,8 @@ fn opencode_go_notes_app_live_feature_workflow() {
     };
 
     for &model in &selected_models() {
-        let code_home = TempDir::new().expect("temp CODE_HOME");
-        login_opencode_go(&code_home, &api_key);
+        let kay_home = TempDir::new().expect("temp KAY_HOME");
+        login_opencode_go(&kay_home, &api_key);
 
         let (_workspace_guard, repo_dir) = clone_repo();
         let last_message_dir = TempDir::new().expect("last message tempdir");
@@ -717,7 +717,7 @@ fn opencode_go_notes_app_live_feature_workflow() {
         let prompt = build_notes_feature_prompt(&repo_root());
 
         let response = run_notes_feature_turn(
-            &code_home,
+            &kay_home,
             &repo_dir,
             model,
             prompt.trim(),
@@ -742,7 +742,7 @@ fn opencode_go_notes_app_live_feature_workflow() {
         assert_notes_feature_change(&repo_dir);
         assert_notes_js_syntax(&repo_dir);
 
-        let transcript_path = copy_transcript(code_home.path(), &repo_dir, model);
+        let transcript_path = copy_transcript(kay_home.path(), &repo_dir, model);
         assert!(
             transcript_path.exists(),
             "expected transcript copy at {}",

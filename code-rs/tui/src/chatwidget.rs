@@ -1031,7 +1031,7 @@ pub(crate) use self::terminal::{
     TerminalState,
 };
 use code_browser::BrowserManager;
-use code_core::config::find_code_home;
+use code_core::config::find_kay_home;
 use code_core::config::resolve_code_path_for_read;
 use code_core::config::set_github_actionlint_on_patch;
 use code_core::config::set_validation_group_enabled;
@@ -1077,7 +1077,7 @@ struct CachedConnection {
 }
 
 async fn read_cached_connection() -> Option<(Option<u16>, Option<String>)> {
-    let code_home = find_code_home().ok()?;
+    let code_home = find_kay_home().ok()?;
     let path = resolve_code_path_for_read(&code_home, std::path::Path::new("cache.json"));
     let bytes = tokio::fs::read(path).await.ok()?;
     let parsed: CachedConnection = serde_json::from_slice(&bytes).ok()?;
@@ -1088,7 +1088,7 @@ async fn write_cached_connection(port: Option<u16>, ws: Option<String>) -> std::
     if port.is_none() && ws.is_none() {
         return Ok(());
     }
-    if let Ok(code_home) = find_code_home() {
+    if let Ok(code_home) = find_kay_home() {
         let path = code_home.join("cache.json");
         let obj = CachedConnection { port, ws };
         let data = serde_json::to_vec_pretty(&obj).unwrap_or_else(|_| b"{}".to_vec());
@@ -1681,7 +1681,7 @@ fn auto_review_repo_dir(git_root: &Path) -> Result<PathBuf, String> {
         .file_name()
         .and_then(|s| s.to_str())
         .unwrap_or("repo");
-    let code_home = code_core::config::find_code_home()
+    let code_home = code_core::config::find_kay_home()
         .map_err(|e| format!("failed to locate code home: {e}"))?;
     let repo_dir = code_home.join("working").join(repo_name);
     std::fs::create_dir_all(&repo_dir)
@@ -16478,7 +16478,7 @@ impl ChatWidget<'_> {
         let mut agent_card = history_cell::AgentRunCell::new("Demo Agent Batch".to_string());
         agent_card.set_batch_label(Some("Demo Agents".to_string()));
         agent_card.set_task(Some("Draft a release checklist".to_string()));
-        agent_card.set_context(Some("Context: codex workspace demo run".to_string()));
+        agent_card.set_context(Some("Context: Kay workspace demo run".to_string()));
         agent_card.set_plan(vec![
             "Collect recent commits".to_string(),
             "Summarize blockers".to_string(),
@@ -19466,7 +19466,7 @@ fi\n\
         self.config.auto_drive.continue_mode = auto_continue_to_config(continue_mode);
         self.restore_auto_resolve_attempts_if_lost();
 
-        if let Ok(home) = code_core::config::find_code_home() {
+        if let Ok(home) = code_core::config::find_kay_home() {
             if let Err(err) = code_core::config::set_auto_drive_settings(
                 &home,
                 &self.config.auto_drive,
@@ -22717,7 +22717,7 @@ Have we met every part of this goal and is there no further work to do?"#
     }
 
     fn persist_agent_config(&self, cfg: &AgentConfig) {
-        if let Ok(home) = code_core::config::find_code_home() {
+        if let Ok(home) = code_core::config::find_kay_home() {
             let name = cfg.name.clone();
             let enabled = cfg.enabled;
             let ro = cfg.args_read_only.clone();
@@ -23891,7 +23891,7 @@ Have we met every part of this goal and is there no further work to do?"#
             return;
         }
 
-        let message = if let Ok(home) = code_core::config::find_code_home() {
+        let message = if let Ok(home) = code_core::config::find_kay_home() {
             match code_core::config::set_review_model(
                 &home,
                 &self.config.review_model,
@@ -23960,7 +23960,7 @@ Have we met every part of this goal and is there no further work to do?"#
             return;
         }
 
-        let message = if let Ok(home) = code_core::config::find_code_home() {
+        let message = if let Ok(home) = code_core::config::find_kay_home() {
             match code_core::config::set_review_resolve_model(
                 &home,
                 &self.config.review_resolve_model,
@@ -24004,7 +24004,7 @@ Have we met every part of this goal and is there no further work to do?"#
             self.config.review_model_reasoning_effort = self.config.model_reasoning_effort;
         }
 
-        if let Ok(home) = code_core::config::find_code_home() {
+        if let Ok(home) = code_core::config::find_kay_home() {
             if let Err(err) = code_core::config::set_review_model(
                 &home,
                 &self.config.review_model,
@@ -24040,7 +24040,7 @@ Have we met every part of this goal and is there no further work to do?"#
             self.config.review_resolve_model_reasoning_effort = self.config.model_reasoning_effort;
         }
 
-        if let Ok(home) = code_core::config::find_code_home() {
+        if let Ok(home) = code_core::config::find_kay_home() {
             if let Err(err) = code_core::config::set_review_resolve_model(
                 &home,
                 &self.config.review_resolve_model,
@@ -24100,7 +24100,7 @@ Have we met every part of this goal and is there no further work to do?"#
             return;
         }
 
-        let notice = if let Ok(home) = code_core::config::find_code_home() {
+        let notice = if let Ok(home) = code_core::config::find_kay_home() {
             match code_core::config::set_auto_review_model(
                 &home,
                 &self.config.auto_review_model,
@@ -24144,7 +24144,7 @@ Have we met every part of this goal and is there no further work to do?"#
             self.config.auto_review_model_reasoning_effort = self.config.model_reasoning_effort;
         }
 
-        if let Ok(home) = code_core::config::find_code_home() {
+        if let Ok(home) = code_core::config::find_kay_home() {
             if let Err(err) = code_core::config::set_auto_review_model(
                 &home,
                 &self.config.auto_review_model,
@@ -24204,7 +24204,7 @@ Have we met every part of this goal and is there no further work to do?"#
             return;
         }
 
-        let notice = if let Ok(home) = code_core::config::find_code_home() {
+        let notice = if let Ok(home) = code_core::config::find_kay_home() {
             match code_core::config::set_auto_review_resolve_model(
                 &home,
                 &self.config.auto_review_resolve_model,
@@ -24249,7 +24249,7 @@ Have we met every part of this goal and is there no further work to do?"#
                 self.config.model_reasoning_effort;
         }
 
-        if let Ok(home) = code_core::config::find_code_home() {
+        if let Ok(home) = code_core::config::find_kay_home() {
             if let Err(err) = code_core::config::set_auto_review_resolve_model(
                 &home,
                 &self.config.auto_review_resolve_model,
@@ -24287,7 +24287,7 @@ Have we met every part of this goal and is there no further work to do?"#
 
         self.restore_auto_resolve_attempts_if_lost();
 
-        if let Ok(home) = code_core::config::find_code_home() {
+        if let Ok(home) = code_core::config::find_kay_home() {
             if let Err(err) = code_core::config::set_auto_drive_settings(
                 &home,
                 &self.config.auto_drive,
@@ -24364,7 +24364,7 @@ Have we met every part of this goal and is there no further work to do?"#
             return;
         }
 
-        if let Ok(home) = code_core::config::find_code_home() {
+        if let Ok(home) = code_core::config::find_kay_home() {
             if let Err(err) = code_core::config::set_planning_model(
                 &home,
                 &self.config.planning_model,
@@ -24429,7 +24429,7 @@ Have we met every part of this goal and is there no further work to do?"#
         }
         self.config.planning_use_chat_model = use_chat;
 
-        if let Ok(home) = code_core::config::find_code_home() {
+        if let Ok(home) = code_core::config::find_kay_home() {
             if let Err(err) = code_core::config::set_planning_model(
                 &home,
                 &self.config.planning_model,
@@ -24491,7 +24491,7 @@ Have we met every part of this goal and is there no further work to do?"#
             return;
         }
 
-        let message = if let Ok(home) = code_core::config::find_code_home() {
+        let message = if let Ok(home) = code_core::config::find_kay_home() {
             match code_core::config::set_auto_drive_settings(
                 &home,
                 &self.config.auto_drive,
@@ -25079,10 +25079,10 @@ Have we met every part of this goal and is there no further work to do?"#
     }
 
     fn build_mcp_server_rows(&mut self) -> Option<McpServerRows> {
-        let home = match code_core::config::find_code_home() {
+        let home = match code_core::config::find_kay_home() {
             Ok(home) => home,
             Err(e) => {
-                let msg = format!("Failed to locate CODE_HOME: {}", e);
+                let msg = format!("Failed to locate Kay home: {}", e);
                 self.history_push_plain_state(history_cell::new_error_event(msg));
                 return None;
             }
@@ -25869,7 +25869,7 @@ Have we met every part of this goal and is there no further work to do?"#
         // Update the config
         self.config.tui.spinner.name = spinner_name.clone();
         // Persist selection to config file
-        if let Ok(home) = code_core::config::find_code_home() {
+        if let Ok(home) = code_core::config::find_kay_home() {
             if let Err(e) = code_core::config::set_tui_spinner_name(&home, &spinner_name) {
                 tracing::warn!("Failed to persist spinner to config.toml: {}", e);
             } else {
@@ -25968,7 +25968,7 @@ Have we met every part of this goal and is there no further work to do?"#
         // Send ConfigureSession op to backend
         self.submit_configure_session_op();
 
-        // Persist selection into CODEX_HOME/config.toml for this project directory so it sticks.
+        // Persist selection into KAY_HOME/config.toml for this project directory so it sticks.
         let _ = set_project_access_mode(
             &self.config.code_home,
             &self.config.cwd,
@@ -26123,8 +26123,8 @@ Have we met every part of this goal and is there no further work to do?"#
     }
 
     fn save_theme_to_config(&self, new_theme: code_core::config_types::ThemeName) {
-        // Persist the theme selection to CODE_HOME/CODEX_HOME config.toml
-        match code_core::config::find_code_home() {
+        // Persist the theme selection to KAY_HOME/config.toml
+        match code_core::config::find_kay_home() {
             Ok(home) => {
                 if let Err(e) = code_core::config::set_tui_theme_name(&home, new_theme) {
                     tracing::warn!("Failed to persist theme to config.toml: {}", e);
@@ -26460,7 +26460,7 @@ Have we met every part of this goal and is there no further work to do?"#
         self.request_redraw();
     }
 
-    /// Forward an `Op` directly to codex.
+    /// Forward an `Op` directly to Kay.
     pub(crate) fn submit_op(&self, op: Op) {
         if let Err(e) = self.code_op_tx.send(op) {
             tracing::error!("failed to submit op: {e}");
@@ -29012,7 +29012,7 @@ Have we met every part of this goal and is there no further work to do?"#
             tracing::warn!("failed to send validation group update: {err}");
         }
 
-        let result = match find_code_home() {
+        let result = match find_kay_home() {
             Ok(home) => {
                 let key = match group {
                     ValidationGroup::Functional => "functional",
@@ -29047,7 +29047,7 @@ Have we met every part of this goal and is there no further work to do?"#
             {
                 tracing::warn!("failed to send validation tool update: {err}");
             }
-            let persist_result = match find_code_home() {
+            let persist_result = match find_kay_home() {
                 Ok(home) => set_github_actionlint_on_patch(&home, enable)
                     .map_err(|e| e.to_string()),
                 Err(err) => Err(err.to_string()),
@@ -29080,7 +29080,7 @@ Have we met every part of this goal and is there no further work to do?"#
         {
             tracing::warn!("failed to send validation tool update: {err}");
         }
-        let persist_result = match find_code_home() {
+        let persist_result = match find_kay_home() {
             Ok(home) => set_validation_tool_enabled(&home, name, enable)
                 .map_err(|e| e.to_string()),
             Err(err) => Err(err.to_string()),
@@ -29295,7 +29295,7 @@ Have we met every part of this goal and is there no further work to do?"#
                 if !self.config.mcp_servers.is_empty() {
                     self.submit_op(Op::ListMcpTools);
                 }
-                match find_code_home() {
+                match find_kay_home() {
                     Ok(home) => match code_core::config::list_mcp_servers(&home) {
                         Ok((enabled, disabled)) => {
                             let mut lines = String::new();
@@ -29331,7 +29331,7 @@ Have we met every part of this goal and is there no further work to do?"#
                         }
                     },
                     Err(e) => {
-                        let msg = format!("Failed to locate CODEX_HOME: {e}");
+                        let msg = format!("Failed to locate Kay home: {e}");
                         self.history_push_plain_state(history_cell::new_error_event(msg));
                     }
                 }
@@ -29343,7 +29343,7 @@ Have we met every part of this goal and is there no further work to do?"#
                     self.history_push_plain_state(history_cell::new_error_event(msg));
                     return;
                 }
-                match find_code_home() {
+                match find_kay_home() {
                     Ok(home) => {
                         match code_core::config::set_mcp_server_enabled(&home, name, sub == "on") {
                             Ok(changed) => {
@@ -29388,7 +29388,7 @@ Have we met every part of this goal and is there no further work to do?"#
                         }
                     }
                     Err(e) => {
-                        let msg = format!("Failed to locate CODEX_HOME: {}", e);
+                        let msg = format!("Failed to locate Kay home: {}", e);
                         self.history_push_plain_state(history_cell::new_error_event(msg));
                     }
                 }
@@ -29496,7 +29496,7 @@ Have we met every part of this goal and is there no further work to do?"#
                         args.push(tok);
                     }
                 }
-                match find_code_home() {
+                match find_kay_home() {
                     Ok(home) => {
                         let transport = code_core::config_types::McpServerTransportConfig::Stdio {
                             command: command.to_string(),
@@ -29525,7 +29525,7 @@ Have we met every part of this goal and is there no further work to do?"#
                         }
                     }
                     Err(e) => {
-                        let msg = format!("Failed to locate CODEX_HOME: {}", e);
+                        let msg = format!("Failed to locate Kay home: {}", e);
                         self.history_push_plain_state(history_cell::new_error_event(msg));
                     }
                 }
@@ -37305,7 +37305,7 @@ impl ChatWidget<'_> {
             self.auto_resolve_clear();
         }
 
-        let message = if let Ok(home) = code_core::config::find_code_home() {
+        let message = if let Ok(home) = code_core::config::find_kay_home() {
             match code_core::config::set_tui_review_auto_resolve(&home, enabled) {
                 Ok(_) => {
                     tracing::info!("Persisted review auto resolve toggle: {}", enabled);
@@ -37346,7 +37346,7 @@ impl ChatWidget<'_> {
 
         self.config.tui.auto_review_enabled = enabled;
 
-        let message = if let Ok(home) = code_core::config::find_code_home() {
+        let message = if let Ok(home) = code_core::config::find_kay_home() {
             match code_core::config::set_tui_auto_review_enabled(&home, enabled) {
                 Ok(_) => {
                     tracing::info!("Persisted auto review toggle: {}", enabled);
@@ -38827,7 +38827,7 @@ impl ChatWidget<'_> {
             }
         }
 
-        let message = if let Ok(home) = code_core::config::find_code_home() {
+        let message = if let Ok(home) = code_core::config::find_kay_home() {
             match code_core::config::set_auto_drive_settings(
                 &home,
                 &self.config.auto_drive,
@@ -38879,7 +38879,7 @@ impl ChatWidget<'_> {
 
         self.config.auto_drive.auto_review_followup_attempts = limit;
 
-        if let Ok(home) = code_core::config::find_code_home() {
+        if let Ok(home) = code_core::config::find_kay_home() {
             match code_core::config::set_auto_drive_settings(
                 &home,
                 &self.config.auto_drive,
@@ -44874,7 +44874,7 @@ impl ChatWidget<'_> {
         self.config.tui.notifications = new_state.clone();
         self.config.tui_notifications = new_state.clone();
 
-        match find_code_home() {
+        match find_kay_home() {
             Ok(home) => {
                 match code_core::config::set_tui_notifications(&home, new_state) {
                     Ok(()) => {
@@ -44895,7 +44895,7 @@ impl ChatWidget<'_> {
             }
             Err(_) => {
                 let msg = format!(
-                    "✅ {} TUI notifications (not persisted: CODE_HOME/CODEX_HOME not found)",
+                    "✅ {} TUI notifications (not persisted: Kay home not found; set KAY_HOME to persist)",
                     if enabled { "Enabled" } else { "Disabled" }
                 );
                 self.push_background_tail(msg);
@@ -44962,7 +44962,7 @@ impl ChatWidget<'_> {
     }
 
     pub(crate) fn toggle_mcp_server(&mut self, name: &str, enable: bool) {
-        match code_core::config::find_code_home() {
+        match code_core::config::find_kay_home() {
             Ok(home) => match code_core::config::set_mcp_server_enabled(&home, name, enable) {
                 Ok(changed) => {
                     if changed {
@@ -44990,7 +44990,7 @@ impl ChatWidget<'_> {
                 }
             },
             Err(e) => {
-                let msg = format!("Failed to locate CODEX_HOME: {}", e);
+                let msg = format!("Failed to locate Kay home: {}", e);
                 self.history_push_plain_state(history_cell::new_error_event(msg));
             }
         }

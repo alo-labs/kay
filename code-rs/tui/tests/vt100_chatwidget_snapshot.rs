@@ -125,11 +125,6 @@ impl EnvGuard {
         }
     }
 
-    fn remove(&self, key: &'static str) {
-        unsafe {
-            std::env::remove_var(key);
-        }
-    }
 }
 
 impl Drop for EnvGuard {
@@ -2600,12 +2595,11 @@ fn agents_overlay_narrow_terminal_does_not_panic() {
 #[test]
 fn agents_toggle_claude_opus_persists_via_slash_command() {
     let _lock = ENV_LOCK.lock().unwrap();
-    let env = EnvGuard::new(&["HOME", "CODE_HOME", "CODEX_HOME"]);
+    let env = EnvGuard::new(&["HOME", "KAY_HOME"]);
     let home_dir = TempDir::new().expect("temp home");
-    let code_home = TempDir::new().expect("code home");
+    let kay_home = TempDir::new().expect("kay home");
     env.set_path("HOME", home_dir.path());
-    env.set_path("CODE_HOME", code_home.path());
-    env.remove("CODEX_HOME");
+    env.set_path("KAY_HOME", kay_home.path());
 
     let mut harness = ChatWidgetHarness::new();
 
@@ -2757,17 +2751,16 @@ fn model_selection_visibility() {
 #[test]
 fn provider_management_states_cover_list_update_add_and_delete() {
     let _lock = ENV_LOCK.lock().unwrap();
-    let env = EnvGuard::new(&["HOME", "CODE_HOME", "CODEX_HOME", "TMPDIR"]);
+    let env = EnvGuard::new(&["HOME", "KAY_HOME", "TMPDIR"]);
     let home_dir = TempDir::new().expect("temp home");
-    let code_home = TempDir::new().expect("code home");
+    let kay_home = TempDir::new().expect("kay home");
     env.set_path("HOME", home_dir.path());
-    env.set_path("TMPDIR", code_home.path());
-    env.set_path("CODE_HOME", code_home.path());
-    env.set_path("CODEX_HOME", code_home.path());
+    env.set_path("TMPDIR", kay_home.path());
+    env.set_path("KAY_HOME", kay_home.path());
 
-    auth::save_provider_api_key(code_home.path(), OPENCODE_GO_PROVIDER_ID, "sk-opencode-go")
+    auth::save_provider_api_key(kay_home.path(), OPENCODE_GO_PROVIDER_ID, "sk-opencode-go")
         .expect("opencode provider key should be saved");
-    auth::login_with_api_key(code_home.path(), "sk-openai")
+    auth::login_with_api_key(kay_home.path(), "sk-openai")
         .expect("openai login should write auth");
 
     let runtime = tokio::runtime::Builder::new_multi_thread()

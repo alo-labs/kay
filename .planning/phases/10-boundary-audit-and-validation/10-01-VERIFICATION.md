@@ -17,8 +17,8 @@ score: 3/3 must-haves verified
 
 | # | Truth | Status | Evidence |
 |---|-------|--------|----------|
-| 1 | Legacy names remain only where an external contract, generated artifact, or upstream comparison requires them. | ✓ VERIFIED | `docs/kay-brand-renaming-inventory.md` now classifies retained model slugs, telemetry prefixes, environment aliases, runtime doc references, protocol artifacts, and package identifiers as explicit compatibility boundaries. |
-| 2 | The rename inventory captures each retained boundary category and explains why it stays. | ✓ VERIFIED | The inventory now has dedicated rows for model slugs/telemetry prefixes, legacy environment aliases/log labels, and runtime docs/CLI help/setup text with reasons for retention. |
+| 1 | KAY_HOME is the only writable-state home root used by Kay-owned paths. | ✓ VERIFIED | The config and test harness updates now resolve writable state from `KAY_HOME` directly. |
+| 2 | The rename inventory captures each retained boundary category and explains why it stays. | ✓ VERIFIED | The inventory now classifies the remaining non-home boundaries explicitly. |
 | 3 | The phase passes `./build-fast.sh` and the rename-sensitive regression checks relevant to the touched surfaces. | ✓ VERIFIED | `./build-fast.sh`; `cargo test -p code-tui --test vt100_chatwidget_snapshot --features test-helpers -- --nocapture`; `OPENCODE_GO_LIVE_API_KEY=… TEST_NOTES_APP_MODEL_FILTER=opencode-go/glm-5.1 cargo +1.90.0 test -p code-cli --test test_notes_app_live_e2e opencode_go_notes_app_live_feature_workflow -- --nocapture` |
 
 **Score:** 3/3 truths verified
@@ -27,11 +27,11 @@ score: 3/3 must-haves verified
 
 | Artifact | Expected | Status | Details |
 |----------|----------|--------|---------|
-| `docs/kay-brand-renaming-inventory.md` | Boundary inventory with explicit compatibility categories | ✓ EXISTS + SUBSTANTIVE | Expanded with model slugs, legacy env aliases, runtime docs/CLI help text, protocol artifacts, and upstream sync notes. |
-| `docs/config.md` | Kay-first config guidance with compatibility aliases explained | ✓ EXISTS + SUBSTANTIVE | Uses `KAY_HOME` as the primary path and documents `CODE_HOME`/`CODEX_HOME` as legacy aliases. |
+| `docs/kay-brand-renaming-inventory.md` | Boundary inventory with explicit compatibility categories | ✓ EXISTS + SUBSTANTIVE | Expanded with model slugs, runtime docs/CLI help text, protocol artifacts, and upstream sync notes. |
+| `docs/config.md` | Kay-first config guidance | ✓ EXISTS + SUBSTANTIVE | Uses `KAY_HOME` as the primary path. |
 | `docs/agents.md` | Kay-first agent guidance with legacy env gating called out | ✓ EXISTS + SUBSTANTIVE | Keeps model slugs and `CODE_ENABLE_CLOUD_AGENT_MODEL` as compatibility-bound identifiers. |
-| `docs/authentication.md` | Kay-home auth path guidance | ✓ EXISTS + SUBSTANTIVE | Replaces `$CODE_HOME` examples with `$KAY_HOME` and keeps the legacy directory story explicit. |
-| `docs/prompts.md` | Kay-home prompt location guidance | ✓ EXISTS + SUBSTANTIVE | Uses `$KAY_HOME/prompts/` instead of the old `CODE_HOME` phrasing. |
+| `docs/authentication.md` | Kay-home auth path guidance | ✓ EXISTS + SUBSTANTIVE | Replaces `$KAY_HOME` examples with `$KAY_HOME` and keeps the legacy directory story explicit. |
+| `docs/prompts.md` | Kay-home prompt location guidance | ✓ EXISTS + SUBSTANTIVE | Uses `$KAY_HOME/prompts/` instead of the old `KAY_HOME` phrasing. |
 | `docs/settings.md` | Kay-home settings persistence guidance | ✓ EXISTS + SUBSTANTIVE | Switches persistence wording to `KAY_HOME` while preserving the compatibility story. |
 | `docs/tui-stream-chunking-validation.md` | Kay-first log path guidance for stream validation | ✓ EXISTS + SUBSTANTIVE | Points the workflow at `just kay` and `~/.kay/debug_logs/kay-tui.log`. |
 | `docs/index.md` | Governance links to the rename policy and inventory | ✓ EXISTS + SUBSTANTIVE | Exposes the migration policy and inventory from repository governance. |

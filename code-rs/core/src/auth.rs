@@ -176,8 +176,8 @@ impl CodexAuth {
         Ok(access)
     }
 
-    /// Loads the available auth information from the auth.json or
-    /// OPENAI_API_KEY environment variable.
+    /// Loads the available auth information from the `KAY_HOME/auth.json`
+    /// file or the `OPENAI_API_KEY` environment variable.
     pub fn from_code_home(
         code_home: &Path,
         preferred_auth_method: AuthMode,
@@ -781,7 +781,7 @@ fn load_auth(
     }))
 }
 
-/// Attempt to read and refresh the `auth.json` file in the given `CODEX_HOME` directory.
+/// Attempt to read and refresh the `auth.json` file in the given Kay home directory.
 /// Returns the full AuthDotJson structure after refreshing if necessary.
 pub fn try_read_auth_json(auth_file: &Path) -> std::io::Result<AuthDotJson> {
     let mut file = File::open(auth_file)?;
@@ -1027,7 +1027,7 @@ fn summarize_body(body: &str) -> String {
     }
 }
 
-/// Expected structure for $CODEX_HOME/auth.json.
+/// Expected structure for `$KAY_HOME/auth.json`.
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 pub struct AuthDotJson {
     #[serde(default, skip_serializing_if = "Option::is_none")]

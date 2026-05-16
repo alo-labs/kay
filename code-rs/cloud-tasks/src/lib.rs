@@ -198,7 +198,7 @@ pub async fn run_main(cli: Cli, _code_linux_sandbox_exe: Option<PathBuf>) -> any
         append_info_log(format!("startup: base_url={base_url} path_style={style}"));
 
         // Require ChatGPT login (SWIC). Exit with a clear message if missing.
-        let _token = match code_core::config::find_code_home()
+        let _token = match code_core::config::find_kay_home()
             .ok()
             .map(|home| {
                 code_login::AuthManager::new(
@@ -1539,7 +1539,7 @@ async fn run_submit(args: crate::cli::SubmitArgs) -> anyhow::Result<()> {
             .with_user_agent(ua);
 
         // Attach ChatGPT auth (required in production)
-        let _token = match code_core::config::find_code_home()
+        let _token = match code_core::config::find_kay_home()
             .ok()
             .map(|home| {
                 code_login::AuthManager::new(

@@ -119,7 +119,7 @@ impl SubagentEditorView {
             agent_instructions: None,
         };
         // Persist to disk asynchronously to avoid blocking the TUI runtime
-        if let Ok(home) = code_core::config::find_code_home() {
+        if let Ok(home) = code_core::config::find_kay_home() {
             let cfg_clone = cfg.clone();
             tokio::spawn(async move {
                 let _ = code_core::config_edit::upsert_subagent_command(&home, &cfg_clone).await;
@@ -261,7 +261,7 @@ impl SubagentEditorView {
             KeyEvent { code: KeyCode::Enter, .. } if self.confirm_delete && self.field == 4 => {
                 let id = self.name_field.text().to_string();
                 if !id.trim().is_empty() {
-                    if let Ok(home) = code_core::config::find_code_home() {
+                    if let Ok(home) = code_core::config::find_kay_home() {
                         let idc = id.clone();
                         tokio::spawn(async move {
                             let _ = code_core::config_edit::delete_subagent_command(&home, &idc).await;

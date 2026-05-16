@@ -36,7 +36,7 @@ impl ConfigBuilder {
     pub fn load(self) -> std::io::Result<Config> {
         let code_home = match self.code_home {
             Some(path) => path,
-            None => sources::find_code_home()?,
+            None => sources::find_kay_home()?,
         };
 
         let mut root_value = sources::load_config_as_toml(&code_home)?;
@@ -65,7 +65,7 @@ impl ConfigBuilder {
     pub fn load_toml(self) -> std::io::Result<ConfigToml> {
         let code_home = match self.code_home {
             Some(path) => path,
-            None => sources::find_code_home()?,
+            None => sources::find_kay_home()?,
         };
 
         let mut root_value = sources::load_config_as_toml(&code_home)?;

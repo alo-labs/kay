@@ -110,8 +110,8 @@ fn resolve_chrome_log_path() -> Option<PathBuf> {
     }
 
     let base = if let Ok(home) = std::env::var("KAY_HOME")
-        .or_else(|_| std::env::var("CODE_HOME"))
-        .or_else(|_| std::env::var("CODEX_HOME"))
+        .or_else(|_| std::env::var("KAY_HOME"))
+        .or_else(|_| std::env::var("KAY_HOME"))
     {
         PathBuf::from(home).join("debug_logs")
     } else if let Ok(home) = std::env::var("HOME") {

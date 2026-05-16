@@ -22,7 +22,7 @@ pub struct ReviewGuard {
 }
 
 fn state_dir() -> std::io::Result<PathBuf> {
-    let mut dir = crate::config::find_code_home()?;
+    let mut dir = crate::config::find_kay_home()?;
     dir.push("state");
     dir.push("review");
     fs::create_dir_all(&dir)?;
@@ -212,16 +212,16 @@ mod tests {
     use serial_test::serial;
     use tempfile::TempDir;
 
-    fn set_code_home(path: &Path) {
-        // SAFETY: tests run serially and isolate CODE_HOME within a temp dir per test.
-        unsafe { std::env::set_var("CODE_HOME", path); }
+    fn set_kay_home(path: &Path) {
+        // SAFETY: tests run serially and isolate KAY_HOME within a temp dir per test.
+        unsafe { std::env::set_var("KAY_HOME", path); }
     }
 
     #[test]
     #[serial]
     fn lock_contention_and_release() {
         let dir = TempDir::new().unwrap();
-        set_code_home(dir.path());
+        set_kay_home(dir.path());
         let cwd = dir.path();
 
         let g1 = try_acquire_lock("test", cwd).unwrap();
@@ -238,7 +238,7 @@ mod tests {
     #[serial]
     fn epoch_bump_changes_value() {
         let dir = TempDir::new().unwrap();
-        set_code_home(dir.path());
+        set_kay_home(dir.path());
         let cwd = dir.path();
         let e0 = current_snapshot_epoch_for(cwd);
         bump_snapshot_epoch_for(cwd);
@@ -250,7 +250,7 @@ mod tests {
     #[serial]
     fn lock_records_snapshot_epoch_and_updates_after_bump() {
         let dir = TempDir::new().unwrap();
-        set_code_home(dir.path());
+        set_kay_home(dir.path());
         let cwd = dir.path();
 
         bump_snapshot_epoch_for(cwd);
@@ -273,7 +273,7 @@ mod tests {
     #[serial]
     fn lock_info_survives_epoch_bump_for_stale_detection() {
         let dir = TempDir::new().unwrap();
-        set_code_home(dir.path());
+        set_kay_home(dir.path());
         let cwd = dir.path();
 
         let guard = try_acquire_lock("stale-check", cwd).unwrap().expect("lock available");
@@ -293,7 +293,7 @@ mod tests {
     #[serial]
     fn lock_contention_across_components() {
         let dir = TempDir::new().unwrap();
-        set_code_home(dir.path());
+        set_kay_home(dir.path());
         let cwd = dir.path();
 
         let exec_lock = try_acquire_lock("exec-review", cwd).unwrap();
@@ -310,7 +310,7 @@ mod tests {
     #[serial]
     fn stale_epoch_detected_after_git_mutation() {
         let dir = TempDir::new().unwrap();
-        set_code_home(dir.path());
+        set_kay_home(dir.path());
         let cwd = dir.path();
 
         let before = current_snapshot_epoch_for(cwd);
@@ -331,7 +331,7 @@ mod tests {
     #[serial]
     fn apply_failure_resume_requires_fresh_epoch() {
         let dir = TempDir::new().unwrap();
-        set_code_home(dir.path());
+        set_kay_home(dir.path());
         let cwd = dir.path();
 
         let initial = current_snapshot_epoch_for(cwd);
