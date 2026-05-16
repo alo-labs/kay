@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::PathBuf;
 
-use code_core::config::find_code_home;
+use code_core::config::find_kay_home;
 use code_core::protocol::Op;
 use code_protocol::custom_prompts::CustomPrompt;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
@@ -380,10 +380,10 @@ impl PromptsSettingsView {
             }
         }
 
-        let code_home = match find_code_home() {
+        let code_home = match find_kay_home() {
             Ok(path) => path,
             Err(e) => {
-                self.status = Some((format!("CODE_HOME unavailable: {e}"), Style::default().fg(colors::error())));
+                self.status = Some((format!("Kay home unavailable: {e}"), Style::default().fg(colors::error())));
                 return;
             }
         };

@@ -59,7 +59,7 @@ fn spawn_transcript_viewer(
     let mut command = CommandBuilder::new(code_bin());
     command.arg("transcript");
     command.arg(transcript_path);
-    command.env("CODE_HOME", code_home.path());
+    command.env("KAY_HOME", code_home.path());
     command.env("TERM", "xterm-256color");
     command.env("NO_COLOR", "1");
     command.env("CODE_SKIP_TUI_TERMINAL_QUERIES", "1");
@@ -76,7 +76,7 @@ fn spawn_transcript_viewer(
 #[test]
 fn transcript_viewer_cli_opens_a_real_jsonl_transcript() {
     let transcript_dir = TempDir::new().expect("transcript dir");
-    let code_home = TempDir::new().expect("code home");
+    let code_home = TempDir::new().expect("KAY_HOME");
     let transcript_path = make_transcript_fixture(transcript_dir.path());
     let baseline = fs::read_to_string(&transcript_path).expect("read transcript baseline");
 

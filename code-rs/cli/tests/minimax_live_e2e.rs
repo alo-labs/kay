@@ -21,7 +21,7 @@ fn login_minimax(code_home: &TempDir, api_key: &str) {
         .arg("--provider")
         .arg("minimax")
         .arg("--with-api-key")
-        .env("CODE_HOME", code_home.path())
+        .env("KAY_HOME", code_home.path())
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -53,7 +53,7 @@ fn run_minimax_exec(code_home: &TempDir, prompt: &str) -> String {
         .arg("-c")
         .arg("model=MiniMax-M2.7")
         .arg(prompt)
-        .env("CODE_HOME", code_home.path())
+        .env("KAY_HOME", code_home.path())
         .env_remove("OPENAI_API_KEY")
         .stdin(Stdio::null())
         .output()
@@ -88,7 +88,7 @@ fn minimax_m27_live_exec_edge_cases() {
         return;
     };
 
-    let code_home = TempDir::new().expect("temp CODE_HOME");
+    let code_home = TempDir::new().expect("temp KAY_HOME");
     login_minimax(&code_home, &api_key);
 
     let exact = run_minimax_exec(&code_home, "Reply with exactly OK.");

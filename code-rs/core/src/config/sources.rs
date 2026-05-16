@@ -1669,7 +1669,7 @@ fn env_path(var: &str) -> std::io::Result<Option<PathBuf>> {
     }
 }
 
-fn default_code_home_dir() -> Option<PathBuf> {
+fn default_kay_home_dir() -> Option<PathBuf> {
     let mut path = home_dir()?;
     path.push(".kay");
     Some(path)
@@ -1685,25 +1685,20 @@ pub fn resolve_code_path_for_read(code_home: &Path, relative: &Path) -> PathBuf 
     code_home.join(relative)
 }
 
-/// Returns the path to the Kay configuration directory. Users can override it
-/// with `KAY_HOME` or the legacy `CODE_HOME` / `CODEX_HOME` environment
-/// variables; otherwise Kay defaults to `~/.kay`.
+/// Returns the path to the Kay configuration directory.
+///
+/// `KAY_HOME` is the canonical override. When it is unset, Kay falls back to
+/// the default `~/.kay` location.
 ///
 /// The resolved path is canonicalized when an override is set. If neither a
 /// user override nor a writable home directory is available, this function
 /// returns an error.
-pub fn find_code_home() -> std::io::Result<PathBuf> {
+pub fn find_kay_home() -> std::io::Result<PathBuf> {
     if let Some(path) = env_path("KAY_HOME")? {
         return Ok(path);
     }
-    if let Some(path) = env_path("CODE_HOME")? {
-        return Ok(path);
-    }
-    if let Some(path) = env_path("CODEX_HOME")? {
-        return Ok(path);
-    }
 
-    default_code_home_dir().ok_or_else(|| {
+    default_kay_home_dir().ok_or_else(|| {
         std::io::Error::new(
             std::io::ErrorKind::NotFound,
             "Could not find home directory",

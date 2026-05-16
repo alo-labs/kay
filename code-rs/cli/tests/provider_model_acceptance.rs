@@ -48,13 +48,13 @@ fn code_bin() -> &'static str {
     env!("CARGO_BIN_EXE_code")
 }
 
-fn login_provider(code_home: &TempDir, provider_id: &str, api_key: &str) {
+fn login_provider(kay_home: &TempDir, provider_id: &str, api_key: &str) {
     let mut child = Command::new(code_bin())
         .arg("login")
         .arg("--provider")
         .arg(provider_id)
         .arg("--with-api-key")
-        .env("CODE_HOME", code_home.path())
+        .env("KAY_HOME", kay_home.path())
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -78,7 +78,7 @@ fn login_provider(code_home: &TempDir, provider_id: &str, api_key: &str) {
 }
 
 fn run_exec_prompt(
-    code_home: &TempDir,
+    kay_home: &TempDir,
     provider_id: &str,
     model: &str,
     prompt: &str,
@@ -95,7 +95,7 @@ fn run_exec_prompt(
         .arg("-c")
         .arg(format!("model={model}"))
         .arg(prompt)
-        .env("CODE_HOME", code_home.path())
+        .env("KAY_HOME", kay_home.path())
         .env_remove("OPENAI_API_KEY")
         .stdin(Stdio::null())
         .output()
@@ -112,7 +112,7 @@ fn run_exec_prompt(
 }
 
 fn run_exec_prompt_with_demo(
-    code_home: &TempDir,
+    kay_home: &TempDir,
     provider_id: &str,
     model: &str,
     developer: &str,
@@ -132,7 +132,7 @@ fn run_exec_prompt_with_demo(
         .arg("-c")
         .arg(format!("model={model}"))
         .arg(prompt)
-        .env("CODE_HOME", code_home.path())
+        .env("KAY_HOME", kay_home.path())
         .env_remove("OPENAI_API_KEY")
         .stdin(Stdio::null())
         .output()
@@ -149,7 +149,7 @@ fn run_exec_prompt_with_demo(
 }
 
 fn run_exec_prompt_with_output_schema(
-    code_home: &TempDir,
+    kay_home: &TempDir,
     provider_id: &str,
     model: &str,
     prompt: &str,
@@ -169,7 +169,7 @@ fn run_exec_prompt_with_output_schema(
         .arg("-c")
         .arg(format!("model={model}"))
         .arg(prompt)
-        .env("CODE_HOME", code_home.path())
+        .env("KAY_HOME", kay_home.path())
         .env_remove("OPENAI_API_KEY")
         .stdin(Stdio::null())
         .output()
@@ -211,8 +211,8 @@ fn assert_provider_acceptance(spec: &ProviderAcceptanceSpec) {
         return;
     };
 
-    let code_home = TempDir::new().expect("temp CODE_HOME");
-    login_provider(&code_home, spec.provider_id, &api_key);
+    let kay_home = TempDir::new().expect("temp KAY_HOME");
+    login_provider(&kay_home, spec.provider_id, &api_key);
 
     let schema = serde_json::json!({
         "type": "object",
@@ -224,15 +224,15 @@ fn assert_provider_acceptance(spec: &ProviderAcceptanceSpec) {
             "ok": { "type": "boolean" },
         },
     });
-    let schema_path = code_home.path().join("acceptance-output-schema.json");
+    let schema_path = kay_home.path().join("acceptance-output-schema.json");
     std::fs::write(&schema_path, serde_json::to_string_pretty(&schema).unwrap())
         .expect("write acceptance output schema");
 
     for &model in spec.models {
-        let plain_last_message = tempfile::NamedTempFile::new_in(code_home.path())
+        let plain_last_message = tempfile::NamedTempFile::new_in(kay_home.path())
             .expect("create plain last-message file");
         let plain = run_exec_prompt(
-            &code_home,
+            &kay_home,
             spec.provider_id,
             model,
             "Reply with exactly OK.",
@@ -243,10 +243,10 @@ fn assert_provider_acceptance(spec: &ProviderAcceptanceSpec) {
             "expected OK response for {model}, got:\n{plain}"
         );
 
-        let dev_last_message = tempfile::NamedTempFile::new_in(code_home.path())
+        let dev_last_message = tempfile::NamedTempFile::new_in(kay_home.path())
             .expect("create dev last-message file");
         let dev = run_exec_prompt_with_demo(
-            &code_home,
+            &kay_home,
             spec.provider_id,
             model,
             "You are a terse assistant. Follow the user's instruction exactly.",
@@ -258,10 +258,10 @@ fn assert_provider_acceptance(spec: &ProviderAcceptanceSpec) {
             "expected exact DEV_OK response for {model}, got:\n{dev}"
         );
 
-        let json_last_message = tempfile::NamedTempFile::new_in(code_home.path())
+        let json_last_message = tempfile::NamedTempFile::new_in(kay_home.path())
             .expect("create json last-message file");
         let json = run_exec_prompt_with_output_schema(
-            &code_home,
+            &kay_home,
             spec.provider_id,
             model,
             &format!(
@@ -278,10 +278,10 @@ fn assert_provider_acceptance(spec: &ProviderAcceptanceSpec) {
         assert_eq!(parsed["model"], model);
         assert_eq!(parsed["ok"], true);
 
-        let markdown_last_message = tempfile::NamedTempFile::new_in(code_home.path())
+        let markdown_last_message = tempfile::NamedTempFile::new_in(kay_home.path())
             .expect("create markdown last-message file");
         let markdown = run_exec_prompt(
-            &code_home,
+            &kay_home,
             spec.provider_id,
             model,
             &format!(

@@ -568,7 +568,7 @@ pub(super) async fn submission_loop(
                     // SAFETY: setting a process-wide env var is intentional here to
                     // coordinate sub-agent debug behaviour launched from this session.
                     unsafe { std::env::set_var("CODE_SUBAGENT_DEBUG", "1"); }
-                    match crate::config::find_code_home() {
+                    match crate::config::find_kay_home() {
                         Ok(mut debug_root) => {
                             debug_root.push("debug_logs");
                             let mut manager = AGENT_MANAGER.write().await;

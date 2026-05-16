@@ -31,14 +31,14 @@ struct AutoDrivePidMetadata {
     command: Option<String>,
 }
 
-/// Small RAII helper that writes `~/.code/auto-drive/pid-<pid>.json` and
+/// Small RAII helper that writes `KAY_HOME/auto-drive/pid-<pid>.json` and
 /// removes it when dropped or explicitly cleaned up.
 pub struct AutoDrivePidFile {
     path: PathBuf,
 }
 
 impl AutoDrivePidFile {
-    /// Write the PID file under the provided code_home, returning a guard that
+    /// Write the PID file under the provided Kay home, returning a guard that
     /// will delete it on drop. Errors are swallowed so Auto Drive startup never
     /// fails because of telemetry bookkeeping.
     pub fn write(

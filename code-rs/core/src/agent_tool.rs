@@ -225,7 +225,7 @@ fn current_code_binary_path() -> Result<std::path::PathBuf, String> {
         let p = std::path::PathBuf::from(path);
         if !p.exists() {
             return Err(format!(
-                "CODE_BINARY_PATH points to '{}' but that file is missing. Rebuild with ./build-fast.sh or update CODE_BINARY_PATH.",
+                "Kay binary path '{}' does not exist. Rebuild with ./build-fast.sh or update CODE_BINARY_PATH.",
                 p.display()
             ));
         }
@@ -1613,7 +1613,7 @@ async fn execute_model_with_permissions(
         command_base.clone()
     };
 
-    // Special case: for the built‑in Codex agent, prefer invoking the currently
+    // Special case: for the built-in Kay agent, prefer invoking the currently
     // running executable with the `exec` subcommand rather than relying on a
     // `codex` binary to be present on PATH. This improves portability,
     // especially on Windows where global shims may be missing.
@@ -1680,9 +1680,9 @@ async fn execute_model_with_permissions(
         other => other,
     };
 
-    // Configuration overrides for Codex CLI families. External CLIs (claude,
+    // Configuration overrides for Kay CLI families. External CLIs (claude,
     // gemini, copilot, qwen) do not understand our config flags, so only attach these
-    // when launching Codex binaries.
+    // when launching Kay binaries.
     let effort_override = format!(
         "model_reasoning_effort={}",
         clamped_effort.to_string().to_ascii_lowercase()

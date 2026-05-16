@@ -1,7 +1,7 @@
 {
   "task_id": "github-issues-12-19-runtime-fixes",
   "task_granularity": 2,
-  "updated_at": "2026-05-16T14:33:44Z",
+  "updated_at": "2026-05-16T17:48:36Z",
   "_notes": [
     "Added Kay brand renaming policy and inventory docs in the current session.",
     "Refreshed during the Kay reliability-grade policy update in the current session.",
@@ -12,6 +12,7 @@
     "Refreshed during the Kay README multi-provider and getting-started rewrite in the current session.",
     "Refreshed during the Kay brand rename phase 08 docs-first sweep in the current session.",
     "Refreshed during the Kay runtime-path and script rename phase in the current session.",
+    "Refreshed during the current release-style Kay rename sweep for remaining user-facing copy.",
     "This checklist records every governed doc key present under docs/ plus root README.md and CHANGELOG.md.",
     "Refreshed during the primary binary rename from code to kay, including install, release, and command docs.",
     "Refreshed during MiniMax/runtime-isolation fixes for GitHub issues #12 and #15-#19.",
@@ -28,7 +29,7 @@
     "docs/config.md": "updated",
     "docs/doc-scheme.md": "updated",
     "docs/doc-scheme.json": "updated",
-    "docs/example-config.md": "not-needed: unchanged in this session",
+    "docs/example-config.md": "updated",
     "docs/exec.md": "updated",
     "docs/execpolicy.md": "updated",
     "docs/exit-confirmation-prompt-design.md": "not-needed: unchanged in this session",

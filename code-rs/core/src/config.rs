@@ -101,7 +101,7 @@ pub use defaults::set_default_originator;
 pub use sources::{
     add_mcp_server,
     add_project_allowed_command,
-    find_code_home,
+    find_kay_home,
     list_mcp_servers,
     load_config_as_toml,
     load_global_mcp_servers,
@@ -407,10 +407,10 @@ pub struct Config {
     pub project_doc_fallback_filenames: Vec<String>,
 
     /// Directory containing all Kay state (defaults to `~/.kay`; can be
-    /// overridden by the `CODE_HOME` environment variable).
+    /// overridden by `KAY_HOME`).
     pub code_home: PathBuf,
 
-    /// Settings that govern if and what will be written to `~/.kay/history.jsonl`.
+    /// Settings that govern if and what will be written to `KAY_HOME/history.jsonl`.
     pub history: History,
 
     /// Optional URI-based file opener. If set, citations to files in the model
@@ -573,7 +573,7 @@ impl Config {
         cli_overrides: Vec<(String, TomlValue)>,
         overrides: ConfigOverrides,
     ) -> std::io::Result<Self> {
-        let code_home = find_code_home()?;
+        let kay_home = find_kay_home()?;
         let mut root_value = TomlValue::Table(Default::default());
         let cli_paths: Vec<String> = cli_overrides.iter().map(|(path, _)| path.clone()).collect();
         for (path, value) in cli_overrides {
@@ -581,7 +581,7 @@ impl Config {
         }
 
         let cfg = validation::deserialize_config_toml_with_cli_warnings(&root_value, &cli_paths)?;
-        Config::load_from_base_config_with_overrides(cfg, overrides, code_home)
+        Config::load_from_base_config_with_overrides(cfg, overrides, kay_home)
     }
 }
 
@@ -753,7 +753,7 @@ pub struct ConfigToml {
     #[serde(default)]
     pub profiles: HashMap<String, ConfigProfile>,
 
-    /// Settings that govern if and what will be written to `~/.kay/history.jsonl`.
+    /// Settings that govern if and what will be written to `KAY_HOME/history.jsonl`.
     #[serde(default)]
     pub history: Option<History>,
 
@@ -1980,10 +1980,10 @@ persistence = "none"
     #[serial_test::serial]
     #[test]
     fn load_default_with_cli_overrides_applies_cli_model_override() -> std::io::Result<()> {
-        let _code_home_guard = EnvVarGuard::new("CODE_HOME");
-        let temp_code_home = TempDir::new()?;
+        let _kay_home_guard = EnvVarGuard::new("KAY_HOME");
+        let temp_kay_home = TempDir::new()?;
         unsafe {
-            std::env::set_var("CODE_HOME", temp_code_home.path());
+            std::env::set_var("KAY_HOME", temp_kay_home.path());
         }
 
         let config = Config::load_default_with_cli_overrides(
@@ -2018,44 +2018,22 @@ persistence = "none"
 
     #[serial_test::serial]
     #[test]
-    fn load_instructions_ignores_legacy_codex_home() -> anyhow::Result<()> {
+    fn load_instructions_returns_none_without_agents_md() -> anyhow::Result<()> {
         let code_home = TempDir::new()?;
-        let legacy_home = TempDir::new()?;
-        let legacy_codex = legacy_home.path().join(".codex");
-        std::fs::create_dir_all(&legacy_codex)?;
-        std::fs::write(legacy_codex.join("AGENTS.md"), " legacy guidance \n")?;
-
-        let _host_home_guard = EnvVarGuard::new("CODEX_HOST_HOME");
-        let _home_guard = EnvVarGuard::new("HOME");
-        let _code_home_guard = EnvVarGuard::new("CODE_HOME");
-        let _codex_home_guard = EnvVarGuard::new("CODEX_HOME");
-
-        unsafe {
-            std::env::set_var("HOME", legacy_home.path());
-            std::env::remove_var("CODE_HOME");
-            std::env::remove_var("CODEX_HOME");
-        }
 
         let loaded = Config::load_instructions(Some(code_home.path()));
 
-        assert!(loaded.is_none(), "legacy Codex guidance should not be auto-loaded");
+        assert!(loaded.is_none(), "AGENTS.md should not be loaded when it is absent");
         Ok(())
     }
 
     #[serial_test::serial]
     #[test]
-    fn load_instructions_uses_only_local_code_home() -> anyhow::Result<()> {
+    fn load_instructions_uses_only_local_kay_home() -> anyhow::Result<()> {
         let code_home = TempDir::new()?;
         std::fs::write(code_home.path().join("AGENTS.md"), "local guidance")?;
 
         let _host_home_guard = EnvVarGuard::new("CODEX_HOST_HOME");
-        let _code_home_guard = EnvVarGuard::new("CODE_HOME");
-        let _codex_home_guard = EnvVarGuard::new("CODEX_HOME");
-
-        unsafe {
-            std::env::remove_var("CODE_HOME");
-            std::env::remove_var("CODEX_HOME");
-        }
 
         let loaded = Config::load_instructions(Some(code_home.path()));
 

@@ -13,8 +13,8 @@ Kay supports several mechanisms for setting config values:
   - If `value` cannot be parsed as a valid TOML value, it is treated as a string value. This means that `-c model='"o3"'` and `-c model=o3` are equivalent.
     - In the first case, the value is the TOML string `"o3"`, while in the second the value is `o3`, which is not valid TOML and therefore treated as the TOML string `"o3"`.
     - Because quotes are interpreted by one's shell, `-c key="true"` will be correctly interpreted in TOML as `key = true` (a boolean) and not `key = "true"` (a string). If for some reason you needed the string `"true"`, you would need to use `-c key='"true"'` (note the two sets of quotes).
-- The `$KAY_HOME/config.toml` configuration file. `KAY_HOME` defaults to `~/.kay`; Kay keeps its own isolated home there and also honors the legacy `CODE_HOME` and `CODEX_HOME` aliases for compatibility.
-- If `$KAY_HOME/config.toml` is absent, Kay also reads the older `$KAY_HOME/kay.toml` provider-default format for compatibility.
+- The `$KAY_HOME/config.toml` configuration file. `KAY_HOME` defaults to `~/.kay`.
+- If `$KAY_HOME/config.toml` is absent, Kay also reads the older `$KAY_HOME/kay.toml` provider-default format.
 
 - https://developers.openai.com/codex/config-reference
 

@@ -1,15 +1,15 @@
 ---
 gsd_state_version: 1.0
-milestone: v0.9.5
-milestone_name: Kay Brand Renaming
-status: Milestone archived
-last_updated: "2026-05-16T15:42:34Z"
-last_activity: 2026-05-16 — Milestone v0.9.5 archived, release preflight next
+milestone: v0.9.6
+milestone_name: Kay Home Isolation
+status: Shipped
+last_updated: "2026-05-16T18:59:23Z"
+last_activity: 2026-05-16 — v0.9.6 archived, tagged, and released after the pre-release gate passed
 progress:
-  total_phases: 3
-  completed_phases: 3
-  total_plans: 3
-  completed_plans: 3
+  total_phases: 1
+  completed_phases: 1
+  total_plans: 1
+  completed_plans: 1
 ---
 
 # Project State
@@ -20,14 +20,14 @@ See: .planning/PROJECT.md (updated 2026-05-16)
 
 **Core value:** Keep the CLI buildable, understandable, and safe to evolve
 without disturbing existing workflows.
-**Current focus:** Release preflight and publish
+**Current focus:** Release complete; start the next milestone when ready
 
 ## Current Position
 
-Phase: Milestone archived (v0.9.5)
-Plan: archive complete
-Status: Milestone archived
-Last activity: 2026-05-16 — Milestone v0.9.5 archived, release preflight next
+Phase: complete
+Plan: complete
+Status: shipped
+Last activity: 2026-05-16 — v0.9.6 archived, tagged, and released after the pre-release gate passed
 
 ## Current Context
 
@@ -49,6 +49,10 @@ Last activity: 2026-05-16 — Milestone v0.9.5 archived, release preflight next
 - [Dynamic model selection] Render provider headers in the fixed OpenCode Go, MiniMax, OpenAI order and show an explicit empty state when nothing is unlocked.
 - [Brand migration] Kay-first branding is now the default for first-party surfaces; legacy names stay only where compatibility or upstream comparison requires them.
 - [Brand migration] Daily upstream reconciliation is part of the migration process so common-file drift stays small and reviewable.
+- [KAY_HOME isolation] KAY_HOME is the canonical isolated root for Kay-owned writable state when it is set.
+- [KAY_HOME isolation] When KAY_HOME is unset, Kay uses its normal default home layout.
+- [KAY_HOME isolation] Session, transcript, auth, skills, worktree, and debug-log paths should resolve beneath the resolved Kay home tree.
+- [KAY_HOME isolation] The pre-release gate and archive docs confirm the KAY_HOME-only isolation path without caller-managed home redirection.
 
 ### Blockers/Concerns
 
@@ -56,6 +60,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-05-16T13:46:10.479Z
-Stopped at: Phase 09 execution in progress
+Last session: 2026-05-16T18:59:23.000Z
+Stopped at: Milestone archived and release tagged
 Resume file: None

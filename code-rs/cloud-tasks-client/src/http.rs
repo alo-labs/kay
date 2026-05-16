@@ -828,8 +828,8 @@ fn resolve_log_path() -> Option<PathBuf> {
     let base = if let Ok(dir) = std::env::var("CODEX_CLOUD_TASKS_LOG_DIR") {
         PathBuf::from(dir)
     } else if let Ok(home) = std::env::var("KAY_HOME")
-        .or_else(|_| std::env::var("CODE_HOME"))
-        .or_else(|_| std::env::var("CODEX_HOME"))
+        .or_else(|_| std::env::var("KAY_HOME"))
+        .or_else(|_| std::env::var("KAY_HOME"))
     {
         PathBuf::from(home).join("debug_logs")
     } else if let Some(home) = user_home_dir() {

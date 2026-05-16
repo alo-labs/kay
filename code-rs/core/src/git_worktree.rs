@@ -8,7 +8,8 @@ use tokio::process::Command;
 
 use crate::review_coord::bump_snapshot_epoch_for;
 
-/// Returns the `/.../.code/branches/<worktree>` root when `path` resides inside a branch worktree.
+/// Returns the `KAY_HOME/working/<repo>/branches/<worktree>` root when
+/// `path` resides inside a branch worktree.
 pub fn branch_worktree_root(path: &Path) -> Option<PathBuf> {
     use std::ffi::OsStr;
 
@@ -24,7 +25,7 @@ pub fn branch_worktree_root(path: &Path) -> Option<PathBuf> {
             while let Some(dir) = higher {
                 if dir
                     .file_name()
-                    .map(|name| name == OsStr::new(".code"))
+                    .map(|name| name == OsStr::new("working"))
                     .unwrap_or(false)
                 {
                     candidate = Some(ancestor.to_path_buf());
@@ -38,7 +39,7 @@ pub fn branch_worktree_root(path: &Path) -> Option<PathBuf> {
     candidate
 }
 
-/// Returns true when `path` resides inside a `/.../.code/branches/<worktree>` directory.
+/// Returns true when `path` resides inside a `KAY_HOME/working/.../branches/<worktree>` directory.
 pub fn is_branch_worktree_path(path: &Path) -> bool {
     branch_worktree_root(path).is_some()
 }
@@ -92,6 +93,18 @@ pub fn generate_branch_name_from_task(task: Option<&str>) -> String {
 pub const LOCAL_DEFAULT_REMOTE: &str = "local-default";
 const BRANCH_METADATA_DIR: &str = "_branch-meta";
 
+fn kay_worktree_root() -> Option<PathBuf> {
+    crate::config::find_kay_home()
+        .ok()
+        .map(|home| home.join("working"))
+}
+
+fn kay_worktree_root_result() -> Result<PathBuf, String> {
+    crate::config::find_kay_home()
+        .map(|home| home.join("working"))
+        .map_err(|err| format!("failed to resolve Kay home directory: {err}"))
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct BranchMetadata {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -122,7 +135,7 @@ pub async fn get_git_root_from(cwd: &Path) -> Result<PathBuf, String> {
     }
 }
 
-/// Create a new worktree for `branch_id` under `<git_root>/.code/branches/<branch_id>`.
+/// Create a new worktree for `branch_id` under `KAY_HOME/working/<repo>/branches/<branch_id>`.
 /// When `base_ref` is provided, the worktree is created from that commit/ref so
 /// subsequent mutations in the primary working tree cannot affect the agent's
 /// view. If `base_ref` is `None`, the worktree is created from the current
@@ -133,20 +146,17 @@ pub async fn setup_worktree(
     branch_id: &str,
     base_ref: Option<&str>,
 ) -> Result<(PathBuf, String), String> {
-    // Global location: ~/.code/working/<repo_name>/branches
+    // Global location: KAY_HOME/working/<repo_name>/branches
     let repo_name = git_root
         .file_name()
         .and_then(|s| s.to_str())
         .unwrap_or("repo");
-    let mut code_dir = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
-    code_dir = code_dir
-        .join(".code")
-        .join("working")
+    let code_dir = kay_worktree_root_result()?
         .join(repo_name)
         .join("branches");
     tokio::fs::create_dir_all(&code_dir)
         .await
-        .map_err(|e| format!("Failed to create .code/branches directory: {}", e))?;
+        .map_err(|e| format!("Failed to create Kay worktree directory: {}", e))?;
 
     let mut effective_branch = branch_id.to_string();
     let mut worktree_path = code_dir.join(&effective_branch);
@@ -319,20 +329,17 @@ pub async fn prepare_reusable_worktree(
     base_ref: &str,
     keep_gitignored: bool,
 ) -> Result<PathBuf, String> {
-    // Global location: ~/.code/working/<repo_name>/branches
+    // Global location: KAY_HOME/working/<repo_name>/branches
     let repo_name = git_root
         .file_name()
         .and_then(|s| s.to_str())
         .unwrap_or("repo");
-    let mut code_dir = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
-    code_dir = code_dir
-        .join(".code")
-        .join("working")
+    let code_dir = kay_worktree_root_result()?
         .join(repo_name)
         .join("branches");
     tokio::fs::create_dir_all(&code_dir)
         .await
-        .map_err(|e| format!("Failed to create .code/branches directory: {}", e))?;
+        .map_err(|e| format!("Failed to create Kay worktree directory: {}", e))?;
 
     let worktree_path = code_dir.join(worktree_name);
 
@@ -448,9 +455,11 @@ async fn prune_stale_worktrees(git_root: &Path) -> Result<(), String> {
 /// clean it up on exit without touching worktrees from other processes.
 async fn record_worktree_in_session(git_root: &Path, worktree_path: &Path) {
     let pid = std::process::id();
-    let mut base = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
-    // Global session registry: ~/.code/working/_session
-    base = base.join(".code").join("working").join("_session");
+    let Some(mut base) = kay_worktree_root() else {
+        return;
+    };
+    // Global session registry: KAY_HOME/working/_session
+    base = base.join("_session");
     if let Err(_e) = tokio::fs::create_dir_all(&base).await { return; }
     let file = base.join(format!("pid-{}.txt", pid));
     // Store git_root and worktree_path separated by a tab; one entry per line.
@@ -560,11 +569,8 @@ fn canonical_worktree_path(worktree_path: &Path) -> Option<PathBuf> {
 
 fn metadata_file_path(worktree_path: &Path) -> Option<PathBuf> {
     let canonical = canonical_worktree_path(worktree_path)?;
-    let mut base = dirs::home_dir()?;
-    base = base
-        .join(".code")
-        .join("working")
-        .join(BRANCH_METADATA_DIR);
+    let mut base = kay_worktree_root()?;
+    base = base.join(BRANCH_METADATA_DIR);
     let key = canonical.to_string_lossy();
     let encoded = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(key.as_bytes());
     Some(base.join(encoded).with_extension("json"))

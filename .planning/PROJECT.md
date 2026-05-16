@@ -2,9 +2,10 @@
 
 ## Current State
 
-- v0.9.5 Kay Brand Renaming shipped on 2026-05-16.
-- The milestone archive and requirements archive capture the completed work.
-- Remaining legacy names are documented compatibility boundaries only.
+- v0.9.6 Kay Home Isolation shipped on 2026-05-16.
+- The KAY_HOME root isolation implementation is archived and the release gate
+  passed.
+- The next milestone has not been started yet.
 
 ## Core Value
 
@@ -13,8 +14,7 @@ existing workflows.
 
 ## Current Milestone
 
-Archived: v0.9.5 Kay Brand Renaming (see
-`.planning/milestones/v0.9.5-ROADMAP.md`)
+None. Start a new milestone when the next release cycle is defined.
 
 ## Key Decisions
 
@@ -23,9 +23,14 @@ Archived: v0.9.5 Kay Brand Renaming (see
   them.
 - Rename decisions are tracked in a living inventory.
 - Daily upstream reconciliation is part of the migration process.
+- `KAY_HOME` is the canonical root for Kay-owned writable state when it is
+  set.
+- When `KAY_HOME` is unset, Kay uses its normal default home layout.
+- Session, transcript, auth, skills, worktree, and debug-log paths should all
+  resolve under the resolved Kay home tree.
+- The milestone archive and requirements archive are stored under
+  `.planning/milestones/`.
 
 ## Next Milestone Goals
 
-- Start the next milestone with `gsd-new-milestone`.
-- Define the next scope after the shipped rename sweep.
-
+- Start the next GSD milestone when new work is ready.

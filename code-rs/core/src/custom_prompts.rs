@@ -10,10 +10,10 @@ use tokio::fs;
 pub fn default_prompts_dirs() -> Vec<PathBuf> {
     let mut roots = Vec::new();
 
-    if let Ok(code_home) = crate::config::find_code_home() {
-        let code_prompts = code_home.join("prompts");
-        if code_prompts.is_dir() {
-            roots.push(code_prompts);
+    if let Ok(kay_home) = crate::config::find_kay_home() {
+        let kay_prompts = kay_home.join("prompts");
+        if kay_prompts.is_dir() {
+            roots.push(kay_prompts);
         }
     }
 
@@ -176,18 +176,18 @@ mod tests {
 
     #[serial_test::serial]
     #[tokio::test]
-    async fn ignores_host_prompts_when_code_home_missing() {
+    async fn ignores_host_prompts_when_kay_home_missing() {
         let host_home = tempdir().expect("create host tempdir");
-        let code_home = tempdir().expect("create code tempdir");
+        let kay_home = tempdir().expect("create kay tempdir");
         let host_prompts = host_home.path().join(".codex/prompts");
         fs::create_dir_all(&host_prompts).unwrap();
         fs::write(host_prompts.join("foo.md"), "host").unwrap();
 
         let _host_guard = EnvVarGuard::new("CODEX_HOST_HOME");
-        let _code_guard = EnvVarGuard::new("CODE_HOME");
+        let _kay_guard = EnvVarGuard::new("KAY_HOME");
         unsafe {
             std::env::set_var("CODEX_HOST_HOME", host_home.path().join(".codex"));
-            std::env::set_var("CODE_HOME", code_home.path());
+            std::env::set_var("KAY_HOME", kay_home.path());
         }
 
         let dirs = default_prompts_dirs();
@@ -198,24 +198,24 @@ mod tests {
     #[tokio::test]
     async fn prefers_local_prompts_over_host_prompts() {
         let host_home = tempdir().expect("create host tempdir");
-        let code_home = tempdir().expect("create code tempdir");
-        let code_prompts = code_home.path().join("prompts");
+        let kay_home = tempdir().expect("create kay tempdir");
+        let kay_prompts = kay_home.path().join("prompts");
         let host_prompts = host_home.path().join(".codex/prompts");
-        fs::create_dir_all(&code_prompts).unwrap();
+        fs::create_dir_all(&kay_prompts).unwrap();
         fs::create_dir_all(&host_prompts).unwrap();
-        fs::write(code_prompts.join("active.md"), "local").unwrap();
+        fs::write(kay_prompts.join("active.md"), "local").unwrap();
         fs::write(host_prompts.join("legacy.md"), "host").unwrap();
 
         let _host_guard = EnvVarGuard::new("CODEX_HOST_HOME");
-        let _code_guard = EnvVarGuard::new("CODE_HOME");
+        let _kay_guard = EnvVarGuard::new("KAY_HOME");
         unsafe {
             std::env::set_var("CODEX_HOST_HOME", host_home.path().join(".codex"));
-            std::env::set_var("CODE_HOME", code_home.path());
+            std::env::set_var("KAY_HOME", kay_home.path());
         }
 
         let dirs = default_prompts_dirs();
         let expected_dirs = vec![
-            std::fs::canonicalize(&code_prompts).unwrap_or(code_prompts),
+            std::fs::canonicalize(&kay_prompts).unwrap_or(kay_prompts),
         ];
         assert_eq!(dirs, expected_dirs);
 

@@ -1273,7 +1273,7 @@ impl ThemeSelectionView {
                                             .as_ref()
                                             .cloned()
                                             .unwrap_or_else(|| "Custom".to_string());
-                                        if let Ok(home) = code_core::config::find_code_home() {
+                                        if let Ok(home) = code_core::config::find_kay_home() {
                                             let _ = code_core::config::set_custom_spinner(
                                                 &home,
                                                 "custom",
@@ -1379,7 +1379,7 @@ impl ThemeSelectionView {
                                         s.proposed_name.borrow().clone(),
                                         s.proposed_colors.borrow().clone(),
                                     ) {
-                                        if let Ok(home) = code_core::config::find_code_home() {
+                                        if let Ok(home) = code_core::config::find_kay_home() {
                                             let _ = code_core::config::set_custom_theme(
                                                 &home,
                                                 &name,
@@ -1896,7 +1896,7 @@ impl<'a> BottomPaneView<'a> for ThemeSelectionView {
                                             .as_ref()
                                             .cloned()
                                             .unwrap_or_else(|| "Custom".to_string());
-                                        if let Ok(home) = code_core::config::find_code_home() {
+                                        if let Ok(home) = code_core::config::find_kay_home() {
                                             let _ = code_core::config::set_custom_spinner(
                                                 &home,
                                                 "custom",
@@ -2009,7 +2009,7 @@ impl<'a> BottomPaneView<'a> for ThemeSelectionView {
                                         s.proposed_name.borrow().clone(),
                                         s.proposed_colors.borrow().clone(),
                                     ) {
-                                        if let Ok(home) = code_core::config::find_code_home() {
+                                        if let Ok(home) = code_core::config::find_kay_home() {
                                             let _ = code_core::config::set_custom_theme(
                                                 &home,
                                                 &name,

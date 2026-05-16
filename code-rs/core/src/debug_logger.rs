@@ -40,7 +40,7 @@ impl DebugLogger {
             });
         }
 
-        let mut log_dir = crate::config::find_code_home()?;
+        let mut log_dir = crate::config::find_kay_home()?;
         log_dir.push("debug_logs");
 
         fs::create_dir_all(&log_dir)?;

@@ -1947,7 +1947,7 @@ fn summary_from_output(output: &ReviewOutputEvent) -> AutoReviewSummary {
 
 fn auto_review_branches_dir(git_root: &Path) -> Option<PathBuf> {
     let repo_name = git_root.file_name()?.to_str()?;
-    let mut code_home = code_core::config::find_code_home().ok()?;
+    let mut code_home = code_core::config::find_kay_home().ok()?;
     code_home = code_home.join("working").join(repo_name).join("branches");
     std::fs::create_dir_all(&code_home).ok()?;
     Some(code_home)
