@@ -135,7 +135,7 @@ enum Subcommand {
     /// Internal debugging commands.
     Debug(DebugArgs),
 
-    /// Debug: replay ordering from response.json and codex-tui.log
+    /// Debug: replay ordering from response.json and kay-tui.log
     #[clap(hide = false)]
     OrderReplay(OrderReplayArgs),
 
@@ -396,7 +396,7 @@ struct OrderReplayArgs {
     /// Path to a response.json captured under ~/.code/debug_logs/*_response.json
     /// (legacy ~/.codex/debug_logs/ is still read).
     response_json: std::path::PathBuf,
-    /// Path to codex-tui.log (typically ~/.code/debug_logs/codex-tui.log).
+    /// Path to kay-tui.log (typically ~/.kay/debug_logs/kay-tui.log).
     tui_log: std::path::PathBuf,
 }
 

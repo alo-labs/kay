@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Unified, fast verification for upstream-merge runs.
 # - Runs build-fast.sh (treat warnings as failures via repo policy)
-# - Compiles API-surface tests for codex-core (no test execution)
+# - Compiles API-surface tests for code-core (no test execution)
 # - Emits a JSON summary to .github/auto/VERIFY.json
 
 ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." >/dev/null 2>&1 && pwd)"
@@ -15,6 +15,9 @@ status_build="ok"
 status_api="ok"
 status_guards="ok"
 status_branding="ok"
+status_upstream_sync="ok"
+oss_ahead_by=0
+oss_behind_by=0
 
 {
   echo "[verify] START $(date -u +%FT%TZ)"
@@ -39,19 +42,14 @@ fi
 }
 # Respect pre-set CARGO_HOME/TARGET_DIR to share caches across steps
 CODE_TARGET_DIR="$ROOT_DIR/code-rs/target"
-CODEX_TARGET_DIR="$ROOT_DIR/codex-rs/target"
 export CARGO_HOME="${CARGO_HOME:-$ROOT_DIR/.cargo-home}"
 if [ -z "${CARGO_TARGET_DIR:-}" ]; then
-  if [ -d "$ROOT_DIR/code-rs" ]; then
-    export CARGO_TARGET_DIR="$CODE_TARGET_DIR"
-  else
-    export CARGO_TARGET_DIR="$CODEX_TARGET_DIR"
-  fi
+  export CARGO_TARGET_DIR="$CODE_TARGET_DIR"
 fi
 # Ensure rustup also uses a repo-local, writable directory to avoid HOME permission issues on CI
 export RUSTUP_HOME="${RUSTUP_HOME:-${CARGO_HOME%/}/rustup}"
 mkdir -p "$CARGO_HOME" "$CARGO_TARGET_DIR" "$RUSTUP_HOME" >/dev/null 2>&1 || true
-if ! (CARGO_TARGET_DIR="$CODEX_TARGET_DIR" cd codex-rs && cargo check -p codex-core --test api_surface --quiet) 2>&1 | tee .github/auto/VERIFY_api-check.log; then
+if ! (CARGO_TARGET_DIR="$CODE_TARGET_DIR" cd code-rs && cargo test -p code-core --test opencode_go_provider --no-run --quiet) 2>&1 | tee .github/auto/VERIFY_api-check.log; then
   status_api="fail"
 fi
 
@@ -66,31 +64,19 @@ fi
 guards_log=.github/auto/VERIFY_guards.log
 : > "$guards_log"
 
-# Guard A: Handlers-to-tools parity for our custom families (browser, agent)
-# Extract handler names from handle_function_call and tool names from openai_tools in a quote-agnostic way
-handlers=$(rg -n '^[[:space:]]*"[a-z_][a-z0-9_]+"[[:space:]]*=>' codex-rs/core/src/codex.rs | sed -E 's/.*"([^"]+)".*/\1/' | sort -u)
-tools_defined=$( {
-  rg -n 'name:[[:space:]]*"[^"]+"' codex-rs/core/src/openai_tools.rs || true;
-  rg -n 'name:[[:space:]]*"[^"]+"' codex-rs/core/src/agent_tool.rs || true;
-} | sed -E 's/.*"([^"]+)".*/\1/' | sort -u )
-
-need_check=$(printf "%s\n" "$handlers" | grep -E '^(browser|agent)$' || true)
-while IFS= read -r h; do
-  [ -n "$h" ] || continue
-  if ! printf "%s\n" "$tools_defined" | grep -qx "$h"; then
-    printf "[guards] handler '%s' present in codex.rs but missing tool schema in openai_tools.rs\n" "$h" | tee -a "$guards_log"
-    status_guards="fail"
-  fi
-done <<< "$need_check"
-
-# Guard B: Get-openai-tools should reference the unified browser tool to expose family
-if ! rg -n '"browser"' codex-rs/core/src/openai_tools.rs >/dev/null 2>&1; then
+# Guard A: Browser and agent tool wiring must still be advertised.
+if ! rg -n 'create_browser_tool|name:[[:space:]]*"browser"' code-rs/core/src/openai_tools.rs >/dev/null 2>&1; then
   printf "[guards] no 'browser' tool references found in openai_tools.rs - tool family likely dropped\n" | tee -a "$guards_log"
   status_guards="fail"
 fi
-# Guard C: default_client should reference codex_version::version for UA
-if ! rg -n 'codex_version::version' codex-rs/core/src/default_client.rs >/dev/null 2>&1; then
-  printf "[guards] codex_version::version not referenced in core/default_client.rs\n" | tee -a "$guards_log"
+if ! rg -n 'create_agent_tool|name:[[:space:]]*"agent"' code-rs/core/src/openai_tools.rs >/dev/null 2>&1; then
+  printf "[guards] no 'agent' tool references found in openai_tools.rs - tool family likely dropped\n" | tee -a "$guards_log"
+  status_guards="fail"
+fi
+
+# Guard B: default_client should reference code_version::wire_compatible_version for UA
+if ! rg -n 'code_version::wire_compatible_version' code-rs/core/src/default_client.rs >/dev/null 2>&1; then
+  printf "[guards] code_version::wire_compatible_version not referenced in core/default_client.rs\n" | tee -a "$guards_log"
   status_guards="fail"
 fi
 
@@ -105,7 +91,7 @@ DEFAULT_BRANCH_LOCAL=${DEFAULT_BRANCH:-main}
 # Try to fetch origin to ensure refs exist; ignore failure for local runs
 git fetch origin "$DEFAULT_BRANCH_LOCAL" >/dev/null 2>&1 || true
 range_ref="origin/${DEFAULT_BRANCH_LOCAL}..HEAD"
-changed_files=$(git diff --name-only $range_ref -- 'codex-rs/tui/**' 'codex-cli/**' | tr '\n' ' ' || true)
+changed_files=$(git diff --name-only $range_ref -- 'code-rs/tui/**' 'codex-cli/**' | tr '\n' ' ' || true)
 branding_log=.github/auto/VERIFY_branding.log
 : > "$branding_log"
 if [ -n "${changed_files:-}" ]; then
@@ -124,6 +110,34 @@ else
   echo "[branding] no relevant file changes vs $range_ref; skipping" | tee -a "$branding_log"
 fi
 
+# STEP 5: Upstream sync advisory
+{
+  echo "[verify] STEP 5: upstream sync advisory"
+}
+upstream_log=.github/auto/VERIFY_upstream.log
+: > "$upstream_log"
+if git remote get-url oss >/dev/null 2>&1; then
+  git fetch --no-tags --prune oss main >/dev/null 2>&1 || true
+  if git rev-parse --verify oss/main >/dev/null 2>&1; then
+    oss_ahead_by=$(git rev-list --count oss/main..HEAD || echo 0)
+    oss_behind_by=$(git rev-list --count HEAD..oss/main || echo 0)
+    {
+      echo "[upstream] oss/main ahead of HEAD: ${oss_ahead_by}";
+      echo "[upstream] HEAD ahead of oss/main: ${oss_behind_by}";
+      echo "[upstream] note: drift is advisory here; it must be triaged in merge review, not treated as a release blocker by itself.";
+    } | tee -a "$upstream_log"
+    if [ "${oss_behind_by}" -gt 0 ]; then
+      status_upstream_sync="notice"
+    fi
+  else
+    echo "[upstream] oss/main ref unavailable after fetch; skipping advisory" | tee -a "$upstream_log"
+    status_upstream_sync="missing"
+  fi
+else
+  echo "[upstream] remote 'oss' unavailable; skipping advisory" | tee -a "$upstream_log"
+  status_upstream_sync="missing"
+fi
+
 rc=0
 # Branding is guide-only and does not affect rc. Fail only on build/api/guards.
 if [[ "$status_build" != ok || "$status_api" != ok || "$status_guards" != ok ]]; then
@@ -135,7 +149,10 @@ cat > .github/auto/VERIFY.json <<JSON
   "build_fast": "$status_build",
   "api_check": "$status_api",
   "guards": "$status_guards",
-  "branding": "$status_branding"
+  "branding": "$status_branding",
+  "upstream_sync": "$status_upstream_sync",
+  "oss_ahead_by": ${oss_ahead_by},
+  "oss_behind_by": ${oss_behind_by}
 }
 JSON
 

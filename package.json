@@ -1,5 +1,5 @@
 {
-  "name": "code-monorepo",
+  "name": "kay-monorepo",
   "private": true,
   "description": "Tools for repo-wide maintenance.",
   "scripts": {

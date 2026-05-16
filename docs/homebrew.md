@@ -26,4 +26,4 @@ Notes
 - The formula expects release assets named like:
   - `kay-aarch64-apple-darwin.tar.gz`
   - `kay-x86_64-apple-darwin.tar.gz`
-- The CLI is installed as `kay`, with `code`, `codex`, and `coder` shims for compatibility where possible.
+- The CLI is installed as `kay`, with `codex`, `coder`, and `code` compatibility shims where possible.

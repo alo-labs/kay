@@ -50,10 +50,10 @@ Notes:
 
 Because Kay is written in Rust, it honors the `RUST_LOG` environment variable to configure its logging behavior.
 
-When you run the TUI with `--debug`, log messages are written to `~/.kay/debug_logs/codex-tui.log`, so you can leave the following running in a separate terminal to monitor log messages as they are written:
+When you run the TUI with `--debug`, log messages are written to `~/.kay/debug_logs/kay-tui.log`, so you can leave the following running in a separate terminal to monitor log messages as they are written:
 
 ```
-tail -F ~/.kay/debug_logs/codex-tui.log
+tail -F ~/.kay/debug_logs/kay-tui.log
 ```
 
 When you enable the CLI `--debug` flag, request/response JSON is partitioned
@@ -95,4 +95,4 @@ env = { "API_KEY" = "value" }
 
 ## Using Kay as an MCP Server
 > [!TIP]
-> It is somewhat experimental, but the Kay CLI can also be run as an MCP _server_ via `kay mcp`. If you launch it with an MCP client such as `npx @modelcontextprotocol/inspector kay mcp` and send it a `tools/list` request, you will see that there is only one tool, `code`, that accepts a grab-bag of inputs, including a catch-all `config` map for anything you might want to override. Feel free to play around with it and provide feedback via GitHub issues.
+> It is somewhat experimental, but the Kay CLI can also be run as an MCP _server_ via `kay mcp`. If you launch it with an MCP client such as `npx @modelcontextprotocol/inspector kay mcp` and send it a `tools/list` request, you will see that there is only one legacy compatibility tool, `code`, that accepts a grab-bag of inputs, including a catch-all `config` map for anything you might want to override. Feel free to play around with it and provide feedback via GitHub issues.

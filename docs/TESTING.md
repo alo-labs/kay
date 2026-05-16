@@ -8,6 +8,20 @@ This file is the canonical home for test strategy and verification guidance.
 - Treat warnings as failures and fix them before completion
 - For provider-registration and resume-compatibility changes, add a focused regression check for the built-in provider path before closing
 
+## Reliability Grade
+
+Kay's reliability target is parity with the upstream OSS Codex release bar, plus the Kay-specific surfaces we own locally.
+
+The practical scorecard is:
+
+1. `./build-fast.sh` passes with no warnings.
+2. Focused regressions cover the code path that changed.
+3. Live end-to-end validation covers the supported OCG note-app workflow when provider, model, or orchestration behavior changes.
+4. Transcript JSONL remains readable for triage and post-incident review.
+5. Upstream drift is triaged and merged deliberately instead of being allowed to accumulate silently.
+
+Upstream high-risk changes are not a release blocker by themselves. They are a merge-review obligation: classify them, record the decision, and either adopt or defer them with an owner.
+
 ## Recommended Checks
 
 - Focused Rust tests when touching specific crates
@@ -92,6 +106,15 @@ before releases, not just final-answer smoke:
 
 This target is intended to expose real edit/review behavior, transcript
 provenance, and UX rough edges that simple prompt smokes cannot catch.
+
+## Upstream Sync Policy
+
+The upstream merge workflow is the place to triage OSS Codex drift. Keep the following separation intact:
+
+- release gating answers "is Kay safe to ship?"
+- upstream triage answers "what should we pull forward next?"
+
+That means high-risk upstream changes should be logged, classified, and resolved in the merge workflow, but they should not stop a release unless they also introduce a Kay-side regression or a missing required validation.
 
 ## Notes
 
