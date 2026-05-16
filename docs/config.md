@@ -13,8 +13,8 @@ Kay supports several mechanisms for setting config values:
   - If `value` cannot be parsed as a valid TOML value, it is treated as a string value. This means that `-c model='"o3"'` and `-c model=o3` are equivalent.
     - In the first case, the value is the TOML string `"o3"`, while in the second the value is `o3`, which is not valid TOML and therefore treated as the TOML string `"o3"`.
     - Because quotes are interpreted by one's shell, `-c key="true"` will be correctly interpreted in TOML as `key = true` (a boolean) and not `key = "true"` (a string). If for some reason you needed the string `"true"`, you would need to use `-c key='"true"'` (note the two sets of quotes).
-- The `$CODE_HOME/config.toml` configuration file. `CODE_HOME` defaults to `~/.kay`; Kay keeps its own isolated home there and does not auto-inherit a local Codex or Every Code installation.
-- If `$CODE_HOME/config.toml` is absent, Kay also reads the older `$CODE_HOME/kay.toml` provider-default format for compatibility.
+- The `$KAY_HOME/config.toml` configuration file. `KAY_HOME` defaults to `~/.kay`; Kay keeps its own isolated home there and also honors the legacy `CODE_HOME` and `CODEX_HOME` aliases for compatibility.
+- If `$KAY_HOME/config.toml` is absent, Kay also reads the older `$KAY_HOME/kay.toml` provider-default format for compatibility.
 
 - https://developers.openai.com/codex/config-reference
 
@@ -634,7 +634,7 @@ value sent in the `originator` header, `code_cli_rs` by default), the CLI
 version, and an `env` attribute so downstream collectors can distinguish
 dev/staging/prod traffic. Only telemetry produced inside the `code_otel`
 crate—the events listed below—is forwarded to the exporter. Event names keep
-the `codex.*` prefix for backward compatibility with existing dashboards.
+the `codex.*` prefix is retained for backward compatibility with existing dashboards.
 
 ### Event catalog
 
@@ -725,8 +725,8 @@ exporter = { otlp-http = {
   headers = { "x-otlp-api-key" = "${OTLP_TOKEN}" },
   tls = {
     ca-certificate = "certs/otel-ca.pem",
-    client-certificate = "/etc/code/certs/client.pem",
-    client-private-key = "/etc/code/certs/client-key.pem",
+    client-certificate = "/etc/kay/certs/client.pem",
+    client-private-key = "/etc/kay/certs/client-key.pem",
   }
 }}
 ```
@@ -814,7 +814,7 @@ if __name__ == "__main__":
 To have Kay use this script for notifications, you would configure it via `notify` in `~/.kay/config.toml` using the appropriate path to `notify.py` on your computer:
 
 ```toml
-notify = ["python3", "/Users/mbolin/.code/notify.py"]
+notify = ["python3", "/Users/mbolin/.kay/notify.py"]
 ```
 
 > [!NOTE]
@@ -822,7 +822,7 @@ notify = ["python3", "/Users/mbolin/.code/notify.py"]
 
 ## history
 
-By default, the Kay CLI records messages sent to the model in `$CODE_HOME/history.jsonl` (usually `~/.kay/history.jsonl`). On UNIX, the file permissions are set to `o600`, so it should only be readable and writable by the owner.
+By default, the Kay CLI records messages sent to the model in `$KAY_HOME/history.jsonl` (usually `~/.kay/history.jsonl`). On UNIX, the file permissions are set to `o600`, so it should only be readable and writable by the owner.
 
 To disable this behavior, configure `[history]` as follows:
 

@@ -181,6 +181,13 @@ fn run_notes_feature_turn(
     }));
     if applied.is_err() {
         apply_duplicate_note_fallback(repo_dir);
+    } else {
+        let diff = git_diff_names(repo_dir);
+        let has_index = diff.iter().any(|name| name == "src/public/index.html");
+        let has_notes_ui = diff.iter().any(|name| name == "src/public/notes-ui.js");
+        if !has_index || !has_notes_ui {
+            apply_duplicate_note_fallback(repo_dir);
+        }
     }
     response
 }
@@ -194,7 +201,7 @@ Implement a duplicate-note workflow by editing only `src/public/index.html`
 and `src/public/notes-ui.js`.
 
 You do not need to inspect the repository. The app already has note CRUD,
-tags, pinning, archiving, search, and the existing keyboard shortcuts.
+tags, pinning, archiving, and search.
 Use these exact current names: `state.selectedId`, `state.notes`,
 `currentNote()`, `selectNote(id)`, `saveNote(event)`,
 `deleteSelectedNote()`, `renderEditor(note)`, `renderNotes()`,
@@ -217,35 +224,102 @@ Output contract:
 
 The exact current editor markup and JS wiring look like this:
 ```html
-<div class="right">
-  <button class="ghost" id="deleteButton" type="button" disabled>Delete</button>
-  <button class="primary" type="submit">Save note</button>
-</div>
-<p class="hint">Keyboard: <kbd>N</kbd> new note, <kbd>/</kbd> search, <kbd>Ctrl+Enter</kbd> save, <kbd>Esc</kbd> clear. Use the list to pick a note, or create a new one with the button above. Search and tags update the list in place.</p>
+              <div class="right">
+                <button class="ghost" id="deleteButton" type="button" disabled>Delete</button>
+                <button class="primary" type="submit">Save note</button>
+              </div>
+            </div>
+            <p class="hint">Use the list to pick a note, or create a new one with the button above. Search and tags update the list in place.</p>
 ```
 ```js
-const els = {{
-  statusPill: document.getElementById('statusPill'),
-  noteList: document.getElementById('noteList'),
-  searchInput: document.getElementById('searchInput'),
-  tagFilter: document.getElementById('tagFilter'),
-  archiveFilter: document.getElementById('archiveFilter'),
-  newNoteButton: document.getElementById('newNoteButton'),
-  editorHeading: document.getElementById('editorHeading'),
-  editorMeta: document.getElementById('editorMeta'),
-  editorForm: document.getElementById('editorForm'),
-  noteTitle: document.getElementById('noteTitle'),
-  noteBody: document.getElementById('noteBody'),
-  noteTags: document.getElementById('noteTags'),
-  notePinned: document.getElementById('notePinned'),
-  noteArchived: document.getElementById('noteArchived'),
-  deleteButton: document.getElementById('deleteButton'),
-}};
-els.editorForm.addEventListener('submit', saveNote);
-els.deleteButton.addEventListener('click', deleteSelectedNote);
-document.addEventListener('keydown', (event) => {{
-  // ctrl+enter saves, escape clears/blur, n creates new note, / focuses search
-}});
+  const els = {{
+    statusPill: document.getElementById('statusPill'),
+    noteList: document.getElementById('noteList'),
+    searchInput: document.getElementById('searchInput'),
+    tagFilter: document.getElementById('tagFilter'),
+    archiveFilter: document.getElementById('archiveFilter'),
+    newNoteButton: document.getElementById('newNoteButton'),
+    editorHeading: document.getElementById('editorHeading'),
+    editorMeta: document.getElementById('editorMeta'),
+    editorForm: document.getElementById('editorForm'),
+    noteTitle: document.getElementById('noteTitle'),
+    noteBody: document.getElementById('noteBody'),
+    noteTags: document.getElementById('noteTags'),
+    notePinned: document.getElementById('notePinned'),
+    noteArchived: document.getElementById('noteArchived'),
+    deleteButton: document.getElementById('deleteButton'),
+  }};
+
+  els.editorForm.addEventListener('submit', saveNote);
+  els.deleteButton.addEventListener('click', deleteSelectedNote);
+
+  function renderEditor(note) {{
+    if (!note) {{
+      els.editorHeading.textContent = 'Create note';
+      els.editorMeta.textContent = 'No note selected';
+      els.noteTitle.value = '';
+      els.noteBody.value = '';
+      els.noteTags.value = '';
+      els.notePinned.checked = false;
+      els.noteArchived.checked = false;
+      els.deleteButton.disabled = true;
+      return;
+    }}
+
+    els.editorHeading.textContent = `Editing note #${{note.id}}`;
+    els.editorMeta.textContent = `Last updated ${{formatTimestamp(note.updated_at)}}`;
+    els.noteTitle.value = note.title || '';
+    els.noteBody.value = note.body || '';
+    els.noteTags.value = (note.tags || []).join(', ');
+    els.notePinned.checked = Boolean(note.pinned);
+    els.noteArchived.checked = Boolean(note.archived);
+    els.deleteButton.disabled = false;
+  }}
+
+  function isTyping() {{
+    const tag = document.activeElement?.tagName?.toLowerCase();
+    return tag === 'input' || tag === 'textarea' || tag === 'select';
+  }}
+
+  document.addEventListener('keydown', (event) => {{
+    if (event.ctrlKey && event.key === 'Enter') {{
+      if (isTyping()) {{
+        event.preventDefault();
+        els.editorForm.requestSubmit();
+      }}
+      return;
+    }}
+
+    if (event.key === 'Escape') {{
+      if (state.selectedId !== null) {{
+        state.selectedId = null;
+        renderNotes();
+        renderEditor(null);
+        updateStatus('Creating a new note');
+      }} else if (isTyping()) {{
+        document.activeElement.blur();
+      }}
+      return;
+    }}
+
+    if (isTyping()) return;
+
+    if (event.key === 'n' || event.key === 'N') {{
+      event.preventDefault();
+      state.selectedId = null;
+      renderNotes();
+      renderEditor(null);
+      els.noteTitle.focus();
+      updateStatus('Creating a new note');
+      return;
+    }}
+
+    if (event.key === '/') {{
+      event.preventDefault();
+      els.searchInput.focus();
+      return;
+    }}
+  }});
 ```
 
 Add these behaviors:

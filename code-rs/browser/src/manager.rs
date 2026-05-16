@@ -40,7 +40,7 @@ struct BrowserLaunchLockFile {
 
 impl BrowserLaunchLockFile {
     async fn acquire(timeout: Duration) -> Result<Self> {
-        let lock_path = std::env::temp_dir().join("code-browser-launch.lock");
+        let lock_path = std::env::temp_dir().join("kay-browser-launch.lock");
         let file = std::fs::OpenOptions::new()
             .create(true)
             .read(true)
@@ -109,15 +109,18 @@ fn resolve_chrome_log_path() -> Option<PathBuf> {
         }
     }
 
-    let base = if let Ok(home) = std::env::var("CODE_HOME").or_else(|_| std::env::var("CODEX_HOME")) {
+    let base = if let Ok(home) = std::env::var("KAY_HOME")
+        .or_else(|_| std::env::var("CODE_HOME"))
+        .or_else(|_| std::env::var("CODEX_HOME"))
+    {
         PathBuf::from(home).join("debug_logs")
     } else if let Ok(home) = std::env::var("HOME") {
-        PathBuf::from(home).join(".code").join("debug_logs")
+        PathBuf::from(home).join(".kay").join("debug_logs")
     } else {
-        return Some(std::env::temp_dir().join("code-chrome.log"));
+        return Some(std::env::temp_dir().join("kay-chrome.log"));
     };
 
-    let path = base.join("code-chrome.log");
+    let path = base.join("kay-chrome.log");
     if let Some(parent) = path.parent() {
         let _ = std::fs::create_dir_all(parent);
     }

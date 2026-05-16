@@ -37,13 +37,13 @@ In this example rule, if Kay wants to run commands with the prefix `git push` or
 
 ## Preview decisions
 
-Use the `kay execpolicy check` subcommand to preview decisions before you save a rule (see the [`codex-execpolicy` README](../code-rs/execpolicy/README.md) for syntax details):
+Use the `kay execpolicy check` subcommand to preview decisions before you save a rule (see the [`execpolicy` README](../code-rs/execpolicy/README.md) for syntax details):
 
 ```shell
 kay execpolicy check --policy ~/.kay/policy/default.codexpolicy git push origin main
 ```
 
-Pass multiple `--policy` flags to test how several files combine, and use `--pretty` for formatted JSON output. See the [`code-rs/execpolicy` README](../code-rs/execpolicy/README.md) for a more detailed walkthrough of the available syntax.
+Pass multiple `--policy` flags to test how several files combine, and use `--pretty` for formatted JSON output. See the [`execpolicy` README](../code-rs/execpolicy/README.md) for a more detailed walkthrough of the available syntax.
 
 Example output when a rule matches:
 

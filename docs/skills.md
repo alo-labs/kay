@@ -2,20 +2,20 @@
 
 > **Warning:** This is an experimental and non-stable feature. If you depend on it, please expect breaking changes over the coming weeks and understand that there is currently no guarantee that this works well. Use at your own risk!
 
-Codex can automatically discover reusable "skills" you keep on disk. A skill is a small bundle with a name, a short description (what it does and when to use it), and an optional body of instructions you can open when needed. Codex injects only the name, description, and file path into the runtime context; the body stays on disk.
+Kay can automatically discover reusable "skills" you keep on disk. A skill is a small bundle with a name, a short description (what it does and when to use it), and an optional body of instructions you can open when needed. Kay injects only the name, description, and file path into the runtime context; the body stays on disk.
 
 ## Enable skills
 
 Skills are behind the experimental `skills` feature flag and are enabled by default.
 
-- Disable in config (preferred): add the following to `$CODE_HOME/config.toml` (usually `~/.kay/config.toml` for Kay-local state) and restart Kay:
+- Disable in config (preferred): add the following to `$KAY_HOME/config.toml` (usually `~/.kay/config.toml` for Kay-local state) and restart Kay:
 
   ```toml
   [features]
   skills = false
   ```
 
-- Override for a single run when disabled in config: launch Codex with `codex --enable skills`
+- Override for a single run when disabled in config: launch Kay with `kay --enable skills`
 
 ## Where skills live
 
@@ -25,7 +25,7 @@ Skills are behind the experimental `skills` feature flag and are enabled by defa
   - User: `$HOME/.agents/skills/**/SKILL.md`.
 - User: `$HOME/.kay/skills/**/SKILL.md`.
   - System: bundled skills under `$HOME/.kay/skills/.system/**/SKILL.md`.
-  - Admin (optional): `/etc/codex/skills/**/SKILL.md`.
+  - Admin (legacy, optional): `/etc/codex/skills/**/SKILL.md`.
 - Discovery is recursive and only files named exactly `SKILL.md` count.
 - Hidden entries are skipped.
 - Symlinked directories are followed for repo, user, and admin roots. Symlinked files are ignored.

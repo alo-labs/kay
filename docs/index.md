@@ -24,3 +24,7 @@ Use these docs to install, configure, and operate Kay.
 - [Sandboxing overview](sandbox.md)
 - [Platform sandboxing](platform-sandboxing.md)
 - [Windows sandbox security](platform-sandboxing.md#windows)
+
+## Repository Governance
+- [Kay brand renaming policy](kay-brand-renaming-policy.md)
+- [Kay rename inventory](kay-brand-renaming-inventory.md)

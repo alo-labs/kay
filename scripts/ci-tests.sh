@@ -17,7 +17,7 @@ if [[ "${SKIP_CARGO_TESTS:-0}" != "1" ]]; then
 fi
 
 
-echo "[ci-tests] CLI smokes with host binary..."
+echo "[ci-tests] CLI smokes with host Kay binary..."
 BIN="${CI_CLI_BIN:-}"
 if [[ -z "${BIN}" ]]; then
   if [[ -x "$ROOT_DIR/code-rs/target/dev-fast/kay" ]]; then

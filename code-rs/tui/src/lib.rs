@@ -666,7 +666,7 @@ pub async fn run_main(
     std::fs::create_dir_all(&log_dir)?;
 
     let (env_layer, _log_guard) = if cli.debug {
-        rotate_log_file(&log_dir, "codex-tui.log");
+        rotate_log_file(&log_dir, "kay-tui.log");
         // Open (or create) your log file, appending to it.
         let mut log_file_opts = OpenOptions::new();
         log_file_opts.create(true).append(true);
@@ -681,7 +681,7 @@ pub async fn run_main(
             log_file_opts.mode(0o600);
         }
 
-        let log_file = log_file_opts.open(log_dir.join("codex-tui.log"))?;
+        let log_file = log_file_opts.open(log_dir.join("kay-tui.log"))?;
 
         // Wrap file in non‑blocking writer.
         let (log_writer, log_guard) = non_blocking(log_file);

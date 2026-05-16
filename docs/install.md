@@ -14,7 +14,7 @@
 npm install -g @alo-labs/kay
 ```
 
-Use `kay` to launch the CLI. The npm package also provides `codex` and `coder` aliases, plus a `code` compatibility alias when no existing `code` command would be shadowed.
+Use `kay` to launch the CLI. The npm package also provides compatibility aliases `codex` and `coder`, plus a `code` compatibility alias when no existing `code` command would be shadowed.
 
 ### Release Archives
 

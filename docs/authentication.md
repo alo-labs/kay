@@ -87,9 +87,9 @@ Today, the login process entails running a server on `localhost:1455`. If you ar
 
 ### Authenticate locally and copy your credentials to the "headless" machine
 
-The easiest solution is likely to run through the `kay login` process on your local machine such that `localhost:1455` _is_ accessible in your web browser. When you complete the authentication process, an `auth.json` file should be available at `$CODE_HOME/auth.json` (defaults to `~/.kay/auth.json`).
+The easiest solution is likely to run through the `kay login` process on your local machine such that `localhost:1455` _is_ accessible in your web browser. When you complete the authentication process, an `auth.json` file should be available at `$KAY_HOME/auth.json` (defaults to `~/.kay/auth.json`).
 
-Because the `auth.json` file is not tied to a specific host, once you complete the authentication flow locally, you can copy the `$CODE_HOME/auth.json` file to the headless machine and then `kay` should "just work" on that machine. Note to copy a file to a Docker container, you can do:
+Because the `auth.json` file is not tied to a specific host, once you complete the authentication flow locally, you can copy the `$KAY_HOME/auth.json` file to the headless machine and then `kay` should "just work" on that machine. Note to copy a file to a Docker container, you can do:
 
 ```shell
 # substitute MY_CONTAINER with the name or id of your Docker container:

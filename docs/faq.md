@@ -2,11 +2,11 @@
 
 ### OpenAI released a model called Codex in 2021 - is this related?
 
-Only by name. The 2021 Codex model was deprecated in March 2023. Kay is a community fork of the `openai/codex` CLI and continues to evolve separately.
+Only by name. The 2021 Codex model was deprecated in March 2023. Kay is a community fork of the upstream `openai/codex` CLI and continues to evolve separately.
 
 ### Which models are supported?
 
-We recommend the built-in Kay presets that wrap GPT-5.4 (for example `code-gpt-5.4`). The default reasoning level is medium, and you can upgrade to high for complex tasks with `/model`.
+We recommend the built-in Kay presets that wrap GPT-5.4. The default reasoning level is medium, and you can upgrade to high for complex tasks with `/model`.
 
 You can also use older models by using API-based auth and launching Kay with the `--model` flag.
 
@@ -76,4 +76,4 @@ If npm's directory isn't in your PATH, you can either:
 
 On Windows, Kay looks for executables with these extensions: `.exe`, `.cmd`, `.bat`, `.com`. Ensure your agent command includes the correct extension when using absolute paths.
 
-**Related:** See the [Agent Configuration Guide](https://github.com/alo-labs/kay/blob/main/code-rs/config.md#agents) for more details.
+**Related:** See the [Agent Configuration Guide](config.md#agents) for more details.

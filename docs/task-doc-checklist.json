@@ -1,22 +1,26 @@
 {
   "task_id": "github-issues-12-19-runtime-fixes",
   "task_granularity": 2,
-  "updated_at": "2026-05-14T21:49:32Z",
+  "updated_at": "2026-05-16T14:33:44Z",
   "_notes": [
+    "Added Kay brand renaming policy and inventory docs in the current session.",
+    "Refreshed during the Kay reliability-grade policy update in the current session.",
     "Refreshed during the Kay slash-command rename and intro-banner cleanup in the current session.",
     "Refreshed again during the final docs-gate reconciliation so the current-session freshness ledger matches the governed docs.",
     "Refreshed during the test-notes-app live E2E harness and Silver Bullet session-marker reconciliation in the current session.",
     "Refreshed during the README refresh and install-doc alignment in the current session.",
     "Refreshed during the Kay README multi-provider and getting-started rewrite in the current session.",
+    "Refreshed during the Kay brand rename phase 08 docs-first sweep in the current session.",
+    "Refreshed during the Kay runtime-path and script rename phase in the current session.",
     "This checklist records every governed doc key present under docs/ plus root README.md and CHANGELOG.md.",
     "Refreshed during the primary binary rename from code to kay, including install, release, and command docs.",
     "Refreshed during MiniMax/runtime-isolation fixes for GitHub issues #12 and #15-#19.",
     "Reconciled the docs governance contract so doc-scheme files are updated only when governance changes, matching this hook remediation."
   ],
   "docs": {
-    "docs/ARCHITECTURE.md": "not-needed: no architecture changes in this task",
+    "docs/ARCHITECTURE.md": "updated",
     "docs/CHANGELOG.md": "not-needed: changelog unchanged in this session",
-    "docs/TESTING.md": "not-needed: no testing-doc changes in this task",
+    "docs/TESTING.md": "updated",
     "docs/advanced.md": "updated",
     "docs/agents.md": "updated",
     "docs/authentication.md": "updated",
@@ -31,9 +35,11 @@
     "docs/faq.md": "updated",
     "docs/getting-started.md": "updated",
     "docs/homebrew.md": "updated",
-    "docs/index.md": "not-needed: unchanged in this session",
-    "docs/install.md": "not-needed: unchanged in this session",
-    "docs/integration-zed.md": "not-needed: unchanged in this session",
+    "docs/index.md": "updated",
+    "docs/install.md": "updated",
+    "docs/integration-zed.md": "updated",
+    "docs/kay-brand-renaming-inventory.md": "updated",
+    "docs/kay-brand-renaming-policy.md": "updated",
     "docs/knowledge/2026-05.md": "not-needed: knowledge log unchanged in this session",
     "docs/knowledge/INDEX.md": "not-needed: no docs index changes in this task",
     "docs/lessons/2026-05.md": "not-needed: lessons log unchanged in this session",
@@ -43,10 +49,10 @@
     "docs/sandbox.md": "updated",
     "docs/sessions/2026-05-11-19-07-24.md": "not-needed: unchanged in this session",
     "docs/settings.md": "not-needed: unchanged in this session",
-    "docs/skills.md": "not-needed: unchanged in this session",
+    "docs/skills.md": "updated",
     "docs/slash-commands.md": "updated",
     "docs/task-doc-checklist.json": "updated",
-    "docs/tui-alternate-screen.md": "not-needed: unchanged in this session",
+    "docs/tui-alternate-screen.md": "updated",
     "docs/tui-chat-composer.md": "not-needed: unchanged in this session",
     "docs/tui-request-user-input.md": "not-needed: unchanged in this session",
     "docs/tui-stream-chunking-review.md": "not-needed: unchanged in this session",
@@ -89,12 +95,29 @@
       "docs": "updated"
     },
     "docs/ARCHITECTURE.md": {
-      "System Shape": "not-needed: no architecture changes in this task",
+      "System Shape": "updated",
       "Data Flow": "not-needed: no architecture changes in this task"
     },
+    "docs/index.md": {
+      "Repository Governance": "updated"
+    },
     "docs/TESTING.md": {
-      "Required Gate": "not-needed: no testing-doc changes in this task",
-      "Recommended Checks": "not-needed: no testing-doc changes in this task"
+      "Required Gate": "updated",
+      "Reliability Grade": "updated",
+      "Recommended Checks": "not-needed: no further testing-doc changes in this task",
+      "Upstream Sync Policy": "updated"
+    },
+    "docs/kay-brand-renaming-inventory.md": {
+      "Legend": "updated",
+      "Current Inventory": "updated",
+      "Sweep Order": "updated",
+      "Review Rule": "updated"
+    },
+    "docs/kay-brand-renaming-policy.md": {
+      "Scope": "updated",
+      "Decision Rules": "updated",
+      "Reconciliation Workflow": "updated",
+      "Acceptance Criteria": "updated"
     },
     "docs/knowledge/INDEX.md": {
       "Monthly Files": "not-needed: no docs index changes in this task"
