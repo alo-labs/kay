@@ -734,6 +734,7 @@ pub(super) async fn submission_loop(
                     config.tools_web_search_allowed_domains.clone();
                 tools_config.web_search_external = config.tools_web_search_external;
                 tools_config.search_tool = config.tools_search_tool;
+                tools_config.browser_tool = config.tools_browser;
                 tools_config.set_agent_tool_enabled(config.subagents_enabled);
 
                 let auth_mode = auth_manager

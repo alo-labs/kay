@@ -201,7 +201,7 @@ fn build_chat_completions_payload(
                 ..
             } => {
                 let reasoning = reasoning_by_anchor_index.get(&idx).map(String::as_str);
-                let arguments = normalize_tool_arguments_for_provider(arguments, minimax);
+                let arguments = normalize_tool_arguments_for_chat_history(arguments);
                 let tool_call = json!({
                     "id": call_id,
                     "type": "function",
@@ -382,8 +382,8 @@ fn build_chat_completions_payload(
     Ok(payload)
 }
 
-fn normalize_tool_arguments_for_provider(arguments: &str, minimax: bool) -> String {
-    if !minimax || serde_json::from_str::<serde_json::Value>(arguments).is_ok() {
+fn normalize_tool_arguments_for_chat_history(arguments: &str) -> String {
+    if serde_json::from_str::<serde_json::Value>(arguments).is_ok() {
         return arguments.to_string();
     }
 
@@ -1554,6 +1554,44 @@ mod tests {
             serde_json::from_str(arguments).expect("MiniMax tool arguments must be valid JSON");
 
         assert_eq!(parsed["_raw"], "cat /tmp/SKILL.md");
+    }
+
+    #[test]
+    fn opencode_go_payload_repairs_invalid_tool_call_arguments_json() {
+        let provider = crate::model_provider_info::create_opencode_go_provider();
+        let model_family = crate::model_family::find_family_for_model("opencode-go/kimi-k2.6")
+            .expect("known kimi model");
+
+        let prompt = Prompt {
+            input: vec![ResponseItem::FunctionCall {
+                id: Some("item-1".to_string()),
+                name: "shell".to_string(),
+                namespace: None,
+                arguments: "cat package.json".to_string(),
+                call_id: "call-1".to_string(),
+            }],
+            ..Prompt::default()
+        };
+
+        let payload = build_chat_completions_payload(
+            &prompt,
+            &model_family,
+            "opencode-go/kimi-k2.6",
+            &provider,
+        )
+        .expect("payload");
+        let messages = payload["messages"].as_array().expect("messages array");
+        let tool_message = messages
+            .iter()
+            .find(|message| message.get("tool_calls").is_some())
+            .expect("tool call message");
+        let arguments = tool_message["tool_calls"][0]["function"]["arguments"]
+            .as_str()
+            .expect("arguments string");
+        let parsed: serde_json::Value =
+            serde_json::from_str(arguments).expect("OpenCode Go tool arguments must be valid JSON");
+
+        assert_eq!(parsed["_raw"], "cat package.json");
     }
 
     #[test]

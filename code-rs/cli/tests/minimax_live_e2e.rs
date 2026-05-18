@@ -4,6 +4,9 @@ use std::process::Stdio;
 
 use tempfile::TempDir;
 
+mod common;
+use common::SessionPreserver;
+
 fn live_key() -> Option<String> {
     std::env::var("MINIMAX_LIVE_API_KEY")
         .ok()
@@ -89,6 +92,7 @@ fn minimax_m27_live_exec_edge_cases() {
     };
 
     let code_home = TempDir::new().expect("temp KAY_HOME");
+    let _sessions = SessionPreserver::new(code_home.path(), "minimax_live_e2e");
     login_minimax(&code_home, &api_key);
 
     let exact = run_minimax_exec(&code_home, "Reply with exactly OK.");

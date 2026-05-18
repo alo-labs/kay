@@ -5,6 +5,9 @@ use std::process::Stdio;
 use serde_json::Value;
 use tempfile::TempDir;
 
+mod common;
+use common::SessionPreserver;
+
 #[derive(Clone, Copy)]
 struct ProviderAcceptanceSpec {
     provider_id: &'static str,
@@ -212,6 +215,10 @@ fn assert_provider_acceptance(spec: &ProviderAcceptanceSpec) {
     };
 
     let kay_home = TempDir::new().expect("temp KAY_HOME");
+    let _sessions = SessionPreserver::new(
+        kay_home.path(),
+        format!("provider_model_acceptance_{}", spec.provider_id),
+    );
     login_provider(&kay_home, spec.provider_id, &api_key);
 
     let schema = serde_json::json!({

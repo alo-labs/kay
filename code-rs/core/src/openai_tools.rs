@@ -158,6 +158,7 @@ pub struct ToolsConfig {
     pub web_search_tool_type: WebSearchToolType,
     pub image_gen_tool: bool,
     pub search_tool: bool,
+    pub browser_tool: bool,
     #[allow(dead_code)]
     pub include_view_image_tool: bool,
     pub web_search_allowed_domains: Option<Vec<String>>,
@@ -239,6 +240,7 @@ impl ToolsConfig {
             web_search_tool_type: model_family.web_search_tool_type,
             image_gen_tool: false,
             search_tool: false,
+            browser_tool: true,
             include_view_image_tool,
             web_search_allowed_domains: None,
             agent_model_allowed_values: Vec::new(),
@@ -983,9 +985,17 @@ pub fn create_tools_json_for_responses_api(
 pub(crate) fn create_tools_json_for_chat_completions_api(
     tools: &[OpenAiTool],
 ) -> crate::error::Result<Vec<serde_json::Value>> {
-    // We start with the JSON for the Responses API and than rewrite it to match
-    // the chat completions tool call format.
-    let responses_api_tools_json = create_tools_json_for_responses_api(tools)?;
+    // We start with the JSON for the Responses API and then rewrite it to match
+    // the chat completions tool call format. Chat Completions has no native
+    // local_shell tool, so expose Kay's function-shaped shell tool instead.
+    let chat_compatible_tools = tools
+        .iter()
+        .map(|tool| match tool {
+            OpenAiTool::LocalShell {} => create_shell_tool(),
+            other => other.clone(),
+        })
+        .collect::<Vec<_>>();
+    let responses_api_tools_json = create_tools_json_for_responses_api(&chat_compatible_tools)?;
     let tools_json = responses_api_tools_json
         .into_iter()
         .filter_map(|mut tool| {
@@ -1262,7 +1272,9 @@ pub fn get_openai_tools(
         tools.push(create_search_tool_bm25_tool());
     }
 
-    tools.push(create_browser_tool(browser_enabled));
+    if config.browser_tool {
+        tools.push(create_browser_tool(browser_enabled));
+    }
 
     if config.agent_tool_enabled {
         tools.push(create_agent_tool(config.agent_models()));
@@ -1652,6 +1664,40 @@ mod tests {
         let names = tool_names(&tools);
 
         assert!(!names.contains(&"agent"));
+    }
+
+    #[test]
+    fn disabled_browser_tool_is_not_advertised() {
+        let model_family = find_family_for_model("codex-mini-latest")
+            .expect("codex-mini-latest should be a valid model family");
+        let mut config = ToolsConfig::new(
+            &model_family,
+            AskForApproval::UnlessTrusted,
+            SandboxPolicy::ReadOnly,
+            true,
+            false,
+            false,
+            /*use_experimental_streamable_shell_tool*/ false,
+            false,
+        );
+        apply_default_agent_models(&mut config);
+        config.browser_tool = false;
+
+        let tools = get_openai_tools(&config, Some(HashMap::new()), false, false, &[]);
+        let names = tool_names(&tools);
+
+        assert!(!names.contains(&"browser"));
+    }
+
+    #[test]
+    fn local_shell_is_converted_for_chat_completions() {
+        let tools = vec![OpenAiTool::LocalShell {}];
+        let chat_tools =
+            create_tools_json_for_chat_completions_api(&tools).expect("chat tool conversion");
+
+        assert_eq!(chat_tools.len(), 1);
+        assert_eq!(chat_tools[0]["type"], "function");
+        assert_eq!(chat_tools[0]["function"]["name"], "shell");
     }
 
     #[test]

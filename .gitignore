@@ -118,6 +118,9 @@ apply_patch/
 # generated reports
 reports/
 
+# Local test session artifacts may contain prompts, outputs, and credentials.
+/tests/sessions/
+
 # coverage
 coverage/
 
