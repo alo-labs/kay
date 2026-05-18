@@ -558,6 +558,17 @@ pub fn find_family_for_model(slug: &str) -> Option<ModelFamily> {
             chat_completions_reasoning_strategy:
                 ChatCompletionsReasoningStrategy::PreserveReasoningContent,
         )
+    } else if slug.starts_with("mimo") {
+        model_family!(
+            slug, "mimo",
+            needs_special_apply_patch_instructions: false,
+        )
+    } else if slug.starts_with("minimax-m2.7") {
+        model_family!(
+            slug, "minimax-m2.7",
+            context_window: Some(204_800),
+            needs_special_apply_patch_instructions: true,
+        )
     } else if slug_lower.contains("glm") {
         model_family!(
             slug, "glm",
@@ -695,6 +706,20 @@ mod tests {
             family.chat_completions_reasoning_strategy,
             ChatCompletionsReasoningStrategy::PreserveReasoningContent
         );
+    }
+
+    #[test]
+    fn opencode_go_mimo_and_minimax_have_first_class_model_families() {
+        let mimo = find_family_for_model("opencode-go/mimo-v2.5")
+            .expect("namespaced model should resolve");
+        assert_eq!(mimo.slug, "opencode-go/mimo-v2.5");
+        assert_eq!(mimo.family, "mimo");
+
+        let minimax = find_family_for_model("opencode-go/minimax-m2.7")
+            .expect("namespaced model should resolve");
+        assert_eq!(minimax.slug, "opencode-go/minimax-m2.7");
+        assert_eq!(minimax.family, "minimax-m2.7");
+        assert_eq!(minimax.context_window, Some(204_800));
     }
 
     #[test]

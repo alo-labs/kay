@@ -472,6 +472,8 @@ pub struct Config {
     pub tools_web_search_external: bool,
     /// Enable MCP tool discovery helper (`search_tool_bm25`).
     pub tools_search_tool: bool,
+    /// Enable browser open/fetch/action tools.
+    pub tools_browser: bool,
     /// Optional allow-list of domains for web_search filters.allowed_domains
     pub tools_web_search_allowed_domains: Option<Vec<String>>,
     /// Experimental: enable streamable shell tool selection (off by default).
@@ -915,6 +917,10 @@ pub struct ToolsToml {
     #[serde(default)]
     pub search_tool: Option<bool>,
 
+    /// Enable browser open/fetch/action tools.
+    #[serde(default)]
+    pub browser: Option<bool>,
+
     /// Optional allow-list of domains used by the Responses API web_search tool.
     /// Example:
     ///
@@ -1262,6 +1268,11 @@ impl Config {
             .as_ref()
             .and_then(|t| t.search_tool)
             .unwrap_or(false);
+        let tools_browser = cfg
+            .tools
+            .as_ref()
+            .and_then(|t| t.browser)
+            .unwrap_or(true);
         let tools_web_search_allowed_domains = cfg
             .tools
             .as_ref()
@@ -1726,6 +1737,7 @@ impl Config {
             tools_web_search_request,
             tools_web_search_external,
             tools_search_tool,
+            tools_browser,
             tools_web_search_allowed_domains,
             // Honor upstream opt-in switch name for our experimental streamable shell tool.
             use_experimental_streamable_shell_tool: cfg

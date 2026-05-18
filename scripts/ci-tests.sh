@@ -43,7 +43,9 @@ fi
 "${BIN}" completion bash >/dev/null
 "${BIN}" doctor >/dev/null || true
 
-echo "[ci-tests] Post-release cleanup policy..."
-bash "$ROOT_DIR/scripts/test-post-release-cleanup.sh"
+if [[ "${SKIP_POST_RELEASE_CLEANUP:-0}" != "1" ]]; then
+  echo "[ci-tests] Post-release cleanup policy..."
+  bash "$ROOT_DIR/scripts/test-post-release-cleanup.sh"
+fi
 
 echo "[ci-tests] Done."

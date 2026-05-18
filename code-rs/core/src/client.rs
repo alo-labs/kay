@@ -491,6 +491,7 @@ impl ModelClient {
         tools_config.web_search_allowed_domains = self.config.tools_web_search_allowed_domains.clone();
         tools_config.web_search_external = self.config.tools_web_search_external;
         tools_config.search_tool = self.config.tools_search_tool;
+        tools_config.browser_tool = self.config.tools_browser;
         tools_config.set_agent_tool_enabled(self.config.subagents_enabled);
 
         let auth_mode = self

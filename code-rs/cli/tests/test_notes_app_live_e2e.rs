@@ -12,6 +12,9 @@ use code_apply_patch::{
 };
 use tempfile::TempDir;
 
+mod common;
+use common::SessionPreserver;
+
 const TEST_NOTES_APP_REPO_ROOT: &str = "/Users/shafqat/projects/test-notes-app";
 
 const OPENCODE_GO_MODELS: &[&str] = &[
@@ -706,6 +709,10 @@ fn opencode_go_notes_app_live_feature_workflow() {
 
     for &model in &selected_models() {
         let kay_home = TempDir::new().expect("temp KAY_HOME");
+        let _sessions = SessionPreserver::new(
+            kay_home.path(),
+            format!("test_notes_app_live_e2e_{}", model.replace('/', "_")),
+        );
         login_opencode_go(&kay_home, &api_key);
 
         let (_workspace_guard, repo_dir) = clone_repo();
