@@ -146,11 +146,6 @@ impl RemoteModelsManager {
 
     async fn refresh_remote_models_inner(&self, stale_etag: Option<String>) {
         let auth = self.auth_manager.auth();
-        let auth_mode = auth.as_ref().map(|a| a.mode);
-        if !auth_mode.is_some_and(AuthMode::is_chatgpt) {
-            // Only the ChatGPT backend exposes the Codex `/models` schema.
-            return;
-        }
 
         let url = match self.models_url(&auth) {
             Ok(url) => url,
@@ -160,9 +155,26 @@ impl RemoteModelsManager {
             }
         };
 
+        let provider_api_key = self
+            .provider
+            .credential_ref
+            .as_deref()
+            .and_then(|provider_ref| self.auth_manager.provider_api_key(provider_ref));
+        let effective_auth = match self
+            .provider
+            .effective_auth_with_provider_key(&auth, provider_api_key.as_deref())
+            .await
+        {
+            Ok(auth) => auth,
+            Err(err) => {
+                tracing::debug!("remote /models auth/header setup failed: {err}");
+                return;
+            }
+        };
+
         let mut request = match self
             .provider
-            .create_request_builder_for_url(&self.client, &auth, Method::GET, url)
+            .create_request_builder_for_url_with_auth(&self.client, &effective_auth, Method::GET, url)
             .await
         {
             Ok(request) => request,

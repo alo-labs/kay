@@ -199,7 +199,17 @@ event: response.completed\ndata: {}\n\n",
     });
 
     let requests = server.received_requests().await.unwrap();
-    assert_eq!(requests.len(), 2, "expected two model requests (tool + follow-up)");
+    let model_requests = requests
+        .iter()
+        .filter(|request| {
+            request.method.as_str() == "POST" && request.url.path().ends_with("/responses")
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        model_requests.len(),
+        2,
+        "expected two model requests (tool + follow-up)"
+    );
 
     assert!(hook_before_seen, "tool.before hook did not emit ExecCommandBegin");
     assert!(hook_after_seen, "tool.after hook did not emit ExecCommandEnd");

@@ -35,6 +35,8 @@ npm install -g @alo-labs/kay
 
 The primary command is `kay`. The package also installs `codex` and `coder` aliases, and installs the legacy `code` alias when doing so would not override another `code` command already on PATH.
 
+Provider credentials you save with `kay login` are stored in `$KAY_HOME/auth.json` (defaults to `~/.kay/auth.json`), so once configured they work from any directory.
+
 GitHub Releases also provide standalone archives.
 
 1. Open the latest release: [alo-labs/kay releases](https://github.com/alo-labs/kay/releases/latest)
@@ -85,6 +87,10 @@ Expand-Archive .\kay-x86_64-pc-windows-msvc.exe.zip
    printenv MINIMAX_API_KEY | kay login --provider minimax --with-api-key
    printenv OPENAI_API_KEY | kay login --provider openai --with-api-key
    ```
+
+   These commands save the credentials into `$KAY_HOME/auth.json` so Kay can
+   reuse them the next time you launch the CLI, even from a different
+   directory.
 
 3. Pick a model with `/model`.
    - Kay shows the models available for the providers you have configured.

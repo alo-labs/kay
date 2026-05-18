@@ -47,6 +47,7 @@ use code_core::spawn::spawn_std_command_with_retry;
 use code_core::plan_tool::{PlanItemArg, StepStatus, UpdatePlanArgs};
 use code_core::model_family::derive_default_model_family;
 use code_core::model_family::find_family_for_model;
+use code_core::model_family::infer_model_provider_id;
 use code_core::model_family::resolve_context_mode_limits;
 use code_core::model_family::supports_extended_context;
 use code_core::model_visibility::{
@@ -62,6 +63,7 @@ use code_core::account_usage::{
     StoredUsageSummary,
     TokenTotals,
 };
+use code_core::{MINIMAX_PROVIDER_ID, OPENCODE_GO_PROVIDER_ID};
 use code_core::auth_accounts::{self, StoredAccount};
 use code_login::AuthManager;
 use code_login::AuthMode;
@@ -6956,7 +6958,7 @@ impl ChatWidget<'_> {
         self.stream_order_seq.get(&(kind, id.to_string())).copied()
     }
     pub(crate) fn new(
-        mut config: Config,
+        config: Config,
         app_event_tx: AppEventSender,
         initial_prompt: Option<String>,
         initial_images: Vec<PathBuf>,
@@ -6965,11 +6967,6 @@ impl ChatWidget<'_> {
         show_order_overlay: bool,
         latest_upgrade_version: Option<String>,
     ) -> Self {
-        let mapped_theme = crate::theme::map_theme_for_palette(
-            config.tui.theme.name,
-            config.tui.theme.is_dark,
-        );
-        config.tui.theme.name = mapped_theme;
         remember_cwd_history(&config.cwd);
 
         let (code_op_tx, code_op_rx) = unbounded_channel::<Op>();
@@ -23488,6 +23485,83 @@ Have we met every part of this goal and is there no further work to do?"#
         self.apply_model_selection_inner(model, effort, true, true);
     }
 
+    pub(crate) fn apply_model_provider_selection(&mut self, provider_id: String) {
+        let provider_id = provider_id.trim().to_ascii_lowercase();
+        if provider_id.is_empty() {
+            return;
+        }
+
+        let Some(target_provider) = Self::visible_provider_for_provider_id(&provider_id) else {
+            tracing::warn!("ignoring unknown provider selection `{provider_id}`");
+            return;
+        };
+
+        let current_provider_id = Self::provider_id_for_model(&self.config.model)
+            .unwrap_or_else(|| self.config.model_provider_id.as_str())
+            .to_string();
+        let provider_changed = !current_provider_id.eq_ignore_ascii_case(&provider_id);
+        if !provider_changed {
+            self.remote_model_presets = None;
+        }
+        let (target_model, target_effort) = if current_provider_id.eq_ignore_ascii_case(&provider_id)
+        {
+            (self.config.model.clone(), self.config.model_reasoning_effort)
+        } else if let Some((model, effort)) = self.provider_default_model_for(target_provider) {
+            (model, effort)
+        } else {
+            tracing::warn!("no default model found for provider `{provider_id}`");
+            return;
+        };
+
+        self.apply_model_selection_inner(target_model, Some(target_effort), true, false);
+        if !provider_changed {
+            self.bottom_pane
+                .update_model_selection_presets(self.available_model_presets());
+        }
+    }
+
+    fn visible_provider_for_provider_id(provider_id: &str) -> Option<VisibleProvider> {
+        let provider_id = provider_id.trim().to_ascii_lowercase();
+        match provider_id.as_str() {
+            OPENCODE_GO_PROVIDER_ID => Some(VisibleProvider::OpenCodeGo),
+            MINIMAX_PROVIDER_ID => Some(VisibleProvider::MiniMax),
+            "openai" => Some(VisibleProvider::OpenAI),
+            _ => None,
+        }
+    }
+
+    fn provider_id_for_model(model: &str) -> Option<&'static str> {
+        infer_model_provider_id(model)
+    }
+
+    fn provider_default_model_for(&self, provider: VisibleProvider) -> Option<(String, ReasoningEffort)> {
+        let provider_id = match provider {
+            VisibleProvider::OpenCodeGo => OPENCODE_GO_PROVIDER_ID,
+            VisibleProvider::MiniMax => MINIMAX_PROVIDER_ID,
+            VisibleProvider::OpenAI => "openai",
+        };
+
+        let mut fallback: Option<(String, ReasoningEffort)> = None;
+        for preset in self.available_model_presets() {
+            let Some(preset_provider_id) = Self::provider_id_for_model(&preset.model) else {
+                continue;
+            };
+            if !preset_provider_id.eq_ignore_ascii_case(provider_id) {
+                continue;
+            }
+
+            let effort = Self::preset_effort_for_model(&preset);
+            if preset.is_default {
+                return Some((preset.model.clone(), effort));
+            }
+            if fallback.is_none() {
+                fallback = Some((preset.model.clone(), effort));
+            }
+        }
+
+        fallback
+    }
+
     fn submit_configure_session_op(&mut self) {
         let op = Op::ConfigureSession {
             provider: self.config.model_provider.clone(),
@@ -23766,7 +23840,28 @@ Have we met every part of this goal and is there no further work to do?"#
             self.config.model_explicit = true;
         }
 
-        let mut updated = false;
+        let inferred_provider_id = Self::provider_id_for_model(trimmed)
+            .map(ToString::to_string)
+            .unwrap_or_else(|| self.config.model_provider_id.clone());
+        let provider_changed = !self
+            .config
+            .model_provider_id
+            .eq_ignore_ascii_case(&inferred_provider_id);
+        if provider_changed {
+            self.config.model_provider_id = inferred_provider_id.clone();
+            if let Some(provider) = self.config.model_providers.get(&inferred_provider_id) {
+                self.config.model_provider = provider.clone();
+            } else {
+                tracing::warn!(
+                    "missing model provider config for `{inferred_provider_id}`; keeping existing provider info"
+                );
+            }
+            self.remote_model_presets = None;
+            self.bottom_pane
+                .update_model_selection_presets(self.available_model_presets());
+        }
+
+        let mut updated = provider_changed;
         if !self.config.model.eq_ignore_ascii_case(trimmed) {
             self.config.model = trimmed.to_string();
             let family = find_family_for_model(&self.config.model)
@@ -24955,7 +25050,7 @@ Have we met every part of this goal and is there no further work to do?"#
         let tail_ticket = self.make_background_tail_ticket();
         let before_ticket = self.make_background_before_next_output_ticket();
         self.bottom_pane.show_theme_selection(
-            crate::theme::current_theme_name(),
+            self.config.tui.theme.name,
             tail_ticket,
             before_ticket,
         );
@@ -25832,10 +25927,9 @@ Have we met every part of this goal and is there no further work to do?"#
         } else {
             None
         };
-        let mapped_theme = crate::theme::map_theme_for_palette(new_theme, custom_hint);
 
         // Update the config
-        self.config.tui.theme.name = mapped_theme;
+        self.config.tui.theme.name = new_theme;
         if matches!(new_theme, code_core::config_types::ThemeName::Custom) {
             self.config.tui.theme.is_dark = custom_hint;
         } else {
@@ -25843,13 +25937,13 @@ Have we met every part of this goal and is there no further work to do?"#
         }
 
         // Save the theme to config file
-        self.save_theme_to_config(mapped_theme);
+        self.save_theme_to_config(new_theme);
 
         // Retint pre-rendered history cell lines to the new palette
         self.restyle_history_after_theme_change();
 
         // Add confirmation message to history (replaceable system notice)
-        let theme_name = Self::theme_display_name(mapped_theme);
+        let theme_name = Self::theme_display_name(new_theme);
         let message = format!("Theme changed to {}", theme_name);
         let placement = self.ui_placement_for_now();
         let cell = history_cell::new_background_event(message);
@@ -31462,6 +31556,61 @@ use code_core::protocol::OrderMeta;
     fn builtin_model_presets_include_gpt_5_5() {
         let presets = builtin_model_presets(Some(AuthMode::ChatGPT), true);
         assert!(presets.iter().any(|preset| preset.id == "gpt-5.5"));
+    }
+
+    #[test]
+    fn model_command_switches_provider_for_minimax_model() {
+        let _runtime_guard = enter_test_runtime_guard();
+        let code_home = tempdir().expect("temp code home");
+        auth::login_with_api_key(code_home.path(), "sk-openai")
+            .expect("openai login should write auth");
+        auth::save_provider_api_key(code_home.path(), "minimax", "sk-minimax")
+            .expect("minimax provider key should be saved");
+
+        let mut harness = ChatWidgetHarness::new();
+        harness.with_chat(|chat| {
+            chat.config.code_home = code_home.path().to_path_buf();
+            chat.auth_manager = auth::AuthManager::shared_with_mode_and_originator(
+                code_home.path().to_path_buf(),
+                AuthMode::ApiKey,
+                "code_cli_rs".to_string(),
+            );
+
+            chat.apply_model_selection(
+                "MiniMax-M2.7".to_string(),
+                Some(ReasoningEffort::Medium),
+            );
+
+            assert_eq!(chat.config.model, "MiniMax-M2.7");
+            assert_eq!(chat.config.model_provider_id, MINIMAX_PROVIDER_ID);
+            assert_eq!(chat.config.model_provider.name, "MiniMax");
+        });
+    }
+
+    #[test]
+    fn provider_selection_switches_to_provider_default_model() {
+        let _runtime_guard = enter_test_runtime_guard();
+        let code_home = tempdir().expect("temp code home");
+        auth::login_with_api_key(code_home.path(), "sk-openai")
+            .expect("openai login should write auth");
+        auth::save_provider_api_key(code_home.path(), "minimax", "sk-minimax")
+            .expect("minimax provider key should be saved");
+
+        let mut harness = ChatWidgetHarness::new();
+        harness.with_chat(|chat| {
+            chat.config.code_home = code_home.path().to_path_buf();
+            chat.auth_manager = auth::AuthManager::shared_with_mode_and_originator(
+                code_home.path().to_path_buf(),
+                AuthMode::ApiKey,
+                "code_cli_rs".to_string(),
+            );
+
+            chat.apply_model_provider_selection(MINIMAX_PROVIDER_ID.to_string());
+
+            assert_eq!(chat.config.model_provider_id, MINIMAX_PROVIDER_ID);
+            assert_eq!(chat.config.model_provider.name, "MiniMax");
+            assert_eq!(chat.config.model, "MiniMax-M2.7");
+        });
     }
 
     #[test]

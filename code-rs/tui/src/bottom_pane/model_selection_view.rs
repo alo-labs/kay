@@ -7,6 +7,7 @@ use code_common::model_presets::ModelPreset;
 use code_core::config_types::ContextMode;
 use code_core::config_types::ReasoningEffort;
 use code_core::config_types::ServiceTier;
+use code_core::model_family::infer_model_provider_id;
 use code_core::model_family::supports_extended_context;
 use code_core::model_family::provider_model_slug;
 use code_core::model_visibility::VisibleProvider;
@@ -60,12 +61,10 @@ impl FlatPreset {
     }
 
     fn provider_for_model(model: &str) -> VisibleProvider {
-        if provider_model_slug(OPENCODE_GO_PROVIDER_ID, model).as_ref() != model {
-            VisibleProvider::OpenCodeGo
-        } else if model.trim().eq_ignore_ascii_case("MiniMax-M2.7") {
-            VisibleProvider::MiniMax
-        } else {
-            VisibleProvider::OpenAI
+        match infer_model_provider_id(model) {
+            Some(OPENCODE_GO_PROVIDER_ID) => VisibleProvider::OpenCodeGo,
+            Some(MINIMAX_PROVIDER_ID) => VisibleProvider::MiniMax,
+            _ => VisibleProvider::OpenAI,
         }
     }
 

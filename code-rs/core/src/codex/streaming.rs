@@ -402,6 +402,21 @@ pub(super) async fn submission_loop(
 
                 updated_config.model = model.clone();
                 updated_config.model_explicit = model_explicit;
+                let provider_id = provider
+                    .credential_ref
+                    .as_deref()
+                    .map(str::to_string)
+                    .or_else(|| {
+                        if provider.requires_openai_auth {
+                            Some("openai".to_string())
+                        } else if provider.name.eq_ignore_ascii_case("gpt-oss") {
+                            Some("oss".to_string())
+                        } else {
+                            None
+                        }
+                    })
+                    .unwrap_or_else(|| updated_config.model_provider_id.clone());
+                updated_config.model_provider_id = provider_id;
                 updated_config.model_provider = provider.clone();
                 updated_config.model_reasoning_effort = model_reasoning_effort;
                 if let Some(preferred) = preferred_model_reasoning_effort {
@@ -512,6 +527,7 @@ pub(super) async fn submission_loop(
                     if let Err(err) = persist_model_selection(
                         &new_config.code_home,
                         new_config.active_profile.as_deref(),
+                        &new_config.model_provider_id,
                         &new_config.model,
                         Some(new_config.model_reasoning_effort),
                         new_config.preferred_model_reasoning_effort,

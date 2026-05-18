@@ -275,6 +275,7 @@ impl App<'_> {
                 enable_perf,
                 resume_picker,
                 latest_upgrade_version: latest_upgrade_version.clone(),
+                open_provider_credentials_on_startup: false,
             };
             AppState::Onboarding {
                 screen: OnboardingScreen::new(OnboardingScreenArgs {

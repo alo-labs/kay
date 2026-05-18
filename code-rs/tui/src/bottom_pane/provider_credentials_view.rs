@@ -19,6 +19,7 @@ use code_core::{
 use code_login::AuthMode;
 
 use crate::app_event_sender::AppEventSender;
+use crate::app_event::AppEvent;
 use crate::chatwidget::BackgroundOrderTicket;
 
 use super::bottom_pane_view::{BottomPaneView, ConditionalUpdate};
@@ -580,6 +581,9 @@ impl ProviderCredentialsState {
                 self.send_tail(format!("{action} {provider_label} API key"));
                 self.reload_providers();
                 self.select_provider_ref(provider_ref);
+                self.app_event_tx.send(AppEvent::UpdateModelProviderSelection {
+                    provider_id: provider_ref.to_string(),
+                });
                 self.feedback = Some(Feedback {
                     message: format!("{provider_label} API key saved"),
                     is_error: false,

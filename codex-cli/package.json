@@ -1,6 +1,6 @@
 {
   "name": "@alo-labs/kay",
-  "version": "0.9.6",
+  "version": "0.9.7",
   "license": "Apache-2.0",
   "description": "Lightweight coding agent that runs in your terminal - fork of OpenAI Codex",
   "bin": {
@@ -38,10 +38,10 @@
     "prettier": "^3.3.3"
   },
   "optionalDependencies": {
-    "@alo-labs/kay-darwin-arm64": "0.9.6",
-    "@alo-labs/kay-darwin-x64": "0.9.6",
-    "@alo-labs/kay-linux-x64-musl": "0.9.6",
-    "@alo-labs/kay-linux-arm64-musl": "0.9.6",
-    "@alo-labs/kay-win32-x64": "0.9.6"
+    "@alo-labs/kay-darwin-arm64": "0.9.7",
+    "@alo-labs/kay-darwin-x64": "0.9.7",
+    "@alo-labs/kay-linux-x64-musl": "0.9.7",
+    "@alo-labs/kay-linux-arm64-musl": "0.9.7",
+    "@alo-labs/kay-win32-x64": "0.9.7"
   }
 }

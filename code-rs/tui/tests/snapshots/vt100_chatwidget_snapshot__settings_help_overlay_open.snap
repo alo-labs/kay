@@ -1,6 +1,5 @@
 ---
 source: tui/tests/vt100_chatwidget_snapshot.rs
-assertion_line: 2473
 expression: open
 ---
  +------------------------------------------------------------------------------------------------+
@@ -11,7 +10,7 @@ expression: open
  | › Model              Model: GPT-5.4 (Medium)                                                   |
  |   + Choose the language model used for new completions.                                        |
  |                           +----------------------------------------+                           |
- |   Theme              Theme|Settings Overview                       |mond                       |
+ |   Theme              Theme|Settings Overview                       |                           |
  |   + Switch between preset |                                        |                           |
  |                           |• ↑/↓  Move between sections            |                           |
  |   Updates            Auto |• Enter  Open selected section          |                           |

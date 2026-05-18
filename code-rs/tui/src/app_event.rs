@@ -282,6 +282,10 @@ pub(crate) enum AppEvent {
         model: String,
         effort: Option<ReasoningEffort>,
     },
+    /// Update the active provider selection and switch to that provider's default model.
+    UpdateModelProviderSelection {
+        provider_id: String,
+    },
 
     /// Update the session Fast mode service tier.
     UpdateServiceTierSelection {
