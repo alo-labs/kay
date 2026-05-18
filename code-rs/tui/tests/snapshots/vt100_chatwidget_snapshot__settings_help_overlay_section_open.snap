@@ -1,6 +1,6 @@
 ---
 source: tui/tests/vt100_chatwidget_snapshot.rs
-assertion_line: 2490
+assertion_line: 2525
 expression: section_open
 ---
  +------------------------------------------------------------------------------------------------+
@@ -14,7 +14,7 @@ expression: section_open
  |    Accounts           |  Reason|Model Shortcuts               |                              | |
  |    Agents             |        |                              |                              | |
  |    Prompts            |  Mode S|• Esc    Return to overview   |                              | |
- |    Memories           |  Fast m|• Tab    Cycle sections       |t is available on supported m | |
+ |    Memories           |  Fast m|• Tab    Cycle sections       | Context is available on supp | |
  |    Skills             |  › Fast|• Shift+Tab  Cycle backwards  |                              | |
  |    Auto Drive         |    1M C|• ?      Toggle this help     |                              | |
  |    Review             |  Press |                              |, and Auto.                   | |

@@ -708,7 +708,7 @@ fn should_serialize_reasoning_content(content: &Option<Vec<ReasoningItemContent>
         Some(content) => !content
             .iter()
             .any(|c| matches!(c, ReasoningItemContent::ReasoningText { .. })),
-        None => false,
+        None => true,
     }
 }
 

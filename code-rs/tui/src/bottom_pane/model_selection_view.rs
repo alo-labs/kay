@@ -8,6 +8,8 @@ use code_core::config_types::ContextMode;
 use code_core::config_types::ReasoningEffort;
 use code_core::config_types::ServiceTier;
 use code_core::model_family::infer_model_provider_id;
+use code_core::model_family::model_supports_configurable_reasoning_effort_for_provider;
+use code_core::model_family::model_supports_fast_mode_for_provider;
 use code_core::model_family::supports_extended_context;
 use code_core::model_family::provider_model_slug;
 use code_core::model_visibility::VisibleProvider;
@@ -22,12 +24,12 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::Paragraph;
 use std::cmp::Ordering;
 
-/// Flattened preset entry combining a model with a specific reasoning effort.
+/// Flattened preset entry combining a model with an optional reasoning effort.
 #[derive(Clone, Debug)]
 struct FlatPreset {
     provider: VisibleProvider,
     model: String,
-    effort: ReasoningEffort,
+    effort: Option<ReasoningEffort>,
     label: String,
     description: String,
 }
@@ -41,6 +43,20 @@ struct ModelLine {
 impl FlatPreset {
     fn from_model_preset(preset: &ModelPreset) -> Vec<Self> {
         let provider = Self::provider_for_model(&preset.model);
+        if preset.supported_reasoning_efforts.is_empty() {
+            return vec![FlatPreset {
+                provider,
+                model: preset.model.to_string(),
+                effort: None,
+                label: preset.display_name.to_string(),
+                description: if preset.description.trim().is_empty() {
+                    "Use this model.".to_string()
+                } else {
+                    preset.description.to_string()
+                },
+            }];
+        }
+
         preset
             .supported_reasoning_efforts
             .iter()
@@ -48,7 +64,7 @@ impl FlatPreset {
                 FlatPreset {
                     provider,
                     model: preset.model.to_string(),
-                    effort: effort_preset.effort.into(),
+                    effort: Some(effort_preset.effort.into()),
                     label: format!(
                         "{} {}",
                         preset.display_name,
@@ -155,6 +171,7 @@ pub(crate) struct ModelSelectionView {
     flat_presets: Vec<FlatPreset>,
     selected_index: usize,
     scroll_top: Cell<usize>,
+    current_provider_id: String,
     current_model: String,
     current_effort: ReasoningEffort,
     current_service_tier: Option<ServiceTier>,
@@ -176,6 +193,7 @@ enum EntryKind {
 impl ModelSelectionView {
     pub fn new(
         presets: Vec<ModelPreset>,
+        current_provider_id: String,
         current_model: String,
         current_effort: ReasoningEffort,
         current_service_tier: Option<ServiceTier>,
@@ -189,8 +207,17 @@ impl ModelSelectionView {
             .flat_map(FlatPreset::from_model_preset)
             .collect();
 
+        let current_provider_id = if matches!(target, ModelSelectionTarget::Session) {
+            current_provider_id
+        } else {
+            infer_model_provider_id(&current_model)
+                .map(ToString::to_string)
+                .unwrap_or(current_provider_id)
+        };
+        let include_fast_mode = target.supports_fast_mode()
+            && model_supports_fast_mode_for_provider(&current_provider_id, &current_model);
         let initial_index = Self::initial_selection(
-            target.supports_fast_mode(),
+            include_fast_mode,
             target.supports_fast_mode(),
             target.supports_follow_chat(),
             use_chat_model,
@@ -202,6 +229,7 @@ impl ModelSelectionView {
             flat_presets,
             selected_index: initial_index,
             scroll_top: Cell::new(0),
+            current_provider_id,
             current_model,
             current_effort,
             current_service_tier,
@@ -214,7 +242,8 @@ impl ModelSelectionView {
     }
 
     pub(crate) fn update_presets(&mut self, presets: Vec<ModelPreset>) {
-        let include_fast_mode = self.target.supports_fast_mode();
+        let include_fast_mode = self.target.supports_fast_mode()
+            && self.current_model_supports_fast_mode();
         let include_context_mode = self.target.supports_fast_mode();
         let include_follow_chat = self.target.supports_follow_chat();
         let previous_entries = self.entries();
@@ -344,7 +373,8 @@ impl ModelSelectionView {
         }
 
         if let Some((idx, _)) = flat_presets.iter().enumerate().find(|(_, preset)| {
-            preset.model.eq_ignore_ascii_case(current_model) && preset.effort == current_effort
+            preset.model.eq_ignore_ascii_case(current_model)
+                && preset.effort == Some(current_effort)
         }) {
             return idx
                 + usize::from(include_context_mode)
@@ -374,6 +404,17 @@ impl ModelSelectionView {
 
     fn supports_extended_context(&self) -> bool {
         supports_extended_context(&self.current_model)
+    }
+
+    fn current_model_supports_fast_mode(&self) -> bool {
+        model_supports_fast_mode_for_provider(&self.current_provider_id, &self.current_model)
+    }
+
+    fn current_model_supports_configurable_reasoning_effort(&self) -> bool {
+        model_supports_configurable_reasoning_effort_for_provider(
+            &self.current_provider_id,
+            &self.current_model,
+        )
     }
 
     fn format_model_header(model: &str) -> String {
@@ -458,7 +499,7 @@ impl ModelSelectionView {
 
     fn entries(&self) -> Vec<EntryKind> {
         let mut entries = Vec::new();
-        if self.target.supports_fast_mode() {
+        if self.target.supports_fast_mode() && self.current_model_supports_fast_mode() {
             entries.push(EntryKind::FastMode);
         }
         if self.target.supports_fast_mode() {
@@ -498,6 +539,9 @@ impl ModelSelectionView {
         if let Some(entry) = entries.get(self.selected_index) {
             match entry {
                 EntryKind::FastMode => {
+                    if !self.current_model_supports_fast_mode() {
+                        return;
+                    }
                     let next_service_tier = if matches!(self.current_service_tier, Some(ServiceTier::Fast)) {
                         None
                     } else {
@@ -559,11 +603,12 @@ impl ModelSelectionView {
                 }
                 EntryKind::Preset(idx) => {
                     if let Some(flat_preset) = self.flat_presets.get(*idx) {
+                        let selected_effort = flat_preset.effort.unwrap_or(self.current_effort);
                         match self.target {
                             ModelSelectionTarget::Session => {
                                 let _ = self.app_event_tx.send(AppEvent::UpdateModelSelection {
                                     model: flat_preset.model.clone(),
-                                    effort: Some(flat_preset.effort),
+                                    effort: flat_preset.effort,
                                 });
                             }
                             ModelSelectionTarget::Review => {
@@ -571,7 +616,7 @@ impl ModelSelectionView {
                                     .app_event_tx
                                     .send(AppEvent::UpdateReviewModelSelection {
                                         model: flat_preset.model.clone(),
-                                        effort: flat_preset.effort,
+                                        effort: selected_effort,
                                     });
                             }
                             ModelSelectionTarget::Planning => {
@@ -579,7 +624,7 @@ impl ModelSelectionView {
                                     .app_event_tx
                                     .send(AppEvent::UpdatePlanningModelSelection {
                                         model: flat_preset.model.clone(),
-                                        effort: flat_preset.effort,
+                                        effort: selected_effort,
                                     });
                             }
                             ModelSelectionTarget::AutoDrive => {
@@ -587,7 +632,7 @@ impl ModelSelectionView {
                                     .app_event_tx
                                     .send(AppEvent::UpdateAutoDriveModelSelection {
                                         model: flat_preset.model.clone(),
-                                        effort: flat_preset.effort,
+                                        effort: selected_effort,
                                     });
                             }
                             ModelSelectionTarget::ReviewResolve => {
@@ -595,7 +640,7 @@ impl ModelSelectionView {
                                     .app_event_tx
                                     .send(AppEvent::UpdateReviewResolveModelSelection {
                                         model: flat_preset.model.clone(),
-                                        effort: flat_preset.effort,
+                                        effort: selected_effort,
                                     });
                             }
                             ModelSelectionTarget::AutoReview => {
@@ -603,7 +648,7 @@ impl ModelSelectionView {
                                     .app_event_tx
                                     .send(AppEvent::UpdateAutoReviewModelSelection {
                                         model: flat_preset.model.clone(),
-                                        effort: flat_preset.effort,
+                                        effort: selected_effort,
                                     });
                             }
                             ModelSelectionTarget::AutoReviewResolve => {
@@ -611,7 +656,7 @@ impl ModelSelectionView {
                                     .app_event_tx
                                     .send(AppEvent::UpdateAutoReviewResolveModelSelection {
                                         model: flat_preset.model.clone(),
-                                        effort: flat_preset.effort,
+                                        effort: selected_effort,
                                     });
                             }
                         }
@@ -645,25 +690,29 @@ impl ModelSelectionView {
             is_selected: false,
         });
 
-        lines.push(ModelLine {
-            line: Line::from(vec![
-                Span::styled(
-                    format!("{}: ", self.target.reasoning_label()),
-                    Style::default().fg(crate::colors::text_dim()),
-                ),
-                Span::styled(
-                    if self.target.supports_follow_chat() && self.use_chat_model {
-                        "From chat".to_string()
-                    } else {
-                        Self::effort_label(self.current_effort).to_string()
-                    },
-                    Style::default()
-                        .fg(crate::colors::warning())
-                        .add_modifier(Modifier::BOLD),
-                ),
-            ]),
-            is_selected: false,
-        });
+        if self.target.supports_follow_chat() && self.use_chat_model
+            || self.current_model_supports_configurable_reasoning_effort()
+        {
+            lines.push(ModelLine {
+                line: Line::from(vec![
+                    Span::styled(
+                        format!("{}: ", self.target.reasoning_label()),
+                        Style::default().fg(crate::colors::text_dim()),
+                    ),
+                    Span::styled(
+                        if self.target.supports_follow_chat() && self.use_chat_model {
+                            "From chat".to_string()
+                        } else {
+                            Self::effort_label(self.current_effort).to_string()
+                        },
+                        Style::default()
+                            .fg(crate::colors::warning())
+                            .add_modifier(Modifier::BOLD),
+                    ),
+                ]),
+                is_selected: false,
+            });
+        }
 
         lines.push(ModelLine {
             line: Line::from(""),
@@ -679,41 +728,46 @@ impl ModelSelectionView {
                 line: Line::from(vec![Span::styled("Mode Settings", header_style)]),
                 is_selected: false,
             });
+            let fast_mode_available = self.current_model_supports_fast_mode();
+            let mode_description = if fast_mode_available {
+                "Fast mode speeds up OpenAI replies. 1M Context is available on supported models."
+            } else {
+                "1M Context is available on supported models."
+            };
             lines.push(ModelLine {
-                line: Line::from(vec![Span::styled(
-                    "Fast mode speeds up replies. 1M Context is available on supported models.",
-                    desc_style,
-                )]),
+                line: Line::from(vec![Span::styled(mode_description, desc_style)]),
                 is_selected: false,
             });
 
-            let fast_selected = matches!(self.entries().get(self.selected_index), Some(EntryKind::FastMode));
-            let fast_enabled = matches!(self.current_service_tier, Some(ServiceTier::Fast));
-            let fast_status = if fast_enabled { "enabled" } else { "disabled" };
-            let mut fast_label_style = Style::default().fg(crate::colors::text());
-            if fast_selected {
-                fast_label_style = fast_label_style
-                    .bg(crate::colors::selection())
-                    .add_modifier(Modifier::BOLD);
+            if fast_mode_available {
+                let fast_selected = matches!(self.entries().get(self.selected_index), Some(EntryKind::FastMode));
+                let fast_enabled = matches!(self.current_service_tier, Some(ServiceTier::Fast));
+                let fast_status = if fast_enabled { "enabled" } else { "disabled" };
+                let mut fast_label_style = Style::default().fg(crate::colors::text());
+                if fast_selected {
+                    fast_label_style = fast_label_style
+                        .bg(crate::colors::selection())
+                        .add_modifier(Modifier::BOLD);
+                }
+                if fast_enabled {
+                    fast_label_style = fast_label_style.fg(crate::colors::success());
+                }
+                let fast_arrow = if fast_selected { "› " } else { "  " };
+                let fast_arrow_style = if fast_selected {
+                    Style::default()
+                        .bg(crate::colors::selection())
+                        .add_modifier(Modifier::BOLD)
+                } else {
+                    Style::default().fg(crate::colors::text_dim())
+                };
+                lines.push(ModelLine {
+                    line: Line::from(vec![
+                        Span::styled(fast_arrow, fast_arrow_style),
+                        Span::styled(format!("Fast Mode: {fast_status}"), fast_label_style),
+                    ]),
+                    is_selected: fast_selected,
+                });
             }
-            if fast_enabled {
-                fast_label_style = fast_label_style.fg(crate::colors::success());
-            }
-            let fast_arrow = if fast_selected { "› " } else { "  " };
-            let fast_arrow_style = if fast_selected {
-                Style::default()
-                    .bg(crate::colors::selection())
-                    .add_modifier(Modifier::BOLD)
-            } else {
-                Style::default().fg(crate::colors::text_dim())
-            };
-            lines.push(ModelLine {
-                line: Line::from(vec![
-                    Span::styled(fast_arrow, fast_arrow_style),
-                    Span::styled(format!("Fast Mode: {fast_status}"), fast_label_style),
-                ]),
-                is_selected: fast_selected,
-            });
 
             let context_selected = matches!(self.entries().get(self.selected_index), Some(EntryKind::ContextMode));
             let context_available = self.supports_extended_context();
@@ -892,9 +946,14 @@ impl ModelSelectionView {
             let is_selected = entry_idx == self.selected_index;
             let is_current = !self.use_chat_model
                 && flat_preset.model.eq_ignore_ascii_case(&self.current_model)
-                && flat_preset.effort == self.current_effort;
-            let label = FlatPreset::effort_label(flat_preset.effort);
-            let mut row_text = label.to_string();
+                && flat_preset
+                    .effort
+                    .map(|effort| effort == self.current_effort)
+                    .unwrap_or(true);
+            let mut row_text = flat_preset
+                .effort
+                .map(|effort| FlatPreset::effort_label(effort).to_string())
+                .unwrap_or_else(|| "Use model".to_string());
             if is_current {
                 row_text.push_str(" (current)");
             }
@@ -945,51 +1004,8 @@ impl ModelSelectionView {
     }
 
     fn content_line_count(&self) -> u16 {
-        let mut lines: u16 = 3;
-        if self.target.supports_fast_mode() {
-            lines = lines.saturating_add(6);
-        }
-        if self.target.supports_follow_chat() {
-            // Header + description + entry + spacer
-            lines = lines.saturating_add(4);
-        }
-
-        if self.flat_presets.is_empty() {
-            return lines.saturating_add(2).saturating_add(2);
-        }
-
-        let mut previous_provider: Option<VisibleProvider> = None;
-        let mut previous_model: Option<&str> = None;
-        for idx in self.sorted_indices() {
-            let flat_preset = &self.flat_presets[idx];
-
-            if previous_provider != Some(flat_preset.provider) {
-                if previous_provider.is_some() {
-                    lines = lines.saturating_add(1);
-                }
-                lines = lines.saturating_add(1);
-                previous_provider = Some(flat_preset.provider);
-                previous_model = None;
-            }
-
-            if previous_model
-                .map(|prev| !prev.eq_ignore_ascii_case(&flat_preset.model))
-                .unwrap_or(true)
-            {
-                if previous_model.is_some() {
-                    lines = lines.saturating_add(1);
-                }
-                lines = lines.saturating_add(1);
-                if Self::model_description(&flat_preset.model).is_some() {
-                    lines = lines.saturating_add(1);
-                }
-                previous_model = Some(&flat_preset.model);
-            }
-
-            lines = lines.saturating_add(1);
-        }
-
-        lines.saturating_add(2)
+        let content_rows = u16::try_from(self.rendered_rows().len()).unwrap_or(u16::MAX);
+        content_rows.saturating_add(2)
     }
 
     fn sorted_indices(&self) -> Vec<usize> {
@@ -1088,14 +1104,15 @@ impl ModelSelectionView {
         }
     }
 
-    fn effort_rank(effort: ReasoningEffort) -> u8 {
+    fn effort_rank(effort: Option<ReasoningEffort>) -> u8 {
         match effort {
-            ReasoningEffort::XHigh => 0,
-            ReasoningEffort::High => 1,
-            ReasoningEffort::Medium => 2,
-            ReasoningEffort::Low => 3,
-            ReasoningEffort::Minimal => 4,
-            ReasoningEffort::None => 5,
+            Some(ReasoningEffort::XHigh) => 0,
+            Some(ReasoningEffort::High) => 1,
+            Some(ReasoningEffort::Medium) => 2,
+            Some(ReasoningEffort::Low) => 3,
+            Some(ReasoningEffort::Minimal) => 4,
+            Some(ReasoningEffort::None) => 5,
+            None => 6,
         }
     }
 
@@ -1327,6 +1344,7 @@ mod tests {
 
         let mut view = ModelSelectionView::new(
             presets,
+            "openai".to_string(),
             "model-11".to_string(),
             ReasoningEffort::Low,
             None,
@@ -1395,6 +1413,7 @@ mod tests {
         let (tx, _rx) = mpsc::channel::<AppEvent>();
         let mut view = ModelSelectionView::new(
             presets,
+            "openai".to_string(),
             "gpt-5.3-codex".to_string(),
             ReasoningEffort::Low,
             None,
@@ -1480,6 +1499,7 @@ mod tests {
         let (tx, _rx) = mpsc::channel::<AppEvent>();
         let view = ModelSelectionView::new(
             presets,
+            "openai".to_string(),
             "gpt-5.5".to_string(),
             ReasoningEffort::Low,
             Some(ServiceTier::Fast),
@@ -1521,29 +1541,26 @@ mod tests {
         assert!(visible.contains("Mode Settings"));
         assert!(visible.contains("Fast Mode: enabled"));
         assert!(visible.contains("1M Context: unavailable"));
-        assert!(visible.contains("Fast mode speeds up replies."));
+        assert!(visible.contains("Fast mode speeds up OpenAI replies."));
         assert!(visible.contains(
             "Unavailable for this model. Saved settings apply automatically on supported models."
         ));
     }
 
     #[test]
-    fn model_selection_groups_provider_buckets_and_preserves_effort_rows() {
+    fn model_selection_groups_provider_buckets_and_hides_unconfigurable_reasoning() {
         let presets = vec![
             make_preset_with_efforts(
                 "opencode-go/kimi-k2.6",
                 "OpenCode Go Kimi K2.6",
                 "OpenCode Go model",
-                vec![
-                    (ReasoningEffort::Low, "opencode low reasoning"),
-                    (ReasoningEffort::High, "opencode high reasoning"),
-                ],
+                vec![],
             ),
             make_preset_with_efforts(
                 "MiniMax-M2.7",
                 "MiniMax M2.7",
                 "MiniMax model",
-                vec![(ReasoningEffort::Low, "minimax reasoning")],
+                vec![],
             ),
             make_preset_with_efforts(
                 "gpt-5.4",
@@ -1556,6 +1573,7 @@ mod tests {
         let (tx, _rx) = mpsc::channel::<AppEvent>();
         let view = ModelSelectionView::new(
             presets,
+            "opencode-go".to_string(),
             "opencode-go/kimi-k2.6".to_string(),
             ReasoningEffort::Low,
             None,
@@ -1606,9 +1624,11 @@ mod tests {
         assert!(visible.contains("KIMI-K2.6"));
         assert!(visible.contains("MINIMAX-M2.7"));
         assert!(visible.contains("GPT-5.4"));
-        assert!(visible.contains("Low (current)"));
-        assert!(visible.contains("opencode low reasoning"));
-        assert!(visible.contains("minimax reasoning"));
+        assert!(visible.contains("Use model (current)"));
+        assert!(visible.contains("OpenCode Go model"));
+        assert!(visible.contains("MiniMax model"));
+        assert!(!visible.contains("opencode low reasoning"));
+        assert!(!visible.contains("minimax reasoning"));
         assert!(visible.contains("openai reasoning"));
     }
 
@@ -1617,6 +1637,7 @@ mod tests {
         let (tx, _rx) = mpsc::channel::<AppEvent>();
         let view = ModelSelectionView::new(
             Vec::new(),
+            "openai".to_string(),
             "gpt-5.4".to_string(),
             ReasoningEffort::Low,
             None,
@@ -1659,6 +1680,7 @@ mod tests {
         let (tx, rx) = mpsc::channel::<AppEvent>();
         let mut view = ModelSelectionView::new(
             presets,
+            "openai".to_string(),
             "gpt-5.4".to_string(),
             ReasoningEffort::Low,
             None,
@@ -1681,11 +1703,164 @@ mod tests {
     }
 
     #[test]
+    fn non_openai_model_selection_hides_fast_mode_and_reasoning_effort() {
+        let presets = vec![make_preset_with_efforts(
+            "opencode-go/deepseek-v4-flash",
+            "OpenCode Go DeepSeek V4 Flash",
+            "1M-capable OpenCode Go model",
+            vec![],
+        )];
+        let (tx, _rx) = mpsc::channel::<AppEvent>();
+        let view = ModelSelectionView::new(
+            presets,
+            "opencode-go".to_string(),
+            "opencode-go/deepseek-v4-flash".to_string(),
+            ReasoningEffort::Medium,
+            Some(ServiceTier::Fast),
+            Some(ContextMode::OneM),
+            false,
+            ModelSelectionTarget::Session,
+            AppEventSender::new(tx),
+        );
+
+        let width = 120;
+        let height = 20;
+        let mut buf = ratatui::buffer::Buffer::empty(Rect {
+            x: 0,
+            y: 0,
+            width,
+            height,
+        });
+        view.render(Rect {
+            x: 0,
+            y: 0,
+            width,
+            height,
+        }, &mut buf);
+
+        let visible = buffer_body_lines(&buf, width, height).join("\n");
+        assert!(!visible.contains("Fast Mode"));
+        assert!(!visible.contains("Reasoning effort"));
+        assert!(!visible.contains("Medium"));
+        assert!(visible.contains("1M Context: enabled"));
+        assert!(visible.contains("Use model (current)"));
+    }
+
+    #[test]
+    fn non_session_picker_uses_current_model_provider_for_reasoning_visibility() {
+        let presets = vec![
+            make_preset_with_efforts(
+                "opencode-go/kimi-k2.6",
+                "OpenCode Go Kimi K2.6",
+                "OpenCode Go model",
+                vec![],
+            ),
+            make_preset_with_efforts(
+                "gpt-5.4",
+                "GPT-5.4",
+                "OpenAI model",
+                vec![(ReasoningEffort::Low, "openai reasoning")],
+            ),
+        ];
+        let (tx, _rx) = mpsc::channel::<AppEvent>();
+        let view = ModelSelectionView::new(
+            presets,
+            "opencode-go".to_string(),
+            "gpt-5.4".to_string(),
+            ReasoningEffort::Low,
+            None,
+            None,
+            false,
+            ModelSelectionTarget::Review,
+            AppEventSender::new(tx),
+        );
+
+        let width = 120;
+        let height = 20;
+        let mut buf = ratatui::buffer::Buffer::empty(Rect {
+            x: 0,
+            y: 0,
+            width,
+            height,
+        });
+        view.render(Rect {
+            x: 0,
+            y: 0,
+            width,
+            height,
+        }, &mut buf);
+
+        let visible = buffer_body_lines(&buf, width, height).join("\n");
+        assert!(visible.contains("Review reasoning:"));
+        assert!(visible.contains("Low"));
+        assert!(visible.contains("GPT-5.4"));
+        assert!(visible.contains("openai reasoning"));
+    }
+
+    #[test]
+    fn bare_model_under_non_openai_provider_hides_fast_mode() {
+        let presets = vec![make_preset_with_efforts(
+            "glm-5.1",
+            "GLM 5.1",
+            "OpenCode Go model",
+            vec![],
+        )];
+        let (tx, _rx) = mpsc::channel::<AppEvent>();
+        let view = ModelSelectionView::new(
+            presets,
+            "opencode-go".to_string(),
+            "glm-5.1".to_string(),
+            ReasoningEffort::Medium,
+            Some(ServiceTier::Fast),
+            None,
+            false,
+            ModelSelectionTarget::Session,
+            AppEventSender::new(tx),
+        );
+
+        assert!(!view.entries().contains(&EntryKind::FastMode));
+    }
+
+    #[test]
+    fn selecting_model_without_reasoning_effort_sends_no_effort_override() {
+        let presets = vec![make_preset_with_efforts(
+            "opencode-go/kimi-k2.6",
+            "OpenCode Go Kimi K2.6",
+            "OpenCode Go model",
+            vec![],
+        )];
+        let (tx, rx) = mpsc::channel::<AppEvent>();
+        let mut view = ModelSelectionView::new(
+            presets,
+            "opencode-go".to_string(),
+            "opencode-go/kimi-k2.6".to_string(),
+            ReasoningEffort::Medium,
+            None,
+            None,
+            false,
+            ModelSelectionTarget::Session,
+            AppEventSender::new(tx),
+        );
+
+        let _ = view.handle_key_event_direct(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+
+        let event = rx.try_recv().expect("model selection event");
+        assert!(matches!(
+            event,
+            AppEvent::UpdateModelSelection {
+                model,
+                effort: None,
+            } if model == "opencode-go/kimi-k2.6"
+        ));
+    }
+
+    #[test]
     fn selecting_one_m_context_toggles_without_closing() {
         let presets = vec![make_preset("gpt-5.4")];
         let (tx, rx) = mpsc::channel::<AppEvent>();
         let mut view = ModelSelectionView::new(
             presets,
+            "openai".to_string(),
             "gpt-5.4".to_string(),
             ReasoningEffort::Low,
             None,
@@ -1714,6 +1889,7 @@ mod tests {
         let (tx, rx) = mpsc::channel::<AppEvent>();
         let mut view = ModelSelectionView::new(
             presets,
+            "openai".to_string(),
             "gpt-5.4".to_string(),
             ReasoningEffort::Low,
             None,
@@ -1744,6 +1920,7 @@ mod tests {
         let (tx, _rx) = mpsc::channel::<AppEvent>();
         let view = ModelSelectionView::new(
             presets,
+            "openai".to_string(),
             "gpt-5.3-codex".to_string(),
             ReasoningEffort::Low,
             None,
@@ -1785,6 +1962,7 @@ mod tests {
         let (tx, _rx) = mpsc::channel::<AppEvent>();
         let view = ModelSelectionView::new(
             presets,
+            "openai".to_string(),
             "gpt-5.5".to_string(),
             ReasoningEffort::Low,
             None,
@@ -1830,6 +2008,7 @@ mod tests {
         let (tx, _rx) = mpsc::channel::<AppEvent>();
         let view = ModelSelectionView::new(
             presets,
+            "openai".to_string(),
             "gpt-5.3-codex".to_string(),
             ReasoningEffort::Low,
             None,
@@ -1871,6 +2050,7 @@ mod tests {
 
         let mut view = ModelSelectionView::new(
             presets,
+            "openai".to_string(),
             "model-00".to_string(),
             ReasoningEffort::Low,
             None,
@@ -1927,6 +2107,7 @@ mod tests {
 
         let mut view = ModelSelectionView::new(
             presets,
+            "openai".to_string(),
             "model-00".to_string(),
             ReasoningEffort::Low,
             None,

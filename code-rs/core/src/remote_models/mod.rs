@@ -367,26 +367,41 @@ fn namespaced_model_suffix(model: &str) -> Option<&str> {
     }
     if !namespace
         .chars()
-        .all(|ch| ch.is_ascii_alphanumeric() || ch == '_')
+        .all(|ch| ch.is_ascii_alphanumeric() || ch == '_' || ch == '-')
     {
         return None;
     }
     Some(suffix)
 }
 
+fn remote_slug_matches_model(remote_slug: &str, model: &str) -> bool {
+    let remote = remote_slug.trim().to_ascii_lowercase();
+    let model = model.trim().to_ascii_lowercase();
+    if remote.is_empty() || model.is_empty() {
+        return false;
+    }
+    if model == remote {
+        return true;
+    }
+    model.strip_prefix(&remote).is_some_and(|suffix| {
+        suffix
+            .strip_prefix('-')
+            .and_then(|version| version.chars().next())
+            .is_some_and(|first| first.is_ascii_digit())
+    })
+}
+
 fn find_remote_model_info(models: &[ModelInfo], model: &str) -> Option<ModelInfo> {
     models
         .iter()
-        .filter(|info| model.eq_ignore_ascii_case(&info.slug) || model.starts_with(&info.slug))
+        .filter(|info| remote_slug_matches_model(&info.slug, model))
         .cloned()
         .max_by_key(|info| info.slug.len())
         .or_else(|| {
             namespaced_model_suffix(model).and_then(|suffix| {
                 models
                     .iter()
-                    .filter(|info| {
-                        suffix.eq_ignore_ascii_case(&info.slug) || suffix.starts_with(&info.slug)
-                    })
+                    .filter(|info| remote_slug_matches_model(&info.slug, suffix))
                     .cloned()
                     .max_by_key(|info| info.slug.len())
             })
@@ -505,6 +520,23 @@ mod tests {
             .expect("namespaced slug should resolve");
 
         assert_eq!(found.slug, "gpt-5.3-codex");
+    }
+
+    #[test]
+    fn find_remote_model_info_matches_hyphenated_provider_namespace() {
+        let models = vec![model("mimo-v2.5-pro")];
+
+        let found = find_remote_model_info(&models, "opencode-go/mimo-v2.5-pro")
+            .expect("hyphenated provider namespace should resolve");
+
+        assert_eq!(found.slug, "mimo-v2.5-pro");
+    }
+
+    #[test]
+    fn find_remote_model_info_rejects_prefix_model_family_false_positive() {
+        let models = vec![model("mimo-v2.5")];
+
+        assert!(find_remote_model_info(&models, "opencode-go/mimo-v2.5-pro").is_none());
     }
 
     #[test]

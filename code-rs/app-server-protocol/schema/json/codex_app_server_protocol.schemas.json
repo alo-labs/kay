@@ -7425,7 +7425,6 @@
         {
           "properties": {
             "content": {
-              "default": null,
               "items": {
                 "$ref": "#/definitions/ReasoningItemContent"
               },
@@ -14228,7 +14227,6 @@
           {
             "properties": {
               "content": {
-                "default": null,
                 "items": {
                   "$ref": "#/definitions/v2/ReasoningItemContent"
                 },

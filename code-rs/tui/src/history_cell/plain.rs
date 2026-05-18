@@ -756,15 +756,17 @@ pub(crate) fn new_reasoning_output(reasoning_effort: &ReasoningEffort) -> PlainM
     plain_message_state_from_lines(lines, HistoryCellType::Notice)
 }
 
-pub(crate) fn new_model_output(model: &str, effort: ReasoningEffort) -> PlainMessageState {
-    let lines = vec![
+pub(crate) fn new_model_output(model: &str, effort: Option<ReasoningEffort>) -> PlainMessageState {
+    let mut lines = vec![
         Line::from(""),
         Line::from("Model Selection")
             .fg(crate::colors::keyword())
             .bold(),
         Line::from(format!("Model: {}", model)),
-        Line::from(format!("Reasoning Effort: {}", effort)),
     ];
+    if let Some(effort) = effort {
+        lines.push(Line::from(format!("Reasoning Effort: {}", effort)));
+    }
     plain_message_state_from_lines(lines, HistoryCellType::Notice)
 }
 
