@@ -3985,19 +3985,6 @@ impl Drop for TurnLatencyGuard<'_> {
     }
 }
 
-fn response_model_matches_request(requested_model: &str, response_model: &str) -> bool {
-    let requested = requested_model.trim().to_ascii_lowercase();
-    let response = response_model.trim().to_ascii_lowercase();
-
-    if response == requested {
-        return true;
-    }
-
-    response
-        .strip_prefix(&requested)
-        .is_some_and(|suffix| suffix.starts_with('-') && suffix.len() > 1)
-}
-
 async fn try_run_turn(
     sess: &Session,
     turn_diff_tracker: &mut TurnDiffTracker,
@@ -4118,7 +4105,10 @@ async fn try_run_turn(
                 if let Some(model) = response_model.clone() {
                     latest_response_model = Some(model.clone());
 
-                    if !response_model_matches_request(&requested_model, &model) {
+                    if !crate::model_family::response_model_matches_request(
+                        &requested_model,
+                        &model,
+                    ) {
                         let should_emit_warning = {
                             let mut state = sess.state.lock().unwrap();
                             let already_warned = state

@@ -24,6 +24,7 @@ use code_ansi_escape::ansi_escape_line;
 use code_common::create_config_summary_entries;
 use code_core::config::Config;
 use code_core::config_types::ReasoningEffort;
+use code_core::model_family::response_model_matches_request;
 use code_core::protocol::{SessionConfiguredEvent, TokenUsage};
 use code_protocol::num_format::format_with_separators_u64;
 use ratatui::buffer::Buffer;
@@ -765,19 +766,6 @@ pub(crate) fn new_model_output(model: &str, effort: ReasoningEffort) -> PlainMes
         Line::from(format!("Reasoning Effort: {}", effort)),
     ];
     plain_message_state_from_lines(lines, HistoryCellType::Notice)
-}
-
-fn response_model_matches_request(requested_model: &str, response_model: &str) -> bool {
-    let requested = requested_model.trim().to_ascii_lowercase();
-    let response = response_model.trim().to_ascii_lowercase();
-
-    if response == requested {
-        return true;
-    }
-
-    response
-        .strip_prefix(&requested)
-        .is_some_and(|suffix| suffix.starts_with('-') && suffix.len() > 1)
 }
 
 pub(crate) fn new_status_output(
