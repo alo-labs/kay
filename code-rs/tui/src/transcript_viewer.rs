@@ -15,6 +15,7 @@ use crossterm::event::KeyModifiers;
 use ratatui::layout::Constraint;
 use ratatui::layout::Direction;
 use ratatui::layout::Layout;
+use ratatui::buffer::Buffer;
 use ratatui::prelude::Color;
 use ratatui::style::Modifier;
 use ratatui::style::Style;
@@ -28,9 +29,14 @@ use ratatui::widgets::ListItem;
 use ratatui::widgets::ListState;
 use ratatui::widgets::Paragraph;
 use ratatui::widgets::Wrap;
+use ratatui::widgets::StatefulWidget;
+use ratatui::widgets::Widget;
+use ratatui::widgets::WidgetRef;
 use serde_json::Map;
 use serde_json::Value;
 
+use crate::colors;
+use crate::util::buffer::fill_rect;
 use code_core::config::Config;
 use code_core::config::ConfigOverrides;
 
@@ -86,7 +92,7 @@ impl TranscriptEntry {
 }
 
 pub async fn run_main(args: TranscriptViewerArgs, _code_linux_sandbox_exe: Option<PathBuf>) -> io::Result<()> {
-    let config = Config::load_with_cli_overrides(Vec::new(), ConfigOverrides::default())?;
+    let config = prepare_viewer_config()?;
     let transcript_path = resolve_transcript_path(args, &config)?;
     let entries = load_transcript_entries(&transcript_path)?;
 
@@ -98,6 +104,12 @@ pub async fn run_main(args: TranscriptViewerArgs, _code_linux_sandbox_exe: Optio
 
     let _ = crate::tui::restore();
     result
+}
+
+fn prepare_viewer_config() -> io::Result<Config> {
+    let mut config = Config::load_with_cli_overrides(Vec::new(), ConfigOverrides::default())?;
+    crate::maybe_apply_terminal_theme_detection(&mut config, false);
+    Ok(config)
 }
 
 fn resolve_transcript_path(
@@ -308,21 +320,12 @@ impl TranscriptViewer {
 
     pub fn render(&self, frame: &mut ratatui::Frame<'_>) {
         let area = frame.area();
-        let chunks = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([
-                Constraint::Length(4),
-                Constraint::Min(8),
-                Constraint::Length(3),
-            ])
-            .split(area);
-
-        self.render_header(frame, chunks[0]);
-        self.render_body(frame, chunks[1]);
-        self.render_footer(frame, chunks[2]);
+        frame.render_widget_ref(self, area);
     }
 
-    fn render_header(&self, frame: &mut ratatui::Frame<'_>, area: ratatui::layout::Rect) {
+    fn render_header(&self, buf: &mut Buffer, area: ratatui::layout::Rect) {
+        let bg_style = Style::default().bg(colors::background());
+        fill_rect(buf, area, Some(' '), bg_style);
         let title = Line::from(vec![
             Span::styled("Kay transcript viewer", Style::default().add_modifier(Modifier::BOLD)),
             Span::raw("  "),
@@ -349,28 +352,35 @@ impl TranscriptViewer {
             Span::styled("q/Esc quit", Style::default().fg(Color::Green)),
         ]);
 
-        let block = Block::default().title(title).borders(Borders::ALL);
+        let block = Block::default().style(bg_style).title(title).borders(Borders::ALL);
         let text = Text::from(vec![subtitle, help]);
-        frame.render_widget(Paragraph::new(text).block(block).wrap(Wrap { trim: true }), area);
+        Paragraph::new(text)
+            .style(bg_style)
+            .block(block)
+            .wrap(Wrap { trim: true })
+            .render(area, buf);
     }
 
-    fn render_body(&self, frame: &mut ratatui::Frame<'_>, area: ratatui::layout::Rect) {
+    fn render_body(&self, buf: &mut Buffer, area: ratatui::layout::Rect) {
         let split = Layout::default()
             .direction(Direction::Horizontal)
             .constraints([Constraint::Percentage(55), Constraint::Percentage(45)])
             .split(area);
 
-        self.render_entry_list(frame, split[0]);
-        self.render_selected_details(frame, split[1]);
+        self.render_entry_list(buf, split[0]);
+        self.render_selected_details(buf, split[1]);
     }
 
-    fn render_entry_list(&self, frame: &mut ratatui::Frame<'_>, area: ratatui::layout::Rect) {
-        let block = Block::default().title("Timeline").borders(Borders::ALL);
+    fn render_entry_list(&self, buf: &mut Buffer, area: ratatui::layout::Rect) {
+        let bg_style = Style::default().bg(colors::background());
+        fill_rect(buf, area, Some(' '), bg_style);
+        let block = Block::default().style(bg_style).title("Timeline").borders(Borders::ALL);
         if self.entries.is_empty() {
             let paragraph = Paragraph::new("No transcript entries found.")
+                .style(bg_style)
                 .block(block)
                 .wrap(Wrap { trim: true });
-            frame.render_widget(paragraph, area);
+            paragraph.render(area, buf);
             return;
         }
 
@@ -406,11 +416,13 @@ impl TranscriptViewer {
                     .add_modifier(Modifier::BOLD),
             )
             .highlight_symbol("❯ ");
-        frame.render_stateful_widget(list, area, &mut state);
+        StatefulWidget::render(list, area, buf, &mut state);
     }
 
-    fn render_selected_details(&self, frame: &mut ratatui::Frame<'_>, area: ratatui::layout::Rect) {
-        let block = Block::default().title("Selected record").borders(Borders::ALL);
+    fn render_selected_details(&self, buf: &mut Buffer, area: ratatui::layout::Rect) {
+        let bg_style = Style::default().bg(colors::background());
+        fill_rect(buf, area, Some(' '), bg_style);
+        let block = Block::default().style(bg_style).title("Selected record").borders(Borders::ALL);
         if let Some(entry) = self.entries.get(self.selected) {
             let mut detail_lines = Vec::new();
             if let Some(ts) = &entry.timestamp {
@@ -444,18 +456,22 @@ impl TranscriptViewer {
             }
 
             let paragraph = Paragraph::new(Text::from(detail_lines))
+                .style(bg_style)
                 .block(block)
                 .wrap(Wrap { trim: false });
-            frame.render_widget(paragraph, area);
+            paragraph.render(area, buf);
         } else {
             let paragraph = Paragraph::new("Select an entry to inspect its raw provenance.")
+                .style(bg_style)
                 .block(block)
                 .wrap(Wrap { trim: true });
-            frame.render_widget(paragraph, area);
+            paragraph.render(area, buf);
         }
     }
 
-    fn render_footer(&self, frame: &mut ratatui::Frame<'_>, area: ratatui::layout::Rect) {
+    fn render_footer(&self, buf: &mut Buffer, area: ratatui::layout::Rect) {
+        let bg_style = Style::default().bg(colors::background());
+        fill_rect(buf, area, Some(' '), bg_style);
         let footer = if let Some(entry) = self.entries.get(self.selected) {
             format!(
                 "selected {} / {} • {}",
@@ -467,13 +483,12 @@ impl TranscriptViewer {
             "no transcript entries loaded".to_string()
         };
 
-        let block = Block::default().title("Status").borders(Borders::ALL);
-        frame.render_widget(
-            Paragraph::new(footer)
-                .block(block)
-                .wrap(Wrap { trim: true }),
-            area,
-        );
+        let block = Block::default().style(bg_style).title("Status").borders(Borders::ALL);
+        Paragraph::new(footer)
+            .style(bg_style)
+            .block(block)
+            .wrap(Wrap { trim: true })
+            .render(area, buf);
     }
 
     fn move_selection(&mut self, delta: isize) {
@@ -503,7 +518,7 @@ impl TranscriptViewer {
 
     fn run(&mut self, terminal: &mut crate::tui::Tui) -> io::Result<()> {
         loop {
-            terminal.draw(|frame| self.render(frame))?;
+            terminal.draw(|frame| frame.render_widget_ref(&*self, frame.area()))?;
 
             if event::poll(Duration::from_millis(100))? {
                 match event::read()? {
@@ -518,6 +533,25 @@ impl TranscriptViewer {
                 }
             }
         }
+    }
+}
+
+impl WidgetRef for &TranscriptViewer {
+    fn render_ref(&self, area: ratatui::layout::Rect, buf: &mut Buffer) {
+        let bg_style = Style::default().bg(colors::background());
+        fill_rect(buf, area, Some(' '), bg_style);
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Length(4),
+                Constraint::Min(8),
+                Constraint::Length(3),
+            ])
+            .split(area);
+
+        self.render_header(buf, chunks[0]);
+        self.render_body(buf, chunks[1]);
+        self.render_footer(buf, chunks[2]);
     }
 }
 
@@ -556,9 +590,41 @@ mod tests {
     use super::*;
 
     use crate::test_backend::VT100Backend;
+    use code_core::config_types::ThemeName;
     use ratatui::Terminal;
     use std::fs;
+    use std::sync::Mutex;
+    use tempfile::TempDir;
     use uuid::Uuid;
+
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
+
+    struct EnvGuard {
+        key: &'static str,
+        previous: Option<String>,
+    }
+
+    impl EnvGuard {
+        fn new(key: &'static str) -> Self {
+            Self {
+                key,
+                previous: std::env::var(key).ok(),
+            }
+        }
+    }
+
+    impl Drop for EnvGuard {
+        fn drop(&mut self) {
+            match &self.previous {
+                Some(value) => unsafe {
+                    std::env::set_var(self.key, value);
+                },
+                None => unsafe {
+                    std::env::remove_var(self.key);
+                },
+            }
+        }
+    }
 
     #[test]
     fn load_transcript_entries_parses_jsonl_and_reports_errors() {
@@ -631,5 +697,22 @@ mod tests {
         assert!(screen.contains("Timeline"));
         assert!(screen.contains("session started in /tmp/demo"));
         assert!(screen.contains("Ask the model to scaffold the notes app"));
+    }
+
+    #[test]
+    fn prepare_viewer_config_uses_dark_theme_in_dumb_term() -> io::Result<()> {
+        let _lock = ENV_LOCK.lock().unwrap();
+        let _term_guard = EnvGuard::new("TERM");
+        let _kay_home_guard = EnvGuard::new("KAY_HOME");
+        let kay_home = TempDir::new().expect("temp kay home");
+
+        unsafe {
+            std::env::set_var("TERM", "dumb");
+            std::env::set_var("KAY_HOME", kay_home.path());
+        }
+
+        let config = prepare_viewer_config()?;
+        assert!(matches!(config.tui.theme.name, ThemeName::DarkCarbonNight));
+        Ok(())
     }
 }

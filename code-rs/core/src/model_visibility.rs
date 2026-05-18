@@ -278,6 +278,53 @@ mod tests {
     }
 
     #[test]
+    fn visible_model_groups_honor_provider_keys_under_chatgpt_auth() {
+        let code_home = TempDir::new().unwrap();
+        let auth = crate::auth::AuthDotJson {
+            provider_credentials: [
+                (
+                    crate::MINIMAX_PROVIDER_ID.to_string(),
+                    crate::auth::ProviderCredentialEntry {
+                        api_key: "sk-minimax".to_string(),
+                    },
+                ),
+                (
+                    crate::OPENCODE_GO_PROVIDER_ID.to_string(),
+                    crate::auth::ProviderCredentialEntry {
+                        api_key: "sk-opencode".to_string(),
+                    },
+                ),
+            ]
+            .into_iter()
+            .collect(),
+            ..Default::default()
+        };
+        crate::auth::write_auth_json(&crate::auth::get_auth_file(code_home.path()), &auth)
+            .expect("auth json should be written");
+
+        let auth = AuthManager::from_auth(
+            CodexAuth::create_dummy_chatgpt_auth_for_testing(),
+            code_home.path().to_path_buf(),
+            "code_cli_rs".to_string(),
+        );
+        let presets = vec![
+            TestPreset::new("opencode-go/kimi-k2.6"),
+            TestPreset::new("MiniMax-M2.7"),
+            TestPreset::new("gpt-5.4"),
+        ];
+
+        let groups = visible_model_groups(&auth, &presets);
+        assert_eq!(
+            groups.iter().map(|group| group.provider).collect::<Vec<_>>(),
+            vec![
+                VisibleProvider::OpenCodeGo,
+                VisibleProvider::MiniMax,
+                VisibleProvider::OpenAI,
+            ]
+        );
+    }
+
+    #[test]
     fn hidden_model_families_stay_out_of_visible_sets() {
         let auth = AuthManager::from_auth_for_testing(CodexAuth::from_api_key("sk-openai"));
         let presets = vec![

@@ -788,12 +788,12 @@ impl BottomPane<'_> {
     /// Show the theme selection UI
     pub fn show_theme_selection(
         &mut self,
-        _current_theme: ThemeName,
+        current_theme: ThemeName,
         tail_ticket: BackgroundOrderTicket,
         before_ticket: BackgroundOrderTicket,
     ) {
         let view = ThemeSelectionView::new(
-            crate::theme::current_theme_name(),
+            current_theme,
             self.app_event_tx.clone(),
             tail_ticket,
             before_ticket,

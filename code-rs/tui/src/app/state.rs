@@ -293,6 +293,7 @@ pub(crate) struct ChatWidgetArgs {
     pub(crate) enable_perf: bool,
     pub(crate) resume_picker: bool,
     pub(crate) latest_upgrade_version: Option<String>,
+    pub(crate) open_provider_credentials_on_startup: bool,
 }
 
 impl App<'_> {

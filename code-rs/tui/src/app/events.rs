@@ -1462,9 +1462,33 @@ impl App<'_> {
                     }
                 }
                 AppEvent::UpdateModelSelection { model, effort } => {
+                    let mut should_refresh_remote_models = false;
+                    let mut next_config = None;
                     if let AppState::Chat { widget } = &mut self.app_state {
+                        let previous_provider_id = widget.config_ref().model_provider_id.clone();
                         widget.apply_model_selection(model, effort);
+                        should_refresh_remote_models = !previous_provider_id.eq_ignore_ascii_case(
+                            &widget.config_ref().model_provider_id,
+                        );
+                        next_config = Some(widget.config_ref().clone());
                     }
+                    if let Some(config) = next_config {
+                        self.config = config;
+                    }
+                    if should_refresh_remote_models {
+                        self.spawn_remote_model_discovery();
+                    }
+                }
+                AppEvent::UpdateModelProviderSelection { provider_id } => {
+                    let mut next_config = None;
+                    if let AppState::Chat { widget } = &mut self.app_state {
+                        widget.apply_model_provider_selection(provider_id);
+                        next_config = Some(widget.config_ref().clone());
+                    }
+                    if let Some(config) = next_config {
+                        self.config = config;
+                    }
+                    self.spawn_remote_model_discovery();
                 }
                 AppEvent::UpdateServiceTierSelection { service_tier } => {
                     if let AppState::Chat { widget } = &mut self.app_state {
@@ -2206,7 +2230,9 @@ impl App<'_> {
                     enable_perf,
                     resume_picker,
                     latest_upgrade_version,
+                    open_provider_credentials_on_startup,
                 }) => {
+                    self.config = config.clone();
                     let mut w = ChatWidget::new(
                         config,
                         app_event_tx.clone(),
@@ -2220,6 +2246,9 @@ impl App<'_> {
                     w.enable_perf(enable_perf);
                     if resume_picker {
                         w.show_resume_picker();
+                    }
+                    if open_provider_credentials_on_startup {
+                        w.show_provider_credentials_view();
                     }
                     self.app_state = AppState::Chat { widget: Box::new(w) };
                     self.terminal_runs.clear();
