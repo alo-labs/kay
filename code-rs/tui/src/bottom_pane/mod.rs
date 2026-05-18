@@ -760,6 +760,7 @@ impl BottomPane<'_> {
     pub fn show_model_selection(
         &mut self,
         presets: Vec<ModelPreset>,
+        current_provider_id: String,
         current_model: String,
         current_effort: ReasoningEffort,
         current_service_tier: Option<ServiceTier>,
@@ -769,6 +770,7 @@ impl BottomPane<'_> {
     ) {
         let view = ModelSelectionView::new(
             presets,
+            current_provider_id,
             current_model,
             current_effort,
             current_service_tier,

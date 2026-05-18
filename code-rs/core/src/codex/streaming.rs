@@ -1497,22 +1497,17 @@ async fn spawn_review_thread(
 
     // Determine model + family for review mode.
     let review_model = config.review_model.clone();
-    let review_family = find_family_for_model(&review_model)
-        .unwrap_or_else(|| derive_default_model_family(&review_model));
 
     // Prepare a per-review configuration that favors deterministic feedback.
     let mut review_config = (*config).clone();
     review_config.model = review_model.clone();
-    review_config.model_family = review_family.clone();
+    review_config.sync_model_settings_for_model(&review_model);
     review_config.model_reasoning_effort = config.review_model_reasoning_effort;
     review_config.model_reasoning_summary = ReasoningSummaryConfig::Detailed;
     review_config.model_text_verbosity = config.model_text_verbosity;
     review_config.user_instructions = None;
     review_config.base_instructions = Some(REVIEW_PROMPT.to_string());
-    if let Some(cw) = review_family.context_window {
-        review_config.model_context_window = Some(cw);
-    }
-    if let Some(max) = review_family.max_output_tokens {
+    if let Some(max) = review_config.model_family.max_output_tokens {
         review_config.model_max_output_tokens = Some(max);
     }
     let review_config = Arc::new(review_config);
@@ -4127,10 +4122,21 @@ async fn try_run_turn(
                         };
 
                         if should_emit_warning {
-                            let warning = crate::protocol::WarningEvent {
-                                message: format!(
+                            let message = if crate::model_family::infer_model_provider_id(
+                                &requested_model,
+                            )
+                            .is_some_and(|provider| provider.eq_ignore_ascii_case("openai"))
+                            {
+                                format!(
                                     "Requested model `{requested_model}` was rerouted to `{model}`. OpenAI may have rerouted you to protect against cyber abuse.\nTo verify and restore access, visit https://chatgpt.com/cyber"
-                                ),
+                                )
+                            } else {
+                                format!(
+                                    "Requested model `{requested_model}` returned response model `{model}`. The provider may have changed routing or model naming for this request."
+                                )
+                            };
+                            let warning = crate::protocol::WarningEvent {
+                                message,
                             };
                             let _ = sess
                                 .tx_event

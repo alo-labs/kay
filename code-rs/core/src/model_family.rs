@@ -130,9 +130,20 @@ fn normalized_model_matches_request(requested_model: &str, response_model: &str)
         return true;
     }
 
-    response_model
-        .strip_prefix(requested_model)
-        .is_some_and(|suffix| suffix.starts_with('-') && suffix.len() > 1)
+    response_model.strip_prefix(requested_model).is_some_and(|suffix| {
+        suffix
+            .strip_prefix('-')
+            .and_then(|version| version.chars().next())
+            .is_some_and(|first| first.is_ascii_digit())
+    })
+}
+
+fn owner_prefixed_model_slug(model: &str) -> Option<&str> {
+    let (_, suffix) = model.split_once('/')?;
+    if suffix.is_empty() || suffix.contains('/') {
+        return None;
+    }
+    Some(suffix)
 }
 
 /// Returns true when the provider response model is equivalent to the requested
@@ -150,13 +161,38 @@ pub fn response_model_matches_request(requested_model: &str, response_model: &st
         return true;
     }
 
-    let Some(provider_id) = infer_model_provider_id(&requested) else {
-        return false;
-    };
+    let provider_ids = [
+        infer_model_provider_id(&requested),
+        infer_model_provider_id(&response),
+    ];
 
-    let requested_slug = provider_model_slug(provider_id, &requested);
-    let response_slug = provider_model_slug(provider_id, &response);
-    normalized_model_matches_request(requested_slug.as_ref(), response_slug.as_ref())
+    for provider_id in provider_ids.into_iter().flatten() {
+        let requested_slug = provider_model_slug(provider_id, &requested);
+        let response_slug = provider_model_slug(provider_id, &response);
+        if normalized_model_matches_request(requested_slug.as_ref(), response_slug.as_ref()) {
+            return true;
+        }
+
+        if owner_prefixed_model_slug(response_slug.as_ref()).is_some_and(|response_slug| {
+            normalized_model_matches_request(requested_slug.as_ref(), response_slug)
+        }) {
+            return true;
+        }
+    }
+
+    if let Some(response_slug) = owner_prefixed_model_slug(&response)
+        && normalized_model_matches_request(&requested, response_slug)
+    {
+        return true;
+    }
+
+    if let Some(requested_slug) = owner_prefixed_model_slug(&requested)
+        && normalized_model_matches_request(requested_slug, &response)
+    {
+        return true;
+    }
+
+    false
 }
 
 pub const STANDARD_CONTEXT_WINDOW_272K: u64 = CONTEXT_WINDOW_272K;
@@ -661,10 +697,18 @@ mod tests {
 
     use super::ChatCompletionsRoleStrategy;
     use super::ChatCompletionsReasoningStrategy;
+    use super::EXTENDED_CONTEXT_WINDOW_1M;
+    use super::default_auto_compact_limit_for_context_window;
     use super::find_family_for_model;
     use super::infer_model_provider_id;
+    use super::model_supports_configurable_reasoning_effort;
+    use super::model_supports_configurable_reasoning_effort_for_provider;
+    use super::model_supports_fast_mode;
+    use super::model_supports_fast_mode_for_provider;
     use super::provider_model_slug;
     use super::response_model_matches_request;
+    use super::resolve_context_mode_limits;
+    use super::supports_extended_context;
     use super::MINIMAX_PROVIDER_ID;
     use super::OPENCODE_GO_PROVIDER_ID;
 
@@ -702,6 +746,7 @@ mod tests {
         assert_eq!(family.family, "minimax-m2.7");
         assert_eq!(family.context_window, Some(204_800));
         assert!(family.needs_special_apply_patch_instructions);
+        assert!(!model_supports_configurable_reasoning_effort("MiniMax-M2.7"));
     }
 
     #[test]
@@ -755,6 +800,63 @@ mod tests {
         assert_eq!(minimax.slug, "opencode-go/minimax-m2.7");
         assert_eq!(minimax.family, "minimax-m2.7");
         assert_eq!(minimax.context_window, Some(204_800));
+    }
+
+    #[test]
+    fn non_openai_models_do_not_expose_openai_fast_or_reasoning_effort() {
+        assert!(model_supports_fast_mode("gpt-5.4"));
+        assert!(model_supports_configurable_reasoning_effort("gpt-5.4"));
+        assert!(model_supports_fast_mode_for_provider("openai", "gpt-5.4"));
+        assert!(model_supports_configurable_reasoning_effort_for_provider(
+            "openai", "gpt-5.4"
+        ));
+
+        for model in [
+            "opencode-go/glm-5.1",
+            "opencode-go/deepseek-v4-flash",
+            "MiniMax-M2.7",
+        ] {
+            assert!(!model_supports_fast_mode(model));
+            assert!(!model_supports_configurable_reasoning_effort(model));
+        }
+
+        assert!(!model_supports_fast_mode_for_provider(
+            OPENCODE_GO_PROVIDER_ID,
+            "glm-5.1"
+        ));
+        assert!(!model_supports_configurable_reasoning_effort_for_provider(
+            OPENCODE_GO_PROVIDER_ID,
+            "gpt-5.4"
+        ));
+    }
+
+    #[test]
+    fn opencode_go_extended_context_tracks_modelsdev_limits() {
+        for model in [
+            "opencode-go/deepseek-v4-pro",
+            "opencode-go/deepseek-v4-flash",
+            "opencode-go/mimo-v2.5",
+            "opencode-go/mimo-v2.5-pro",
+        ] {
+            assert!(supports_extended_context(model), "{model}");
+            let family = find_family_for_model(model).expect("known OpenCode Go model");
+            let (window, compact) = resolve_context_mode_limits(
+                model,
+                Some(crate::config_types::ContextMode::OneM),
+                &family,
+            );
+            assert_eq!(window, Some(EXTENDED_CONTEXT_WINDOW_1M));
+            assert_eq!(
+                compact,
+                Some(default_auto_compact_limit_for_context_window(
+                    EXTENDED_CONTEXT_WINDOW_1M,
+                ))
+            );
+        }
+
+        for model in ["opencode-go/glm-5.1", "opencode-go/qwen3.6-plus", "MiniMax-M2.7"] {
+            assert!(!supports_extended_context(model), "{model}");
+        }
     }
 
     #[test]
@@ -812,12 +914,42 @@ mod tests {
     }
 
     #[test]
+    fn response_model_match_accepts_owner_prefixed_opencode_go_versions() {
+        assert!(response_model_matches_request(
+            "opencode-go/mimo-v2.5-pro",
+            "xiaomi/mimo-v2.5-pro-20260422"
+        ));
+        assert!(response_model_matches_request(
+            "opencode-go/mimo-v2.5",
+            "xiaomi/mimo-v2.5-20260422"
+        ));
+        assert!(!response_model_matches_request(
+            "opencode-go/mimo-v2.5",
+            "xiaomi/mimo-v2.5-pro-20260422"
+        ));
+        assert!(!response_model_matches_request(
+            "opencode-go/mimo-v2.5-pro",
+            "xiaomi/mimo-v2.5-20260422"
+        ));
+    }
+
+    #[test]
+    fn response_model_match_accepts_bare_third_party_requests_against_namespaced_responses() {
+        assert!(response_model_matches_request(
+            "mimo-v2.5",
+            "xiaomi/mimo-v2.5-20260422"
+        ));
+        assert!(response_model_matches_request("MiniMax-M2.7", "minimax/MiniMax-M2.7"));
+    }
+
+    #[test]
     fn response_model_match_keeps_openai_version_suffix_behavior() {
         assert!(response_model_matches_request(
             "gpt-5.4",
             "gpt-5.4-2026-04-01"
         ));
         assert!(!response_model_matches_request("gpt-5.4", "gpt-5.5"));
+        assert!(!response_model_matches_request("gpt-5.4", "gpt-5.4-mini"));
     }
 
     #[test]
@@ -864,8 +996,59 @@ pub const fn default_auto_compact_limit_for_context_window(context_window: u64) 
     ((context_window as i64) * 9) / 10
 }
 
+fn normalized_opencode_go_model(model: &str) -> Cow<'_, str> {
+    provider_model_slug(OPENCODE_GO_PROVIDER_ID, model)
+}
+
+pub fn model_supports_fast_mode(model: &str) -> bool {
+    match infer_model_provider_id(model) {
+        Some(provider) => provider.eq_ignore_ascii_case("openai"),
+        None => !model.contains('/'),
+    }
+}
+
+pub fn model_supports_fast_mode_for_provider(provider_id: &str, model: &str) -> bool {
+    if !provider_id.eq_ignore_ascii_case("openai") {
+        return false;
+    }
+
+    model_supports_fast_mode(model)
+}
+
+pub fn model_supports_configurable_reasoning_effort(model: &str) -> bool {
+    if infer_model_provider_id(model).is_some_and(|provider| !provider.eq_ignore_ascii_case("openai")) {
+        return false;
+    }
+
+    find_family_for_model(model)
+        .map(|family| family.supports_reasoning_summaries)
+        .unwrap_or(false)
+}
+
+pub fn model_supports_configurable_reasoning_effort_for_provider(
+    provider_id: &str,
+    model: &str,
+) -> bool {
+    if !provider_id.eq_ignore_ascii_case("openai") {
+        return false;
+    }
+
+    model_supports_configurable_reasoning_effort(model)
+}
+
 pub fn supports_extended_context(model: &str) -> bool {
-    model.eq_ignore_ascii_case("gpt-5.4")
+    if model.eq_ignore_ascii_case("gpt-5.4") {
+        return true;
+    }
+
+    if !matches!(infer_model_provider_id(model), Some(OPENCODE_GO_PROVIDER_ID)) {
+        return false;
+    }
+
+    matches!(
+        normalized_opencode_go_model(model).as_ref().to_ascii_lowercase().as_str(),
+        "deepseek-v4-pro" | "deepseek-v4-flash" | "mimo-v2.5" | "mimo-v2.5-pro"
+    )
 }
 
 pub fn resolve_context_mode_limits(

@@ -490,6 +490,30 @@ pub(crate) fn rewrite_image_generation_calls_for_input(input: &mut Vec<ResponseI
         .collect();
 }
 
+/// OpenAI Responses accepts replayed reasoning items for continuity, but not
+/// raw reasoning text in the `content` array. Third-party Chat Completions
+/// providers may emit raw reasoning content that Kay keeps for their replay
+/// path, so strip it only immediately before building a Responses request.
+pub(crate) fn strip_reasoning_content_for_responses_input(input: &mut Vec<ResponseItem>) {
+    for item in input.iter_mut() {
+        if let ResponseItem::Reasoning { content, .. } = item {
+            *content = None;
+        }
+    }
+
+    input.retain(|item| {
+        !matches!(
+            item,
+            ResponseItem::Reasoning {
+                summary,
+                content: None,
+                encrypted_content: None,
+                ..
+            } if summary.is_empty()
+        )
+    });
+}
+
 /// Request object that is serialized as JSON and POST'ed when using the
 /// Responses API.
 #[derive(Debug, Serialize)]
@@ -556,6 +580,7 @@ impl Stream for ResponseStream {
 #[cfg(test)]
 mod tests {
     use crate::model_family::find_family_for_model;
+    use code_protocol::models::ReasoningItemContent;
     use code_apply_patch::APPLY_PATCH_TOOL_INSTRUCTIONS;
     use pretty_assertions::assert_eq;
 
@@ -652,8 +677,48 @@ mod tests {
                         content.first(),
                         Some(ContentItem::InputImage { image_url })
                             if image_url == "data:image/png;base64,Zm9v"
-                    )
+            )
         ));
+    }
+
+    #[test]
+    fn responses_input_strips_raw_reasoning_content_but_keeps_encrypted_content() {
+        let mut input = vec![
+            ResponseItem::Reasoning {
+                id: "rs_raw".to_string(),
+                summary: Vec::new(),
+                content: Some(vec![ReasoningItemContent::ReasoningText {
+                    text: "raw third-party reasoning".to_string(),
+                }]),
+                encrypted_content: None,
+            },
+            ResponseItem::Reasoning {
+                id: "rs_encrypted".to_string(),
+                summary: Vec::new(),
+                content: Some(vec![ReasoningItemContent::ReasoningText {
+                    text: "raw openai reasoning mirror".to_string(),
+                }]),
+                encrypted_content: Some("encrypted".to_string()),
+            },
+        ];
+
+        strip_reasoning_content_for_responses_input(&mut input);
+
+        assert_eq!(input.len(), 1);
+        let ResponseItem::Reasoning {
+            content,
+            encrypted_content,
+            ..
+        } = &input[0]
+        else {
+            panic!("expected reasoning item");
+        };
+        assert!(content.is_none());
+        assert_eq!(encrypted_content.as_deref(), Some("encrypted"));
+
+        let serialized = serde_json::to_value(&input[0]).expect("serialize reasoning item");
+        assert!(serialized.get("content").is_none());
+        assert_eq!(serialized.get("encrypted_content").and_then(|v| v.as_str()), Some("encrypted"));
     }
 
     struct InstructionsTestCase {

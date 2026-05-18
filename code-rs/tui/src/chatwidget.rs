@@ -43,11 +43,16 @@ use code_core::config_types::Notifications;
 use code_core::config_types::ReasoningEffort;
 use code_core::config_types::ServiceTier;
 use code_core::config_types::TextVerbosity;
+use code_core::ModelProviderInfo;
 use code_core::spawn::spawn_std_command_with_retry;
 use code_core::plan_tool::{PlanItemArg, StepStatus, UpdatePlanArgs};
 use code_core::model_family::derive_default_model_family;
 use code_core::model_family::find_family_for_model;
 use code_core::model_family::infer_model_provider_id;
+use code_core::model_family::model_supports_configurable_reasoning_effort;
+use code_core::model_family::model_supports_configurable_reasoning_effort_for_provider;
+use code_core::model_family::model_supports_fast_mode_for_provider;
+use code_core::model_family::ModelFamily;
 use code_core::model_family::resolve_context_mode_limits;
 use code_core::model_family::supports_extended_context;
 use code_core::model_visibility::{
@@ -1881,6 +1886,17 @@ impl VisibleModelPreset for PickerVisibleModelPreset<'_> {
     }
 }
 
+struct PlanningRestoreState {
+    model: String,
+    reasoning_effort: ReasoningEffort,
+    model_provider_id: String,
+    model_provider: ModelProviderInfo,
+    model_family: ModelFamily,
+    model_context_window: Option<u64>,
+    model_max_output_tokens: Option<u64>,
+    model_auto_compact_token_limit: Option<i64>,
+}
+
 pub(crate) struct ChatWidget<'a> {
     app_event_tx: AppEventSender,
     code_op_tx: UnboundedSender<Op>,
@@ -1921,7 +1937,7 @@ pub(crate) struct ChatWidget<'a> {
     /// Tracks whether the user explicitly selected a chat model in this session.
     chat_model_selected_explicitly: bool,
 
-    planning_restore: Option<(String, ReasoningEffort)>,
+    planning_restore: Option<PlanningRestoreState>,
     history_debug_events: Option<RefCell<Vec<String>>>,
     latest_upgrade_version: Option<String>,
     reconnect_notice_active: bool,
@@ -16447,7 +16463,7 @@ impl ChatWidget<'_> {
             self.history_push_plain_state(history_cell::new_warning_event((*warning_text).to_string()));
             self.history_push_plain_state(history_cell::new_error_event((*error_text).to_string()));
 
-            self.history_push_plain_state(history_cell::new_model_output("gpt-5.1-codex", *effort));
+            self.history_push_plain_state(history_cell::new_model_output("gpt-5.1-codex", Some(*effort)));
             self.history_push_plain_state(history_cell::new_reasoning_output(effort));
 
             self.history_push_plain_state(history_cell::new_status_output(
@@ -19243,6 +19259,8 @@ fi\n\
         if auto_config.model.is_empty() {
             auto_config.model = code_auto_drive_core::MODEL_SLUG.to_string();
         }
+        let auto_model = auto_config.model.clone();
+        auto_config.sync_model_settings_for_model(&auto_model);
         auto_config.model_reasoning_effort = self.config.auto_drive.model_reasoning_effort;
         let available_gpt_models = self
             .available_model_presets()
@@ -23294,6 +23312,7 @@ Have we met every part of this goal and is there no further work to do?"#
 
         self.bottom_pane.show_model_selection(
             visible_presets,
+            self.config.model_provider_id.clone(),
             self.config.model.clone(),
             self.config.model_reasoning_effort,
             self.config.service_tier,
@@ -23318,6 +23337,7 @@ Have we met every part of this goal and is there no further work to do?"#
         }
         self.bottom_pane.show_model_selection(
             presets,
+            self.config.model_provider_id.clone(),
             self.config.review_model.clone(),
             self.config.review_model_reasoning_effort,
             self.config.service_tier,
@@ -23351,6 +23371,7 @@ Have we met every part of this goal and is there no further work to do?"#
         };
         self.bottom_pane.show_model_selection(
             presets,
+            self.config.model_provider_id.clone(),
             current,
             effort,
             self.config.service_tier,
@@ -23384,6 +23405,7 @@ Have we met every part of this goal and is there no further work to do?"#
         };
         self.bottom_pane.show_model_selection(
             presets,
+            self.config.model_provider_id.clone(),
             current,
             effort,
             self.config.service_tier,
@@ -23417,6 +23439,7 @@ Have we met every part of this goal and is there no further work to do?"#
         };
         self.bottom_pane.show_model_selection(
             presets,
+            self.config.model_provider_id.clone(),
             current,
             effort,
             self.config.service_tier,
@@ -23448,6 +23471,7 @@ Have we met every part of this goal and is there no further work to do?"#
         self.bottom_pane
             .show_model_selection(
                 presets,
+                self.config.model_provider_id.clone(),
                 current,
                 effort,
                 self.config.service_tier,
@@ -23472,6 +23496,7 @@ Have we met every part of this goal and is there no further work to do?"#
         }
         self.bottom_pane.show_model_selection(
             presets,
+            self.config.model_provider_id.clone(),
             self.config.auto_drive.model.clone(),
             self.config.auto_drive.model_reasoning_effort,
             self.config.service_tier,
@@ -23622,6 +23647,15 @@ Have we met every part of this goal and is there no further work to do?"#
     }
 
     pub(crate) fn apply_service_tier_selection(&mut self, service_tier: Option<ServiceTier>) {
+        if !model_supports_fast_mode_for_provider(
+            &self.config.model_provider_id,
+            &self.config.model,
+        ) {
+            self.bottom_pane
+                .flash_footer_notice("Fast mode is only available for OpenAI models.".to_string());
+            return;
+        }
+
         if self.config.service_tier == service_tier {
             return;
         }
@@ -23871,6 +23905,7 @@ Have we met every part of this goal and is there no further work to do?"#
                 .update_model_selection_presets(self.available_model_presets());
         }
 
+        let previous_max_output_tokens = self.config.model_family.max_output_tokens;
         let mut updated = provider_changed;
         if !self.config.model.eq_ignore_ascii_case(trimmed) {
             self.config.model = trimmed.to_string();
@@ -23883,23 +23918,50 @@ Have we met every part of this goal and is there no further work to do?"#
         if self.sync_session_context_selection_for_model() {
             updated = true;
         }
-
-        if let Some(explicit) = effort {
-            if self.config.preferred_model_reasoning_effort != Some(explicit) {
-                self.config.preferred_model_reasoning_effort = Some(explicit);
+        if self.config.model_max_output_tokens.is_none()
+            || self.config.model_max_output_tokens == previous_max_output_tokens
+        {
+            let max_output_tokens = self.config.model_family.max_output_tokens;
+            if self.config.model_max_output_tokens != max_output_tokens {
+                self.config.model_max_output_tokens = max_output_tokens;
                 updated = true;
             }
         }
 
-        let requested_effort = effort
-            .or(self.config.preferred_model_reasoning_effort)
-            .unwrap_or(self.config.model_reasoning_effort);
-        let presets = self.all_model_presets();
-        let clamped_effort = Self::clamp_reasoning_for_model_from_presets(trimmed, requested_effort, &presets);
-
-        if self.config.model_reasoning_effort != clamped_effort {
-            self.config.model_reasoning_effort = clamped_effort;
+        if !model_supports_fast_mode_for_provider(&self.config.model_provider_id, trimmed)
+            && self.config.service_tier.is_some()
+        {
+            self.config.service_tier = None;
             updated = true;
+        }
+
+        let supports_reasoning_effort =
+            model_supports_configurable_reasoning_effort_for_provider(
+                &self.config.model_provider_id,
+                trimmed,
+            );
+        if supports_reasoning_effort {
+            if let Some(explicit) = effort {
+                if self.config.preferred_model_reasoning_effort != Some(explicit) {
+                    self.config.preferred_model_reasoning_effort = Some(explicit);
+                    updated = true;
+                }
+            }
+
+            let requested_effort = effort
+                .or(self.config.preferred_model_reasoning_effort)
+                .unwrap_or(self.config.model_reasoning_effort);
+            let presets = self.all_model_presets();
+            let clamped_effort = Self::clamp_reasoning_for_model_from_presets(
+                trimmed,
+                requested_effort,
+                &presets,
+            );
+
+            if self.config.model_reasoning_effort != clamped_effort {
+                self.config.model_reasoning_effort = clamped_effort;
+                updated = true;
+            }
         }
 
         if updated {
@@ -23912,7 +23974,14 @@ Have we met every part of this goal and is there no further work to do?"#
 
         if announce {
             let placement = self.ui_placement_for_now();
-            let state = history_cell::new_model_output(&self.config.model, self.config.model_reasoning_effort);
+            let state = history_cell::new_model_output(
+                &self.config.model,
+                if supports_reasoning_effort {
+                    Some(self.config.model_reasoning_effort)
+                } else {
+                    None
+                },
+            );
             let cell = crate::history_cell::PlainHistoryCell::from_state(state.clone());
             self.push_system_cell(
                 Box::new(cell),
@@ -24508,21 +24577,35 @@ Have we met every part of this goal and is there no further work to do?"#
         }
 
         // Save current chat model to restore later.
-        self.planning_restore = Some((
-            self.config.model.clone(),
-            self.config.model_reasoning_effort,
-        ));
+        self.planning_restore = Some(PlanningRestoreState {
+            model: self.config.model.clone(),
+            reasoning_effort: self.config.model_reasoning_effort,
+            model_provider_id: self.config.model_provider_id.clone(),
+            model_provider: self.config.model_provider.clone(),
+            model_family: self.config.model_family.clone(),
+            model_context_window: self.config.model_context_window,
+            model_max_output_tokens: self.config.model_max_output_tokens,
+            model_auto_compact_token_limit: self.config.model_auto_compact_token_limit,
+        });
 
         self.config.model = self.config.planning_model.clone();
         self.config.model_reasoning_effort = self.config.planning_model_reasoning_effort;
+        let model = self.config.model.clone();
+        self.config.sync_model_settings_for_model(&model);
 
         self.submit_configure_session_op();
     }
 
     fn restore_planning_session_model(&mut self) {
-        if let Some((model, effort)) = self.planning_restore.take() {
-            self.config.model = model;
-            self.config.model_reasoning_effort = effort;
+        if let Some(restore) = self.planning_restore.take() {
+            self.config.model = restore.model;
+            self.config.model_reasoning_effort = restore.reasoning_effort;
+            self.config.model_provider_id = restore.model_provider_id;
+            self.config.model_provider = restore.model_provider;
+            self.config.model_family = restore.model_family;
+            self.config.model_context_window = restore.model_context_window;
+            self.config.model_max_output_tokens = restore.model_max_output_tokens;
+            self.config.model_auto_compact_token_limit = restore.model_auto_compact_token_limit;
 
             self.submit_configure_session_op();
         }
@@ -24666,6 +24749,7 @@ Have we met every part of this goal and is there no further work to do?"#
 
             self.bottom_pane.show_model_selection(
                 presets,
+                self.config.model_provider_id.clone(),
                 self.config.model.clone(),
                 self.config.model_reasoning_effort,
                 self.config.service_tier,
@@ -25131,6 +25215,7 @@ Have we met every part of this goal and is there no further work to do?"#
         let current_effort = self.config.model_reasoning_effort;
         let view = ModelSelectionView::new(
             presets,
+            self.config.model_provider_id.clone(),
             current_model,
             current_effort,
             self.config.service_tier,
@@ -25462,8 +25547,14 @@ Have we met every part of this goal and is there no further work to do?"#
             model_display_storage = Self::format_model_label(model);
             &model_display_storage
         };
-        let effort = Self::format_reasoning_effort(self.config.model_reasoning_effort);
-        let mut parts: Vec<String> = vec![format!("Model: {} ({})", model_display, effort)];
+        let mut parts: Vec<String> = vec![format!(
+            "Model: {}",
+            Self::format_model_with_optional_reasoning(
+                model_display,
+                model,
+                self.config.model_reasoning_effort,
+            )
+        )];
         if let Some(profile) = self
             .config
             .active_profile
@@ -25488,8 +25579,14 @@ Have we met every part of this goal and is there no further work to do?"#
             model_display_storage = Self::format_model_label(model);
             &model_display_storage
         };
-        let effort = Self::format_reasoning_effort(self.config.planning_model_reasoning_effort);
-        Some(format!("Model: {} ({})", model_display, effort))
+        Some(format!(
+            "Model: {}",
+            Self::format_model_with_optional_reasoning(
+                model_display,
+                model,
+                self.config.planning_model_reasoning_effort,
+            )
+        ))
     }
 
     fn settings_summary_theme(&self) -> Option<String> {
@@ -25560,8 +25657,15 @@ Have we met every part of this goal and is there no further work to do?"#
             let effort = Self::format_reasoning_effort(self.config.auto_drive.model_reasoning_effort);
             (model_label, Some(effort))
         };
-        let model_segment = if let Some(effort) = effort_text {
-            format!("Model: {} ({})", model_text, effort)
+        let model_segment = if effort_text.is_some() {
+            format!(
+                "Model: {}",
+                Self::format_model_with_optional_reasoning(
+                    &model_text,
+                    &self.config.auto_drive.model,
+                    self.config.auto_drive.model_reasoning_effort,
+                )
+            )
         } else {
             format!("Model: {}", model_text)
         };
@@ -25601,40 +25705,40 @@ Have we met every part of this goal and is there no further work to do?"#
         let review_model_label = if self.config.review_use_chat_model {
             "Chat".to_string()
         } else {
-            format!(
-                "{} ({})",
-                Self::format_model_label(&self.config.review_model),
-                Self::format_reasoning_effort(self.config.review_model_reasoning_effort)
+            Self::format_model_with_optional_reasoning(
+                &Self::format_model_label(&self.config.review_model),
+                &self.config.review_model,
+                self.config.review_model_reasoning_effort,
             )
         };
 
         let review_resolve_label = if self.config.review_resolve_use_chat_model {
             "Chat".to_string()
         } else {
-            format!(
-                "{} ({})",
-                Self::format_model_label(&self.config.review_resolve_model),
-                Self::format_reasoning_effort(self.config.review_resolve_model_reasoning_effort)
+            Self::format_model_with_optional_reasoning(
+                &Self::format_model_label(&self.config.review_resolve_model),
+                &self.config.review_resolve_model,
+                self.config.review_resolve_model_reasoning_effort,
             )
         };
 
         let auto_review_model_label = if self.config.auto_review_use_chat_model {
             "Chat".to_string()
         } else {
-            format!(
-                "{} ({})",
-                Self::format_model_label(&self.config.auto_review_model),
-                Self::format_reasoning_effort(self.config.auto_review_model_reasoning_effort)
+            Self::format_model_with_optional_reasoning(
+                &Self::format_model_label(&self.config.auto_review_model),
+                &self.config.auto_review_model,
+                self.config.auto_review_model_reasoning_effort,
             )
         };
 
         let auto_review_resolve_label = if self.config.auto_review_resolve_use_chat_model {
             "Chat".to_string()
         } else {
-            format!(
-                "{} ({})",
-                Self::format_model_label(&self.config.auto_review_resolve_model),
-                Self::format_reasoning_effort(self.config.auto_review_resolve_model_reasoning_effort)
+            Self::format_model_with_optional_reasoning(
+                &Self::format_model_label(&self.config.auto_review_resolve_model),
+                &self.config.auto_review_resolve_model,
+                self.config.auto_review_resolve_model_reasoning_effort,
             )
         };
 
@@ -25733,6 +25837,18 @@ Have we met every part of this goal and is there no further work to do?"#
             ReasoningEffort::Medium => "Medium",
             ReasoningEffort::High => "High",
             ReasoningEffort::XHigh => "XHigh",
+        }
+    }
+
+    fn format_model_with_optional_reasoning(
+        display: &str,
+        model: &str,
+        effort: ReasoningEffort,
+    ) -> String {
+        if model_supports_configurable_reasoning_effort(model) {
+            format!("{} ({})", display, Self::format_reasoning_effort(effort))
+        } else {
+            display.to_string()
         }
     }
 
@@ -30406,9 +30522,9 @@ Have we met every part of this goal and is there no further work to do?"#
         // Build status line spans with dynamic elision based on width.
         // Removal priority when space is tight:
         //   1) Reasoning level
-        //   2) Model
+        //   2) Directory
         //   3) Branch
-        //   4) Directory
+        //   4) Model
         let branch_opt = self.get_git_branch();
 
         // Helper to assemble spans based on include flags
@@ -30424,7 +30540,12 @@ Have we met every part of this goal and is there no further work to do?"#
                 model_suffix_parts
                     .push(Self::format_reasoning_effort(self.config.model_reasoning_effort).to_string());
             }
-            if matches!(self.config.service_tier, Some(ServiceTier::Fast)) {
+            if matches!(self.config.service_tier, Some(ServiceTier::Fast))
+                && model_supports_fast_mode_for_provider(
+                    &self.config.model_provider_id,
+                    &self.config.model,
+                )
+            {
                 model_suffix_parts.push("Fast".to_string());
             }
             let model_label = if model_suffix_parts.is_empty() {
@@ -30496,7 +30617,11 @@ Have we met every part of this goal and is there no further work to do?"#
         // Start with all items in production; tests can opt-in to a minimal header via env flag.
         let minimal_header = std::env::var_os("CODEX_TUI_FORCE_MINIMAL_HEADER").is_some();
         let demo_mode = self.config.demo_developer_message.is_some();
-        let mut include_reasoning = !minimal_header;
+        let mut include_reasoning = !minimal_header
+            && model_supports_configurable_reasoning_effort_for_provider(
+                &self.config.model_provider_id,
+                &self.config.model,
+            );
         let mut include_model = !minimal_header;
         let mut include_branch = !minimal_header && branch_opt.is_some();
         let mut include_dir = !minimal_header && !demo_mode;
@@ -30541,12 +30666,12 @@ Have we met every part of this goal and is there no further work to do?"#
         while measure(&status_spans) > inner_width {
             if include_reasoning {
                 include_reasoning = false;
-            } else if include_model {
-                include_model = false;
-            } else if include_branch {
-                include_branch = false;
             } else if include_dir {
                 include_dir = false;
+            } else if include_branch {
+                include_branch = false;
+            } else if include_model {
+                include_model = false;
             } else {
                 break;
             }
@@ -31751,6 +31876,129 @@ use code_core::protocol::OrderMeta;
 
         assert_eq!(chat.config.model, "gpt-5.2");
         assert_eq!(chat.config.model_reasoning_effort, ReasoningEffort::Medium);
+    }
+
+    fn render_status_bar_text(chat: &ChatWidget<'static>, width: u16) -> String {
+        let area = ratatui::layout::Rect {
+            x: 0,
+            y: 0,
+            width,
+            height: 3,
+        };
+        let mut buf = ratatui::buffer::Buffer::empty(area);
+        chat.render_status_bar(area, &mut buf);
+        (0..area.height)
+            .map(|y| {
+                (0..area.width)
+                    .map(|x| buf[(x, y)].symbol().to_string())
+                    .collect::<String>()
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+
+    struct EnvVarRestoreGuard {
+        key: &'static str,
+        value: Option<std::ffi::OsString>,
+    }
+
+    impl EnvVarRestoreGuard {
+        fn remove(key: &'static str) -> Self {
+            let value = std::env::var_os(key);
+            unsafe { std::env::remove_var(key) };
+            Self { key, value }
+        }
+    }
+
+    impl Drop for EnvVarRestoreGuard {
+        fn drop(&mut self) {
+            match &self.value {
+                Some(value) => unsafe { std::env::set_var(self.key, value) },
+                None => unsafe { std::env::remove_var(self.key) },
+            }
+        }
+    }
+
+    #[test]
+    fn status_bar_keeps_non_openai_model_visible_without_reasoning() {
+        let mut harness = ChatWidgetHarness::new();
+        let _minimal_header_guard = EnvVarRestoreGuard::remove("CODEX_TUI_FORCE_MINIMAL_HEADER");
+        let chat = harness.chat();
+        chat.config.model = "opencode-go/glm-5.1".to_string();
+        chat.config.model_reasoning_effort = ReasoningEffort::Medium;
+
+        let rendered = render_status_bar_text(chat, 72);
+
+        assert!(rendered.contains("Model:"), "{rendered}");
+        assert!(rendered.contains("opencode-go/glm-5.1"), "{rendered}");
+        assert!(!rendered.contains("Medium"), "{rendered}");
+    }
+
+    #[test]
+    fn apply_model_selection_clears_fast_mode_for_non_openai_model() {
+        let _runtime_guard = enter_test_runtime_guard();
+        let mut harness = ChatWidgetHarness::new();
+        let chat = harness.chat();
+        chat.config.service_tier = Some(ServiceTier::Fast);
+
+        chat.apply_model_selection("opencode-go/glm-5.1".to_string(), None);
+
+        assert_eq!(chat.config.model, "opencode-go/glm-5.1");
+        assert_eq!(chat.config.service_tier, None);
+    }
+
+    #[test]
+    fn apply_model_selection_refreshes_model_max_output_tokens() {
+        let _runtime_guard = enter_test_runtime_guard();
+        let mut harness = ChatWidgetHarness::new();
+        let chat = harness.chat();
+        chat.config.model = "opencode-go/glm-5.1".to_string();
+        chat.config.model_family = find_family_for_model(&chat.config.model)
+            .expect("known OpenCode Go model");
+        chat.config.model_max_output_tokens = chat.config.model_family.max_output_tokens;
+
+        chat.apply_model_selection("gpt-3.5-turbo".to_string(), None);
+
+        assert_eq!(chat.config.model_provider_id, "openai");
+        assert_eq!(chat.config.model_family.family, "gpt-3.5");
+        assert_eq!(chat.config.model_max_output_tokens, Some(4_096));
+    }
+
+    #[test]
+    fn planning_session_model_switches_provider_and_restores_chat_provider() {
+        let _runtime_guard = enter_test_runtime_guard();
+        let mut harness = ChatWidgetHarness::new();
+        let chat = harness.chat();
+        chat.config.model = "gpt-5.4".to_string();
+        chat.config.model_provider_id = "openai".to_string();
+        chat.config.model_provider = chat.config.model_providers["openai"].clone();
+        chat.config.model_reasoning_effort = ReasoningEffort::Low;
+        chat.config.context_mode = Some(ContextMode::OneM);
+        chat.config.model_context_window = Some(1_047_576);
+        chat.config.model_max_output_tokens = Some(128_000);
+        chat.config.model_auto_compact_token_limit = Some(942_818);
+        chat.config.planning_use_chat_model = false;
+        chat.config.planning_model = "opencode-go/deepseek-v4-pro".to_string();
+        chat.config.planning_model_reasoning_effort = ReasoningEffort::Medium;
+
+        chat.apply_planning_session_model();
+
+        assert_eq!(chat.config.model, "opencode-go/deepseek-v4-pro");
+        assert_eq!(chat.config.model_provider_id, OPENCODE_GO_PROVIDER_ID);
+        assert_eq!(chat.config.model_provider.name, "OpenCode Go");
+        assert_eq!(chat.config.model_family.slug, "opencode-go/deepseek-v4-pro");
+        assert_eq!(chat.config.model_context_window, Some(1_047_576));
+        assert_eq!(chat.config.model_max_output_tokens, Some(128_000));
+        assert_eq!(chat.config.model_auto_compact_token_limit, Some(942_818));
+
+        chat.restore_planning_session_model();
+
+        assert_eq!(chat.config.model, "gpt-5.4");
+        assert_eq!(chat.config.model_provider_id, "openai");
+        assert_eq!(chat.config.model_provider.name, "OpenAI");
+        assert_eq!(chat.config.model_context_window, Some(1_047_576));
+        assert_eq!(chat.config.model_max_output_tokens, Some(128_000));
+        assert_eq!(chat.config.model_auto_compact_token_limit, Some(942_818));
     }
 
     #[test]

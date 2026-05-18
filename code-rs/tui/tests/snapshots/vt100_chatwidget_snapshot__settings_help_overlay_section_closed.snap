@@ -1,6 +1,6 @@
 ---
 source: tui/tests/vt100_chatwidget_snapshot.rs
-assertion_line: 2494
+assertion_line: 2529
 expression: section_closed
 ---
  +------------------------------------------------------------------------------------------------+
@@ -14,7 +14,7 @@ expression: section_closed
  |    Accounts           |  Reasoning effort: Medium                                            | |
  |    Agents             |                                                                      | |
  |    Prompts            |  Mode Settings                                                       | |
- |    Memories           |  Fast mode speeds up replies. 1M Context is available on supported m | |
+ |    Memories           |  Fast mode speeds up OpenAI replies. 1M Context is available on supp | |
  |    Skills             |  › Fast Mode: disabled                                               | |
  |    Auto Drive         |    1M Context: auto                                                  | |
  |    Review             |  Press Enter to cycle Disabled, Enabled, and Auto.                   | |

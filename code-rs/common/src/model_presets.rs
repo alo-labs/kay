@@ -54,10 +54,7 @@ static PRESETS: Lazy<Vec<ModelPreset>> = Lazy::new(|| {
         display_name: display_name.to_string(),
         description: "OpenCode Go coding model.".to_string(),
         default_reasoning_effort: ReasoningEffort::Medium,
-        supported_reasoning_efforts: vec![ReasoningEffortPreset {
-            effort: ReasoningEffort::Medium,
-            description: "Balanced responses for everyday coding loops".to_string(),
-        }],
+        supported_reasoning_efforts: Vec::new(),
         supported_text_verbosity: &[TextVerbosityConfig::Medium],
         is_default: false,
         upgrade: None,
@@ -163,10 +160,7 @@ static PRESETS: Lazy<Vec<ModelPreset>> = Lazy::new(|| {
             display_name: "MiniMax-M2.7".to_string(),
             description: "Balanced MiniMax coding model.".to_string(),
             default_reasoning_effort: ReasoningEffort::Medium,
-            supported_reasoning_efforts: vec![ReasoningEffortPreset {
-                effort: ReasoningEffort::Medium,
-                description: "Balanced responses for everyday coding loops".to_string(),
-            }],
+            supported_reasoning_efforts: Vec::new(),
             supported_text_verbosity: &[TextVerbosityConfig::Medium],
             is_default: false,
             upgrade: None,
@@ -764,6 +758,26 @@ mod tests {
                 .iter()
                 .any(|preset| preset.id == "opencode-go/deepseek-v4-flash")
         );
+    }
+
+    #[test]
+    fn third_party_presets_do_not_advertise_openai_reasoning_effort() {
+        let presets = builtin_model_presets(Some(AuthMode::ApiKey), false);
+        for model in [
+            "MiniMax-M2.7",
+            "opencode-go/glm-5.1",
+            "opencode-go/kimi-k2.6",
+            "opencode-go/deepseek-v4-flash",
+        ] {
+            let preset = presets
+                .iter()
+                .find(|preset| preset.id == model)
+                .unwrap_or_else(|| panic!("missing preset {model}"));
+            assert!(
+                preset.supported_reasoning_efforts.is_empty(),
+                "{model} should not show a reasoning-effort selector"
+            );
+        }
     }
 
     #[test]

@@ -60,8 +60,9 @@ where
     P: VisibleModelPreset + Clone,
 {
     let auth_snapshot = auth.auth();
-    let opencode_go_visible = auth.provider_api_key(OPENCODE_GO_PROVIDER_ID).is_some();
-    let minimax_visible = auth.provider_api_key(MINIMAX_PROVIDER_ID).is_some();
+    let opencode_go_visible =
+        provider_credential_visible(auth, OPENCODE_GO_PROVIDER_ID, "OPENCODE_GO_API_KEY");
+    let minimax_visible = provider_credential_visible(auth, MINIMAX_PROVIDER_ID, "MINIMAX_API_KEY");
 
     VisibleProvider::ORDER
         .into_iter()
@@ -109,6 +110,13 @@ where
         .into_iter()
         .flat_map(|group| group.presets)
         .collect()
+}
+
+fn provider_credential_visible(auth: &AuthManager, provider_ref: &str, env_key: &str) -> bool {
+    auth.provider_api_key(provider_ref).is_some()
+        || std::env::var(env_key)
+            .ok()
+            .is_some_and(|value| !value.trim().is_empty())
 }
 
 fn matches_minimax_model(model: &str) -> bool {
@@ -194,6 +202,40 @@ mod tests {
         model: &'static str,
         show_in_picker: bool,
         pro_only: bool,
+    }
+
+    struct EnvGuard {
+        key: &'static str,
+        previous: Option<String>,
+    }
+
+    impl EnvGuard {
+        fn set(key: &'static str, value: &str) -> Self {
+            let previous = std::env::var(key).ok();
+            unsafe {
+                std::env::set_var(key, value);
+            }
+            Self { key, previous }
+        }
+
+        fn unset(key: &'static str) -> Self {
+            let previous = std::env::var(key).ok();
+            unsafe {
+                std::env::remove_var(key);
+            }
+            Self { key, previous }
+        }
+    }
+
+    impl Drop for EnvGuard {
+        fn drop(&mut self) {
+            unsafe {
+                match &self.previous {
+                    Some(value) => std::env::set_var(self.key, value),
+                    None => std::env::remove_var(self.key),
+                }
+            }
+        }
     }
 
     impl TestPreset {
@@ -338,7 +380,10 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial]
     fn provider_keys_control_visibility() {
+        let _opencode_env = EnvGuard::unset("OPENCODE_GO_API_KEY");
+        let _minimax_env = EnvGuard::unset("MINIMAX_API_KEY");
         let code_home = TempDir::new().unwrap();
         let presets = vec![TestPreset::new("opencode-go/kimi-k2.6")];
         let auth = AuthManager::shared_with_mode_and_originator(
@@ -359,6 +404,30 @@ mod tests {
         assert_eq!(
             groups.iter().map(|group| group.provider).collect::<Vec<_>>(),
             vec![VisibleProvider::OpenCodeGo]
+        );
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn provider_env_keys_control_visibility_without_stored_credentials() {
+        let _opencode_env = EnvGuard::set("OPENCODE_GO_API_KEY", "sk-opencode");
+        let _minimax_env = EnvGuard::set("MINIMAX_API_KEY", "sk-minimax");
+
+        let code_home = TempDir::new().unwrap();
+        let auth = AuthManager::shared_with_mode_and_originator(
+            code_home.path().to_path_buf(),
+            AuthMode::ApiKey,
+            "code_cli_rs".to_string(),
+        );
+        let presets = vec![
+            TestPreset::new("opencode-go/kimi-k2.6"),
+            TestPreset::new("MiniMax-M2.7"),
+        ];
+
+        let groups = visible_model_groups(&auth, &presets);
+        assert_eq!(
+            groups.iter().map(|group| group.provider).collect::<Vec<_>>(),
+            vec![VisibleProvider::OpenCodeGo, VisibleProvider::MiniMax]
         );
     }
 }
