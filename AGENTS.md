@@ -164,6 +164,7 @@ This architecture separates concerns between execution logic (core), UI state ma
 - Use `scripts/wait-for-gh-run.sh` to follow GitHub Actions releases without spamming manual `gh` commands.
 - Typical release check right after a push: `scripts/wait-for-gh-run.sh --workflow Release --branch main`.
 - If you already know the run ID (e.g., from webhook output), run `scripts/wait-for-gh-run.sh --run <run-id>`.
+- After a successful Release workflow on `main`, `scripts/wait-for-gh-run.sh` automatically runs `scripts/upgrade-local-kay-latest.sh` and verifies the visible `kay` command is the latest published version. Treat this as the final release step; bypass only for diagnostics with `KAY_SKIP_LOCAL_UPGRADE=1`.
 - Adjust the poll cadence via `--interval <seconds>` (defaults to 8). The script exits 0 on success and 1 on failure, so it can gate local automation.
 - Pass `--failure-logs` to automatically dump logs for any job that does not finish successfully.
 - Dependencies: GitHub CLI (`gh`) and `jq` must be available in `PATH`.
