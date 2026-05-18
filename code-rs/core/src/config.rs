@@ -38,6 +38,7 @@ use crate::model_family::resolve_context_mode_limits;
 use crate::model_family::derive_default_model_family;
 use crate::model_family::infer_model_provider_id;
 use crate::model_family::find_family_for_model;
+use crate::model_family::model_supports_fast_mode_for_provider;
 use crate::model_provider_info::ModelProviderInfo;
 use crate::model_provider_info::built_in_model_providers;
 use crate::reasoning::clamp_reasoning_effort_for_model;
@@ -551,6 +552,64 @@ pub struct Config {
 }
 
 impl Config {
+    pub fn sync_model_provider_for_model(&mut self, model: &str) -> bool {
+        let Some(provider_id) = infer_model_provider_id(model) else {
+            return false;
+        };
+        if self.model_provider_id.eq_ignore_ascii_case(provider_id) {
+            return false;
+        }
+        let Some(provider) = self.model_providers.get(provider_id).cloned() else {
+            tracing::warn!("missing model provider config for `{provider_id}`");
+            return false;
+        };
+
+        self.model_provider_id = provider_id.to_string();
+        self.model_provider = provider;
+        true
+    }
+
+    pub fn sync_model_settings_for_model(&mut self, model: &str) -> bool {
+        let mut updated = self.sync_model_provider_for_model(model);
+        let previous_max_output_tokens = self.model_family.max_output_tokens;
+
+        let model_family =
+            find_family_for_model(model).unwrap_or_else(|| derive_default_model_family(model));
+        if self.model_family != model_family {
+            self.model_family = model_family;
+            updated = true;
+        }
+
+        let (context_window, auto_compact_limit) =
+            resolve_context_mode_limits(model, self.context_mode, &self.model_family);
+        if self.model_context_window != context_window {
+            self.model_context_window = context_window;
+            updated = true;
+        }
+        if self.model_auto_compact_token_limit != auto_compact_limit {
+            self.model_auto_compact_token_limit = auto_compact_limit;
+            updated = true;
+        }
+        if self.model_max_output_tokens.is_none()
+            || self.model_max_output_tokens == previous_max_output_tokens
+        {
+            let max_output_tokens = self.model_family.max_output_tokens;
+            if self.model_max_output_tokens != max_output_tokens {
+                self.model_max_output_tokens = max_output_tokens;
+                updated = true;
+            }
+        }
+
+        if !model_supports_fast_mode_for_provider(&self.model_provider_id, model)
+            && self.service_tier.is_some()
+        {
+            self.service_tier = None;
+            updated = true;
+        }
+
+        updated
+    }
+
     /// Load configuration with *generic* CLI overrides (`-c key=value`) applied
     /// **in between** the values parsed from `config.toml` and the
     /// strongly-typed overrides specified via [`ConfigOverrides`].
@@ -1347,6 +1406,11 @@ impl Config {
             Some(ServiceTier::Flex) => Some(ServiceTier::Flex),
             Some(ServiceTier::Standard) => None,
             None => None,
+        };
+        let service_tier = if model_supports_fast_mode_for_provider(&model_provider_id, &model) {
+            service_tier
+        } else {
+            None
         };
         let context_mode = config_profile
             .context_mode
@@ -3673,6 +3737,81 @@ mod agent_merge_tests {
     }
 
     #[test]
+    fn service_tier_fast_is_ignored_for_non_openai_model() -> anyhow::Result<()> {
+        let code_home = TempDir::new()?;
+        let cfg = toml::from_str::<ConfigToml>(
+            r#"
+model = "opencode-go/glm-5.1"
+service_tier = "fast"
+"#,
+        )?;
+        let config = Config::load_from_base_config_with_overrides(
+            cfg,
+            ConfigOverrides {
+                cwd: Some(code_home.path().to_path_buf()),
+                ..Default::default()
+            },
+            code_home.path().to_path_buf(),
+        )?;
+
+        assert_eq!(config.service_tier, None);
+        Ok(())
+    }
+
+    #[test]
+    fn sync_model_provider_for_model_updates_known_provider_models() -> anyhow::Result<()> {
+        let code_home = TempDir::new()?;
+        let mut config = Config::load_from_base_config_with_overrides(
+            ConfigToml::default(),
+            ConfigOverrides {
+                cwd: Some(code_home.path().to_path_buf()),
+                ..Default::default()
+            },
+            code_home.path().to_path_buf(),
+        )?;
+
+        assert_eq!(config.model_provider_id, "openai");
+        assert!(config.sync_model_provider_for_model("opencode-go/glm-5.1"));
+        assert_eq!(config.model_provider_id, crate::OPENCODE_GO_PROVIDER_ID);
+        assert_eq!(config.model_provider.name, "OpenCode Go");
+        assert!(config.sync_model_provider_for_model("gpt-5.4"));
+        assert_eq!(config.model_provider_id, "openai");
+        assert!(!config.sync_model_provider_for_model("custom-model"));
+        assert_eq!(config.model_provider_id, "openai");
+        Ok(())
+    }
+
+    #[test]
+    fn sync_model_settings_for_model_refreshes_provider_family_and_context() -> anyhow::Result<()> {
+        let code_home = TempDir::new()?;
+        let cfg = toml::from_str::<ConfigToml>(
+            r#"
+context_mode = "1m"
+"#,
+        )?;
+        let mut config = Config::load_from_base_config_with_overrides(
+            cfg,
+            ConfigOverrides {
+                cwd: Some(code_home.path().to_path_buf()),
+                ..Default::default()
+            },
+            code_home.path().to_path_buf(),
+        )?;
+
+        assert!(config.sync_model_settings_for_model("opencode-go/deepseek-v4-pro"));
+        assert_eq!(config.model_provider_id, crate::OPENCODE_GO_PROVIDER_ID);
+        assert_eq!(config.model_family.slug, "opencode-go/deepseek-v4-pro");
+        assert_eq!(config.model_context_window, Some(1_047_576));
+        assert_eq!(config.model_auto_compact_token_limit, Some(942_818));
+        assert_eq!(config.model_max_output_tokens, Some(128_000));
+        assert!(config.sync_model_settings_for_model("gpt-3.5-turbo"));
+        assert_eq!(config.model_provider_id, "openai");
+        assert_eq!(config.model_family.family, "gpt-3.5");
+        assert_eq!(config.model_max_output_tokens, Some(4_096));
+        Ok(())
+    }
+
+    #[test]
     fn service_tier_flex_preserves_override() -> anyhow::Result<()> {
         let code_home = TempDir::new()?;
         let cfg = toml::from_str::<ConfigToml>(r#"service_tier = "flex""#)?;
@@ -3712,6 +3851,50 @@ mod agent_merge_tests {
         let cfg = toml::from_str::<ConfigToml>(
             r#"
 model = "gpt-5.4"
+context_mode = "1m"
+"#,
+        )?;
+        let config = Config::load_from_base_config_with_overrides(
+            cfg,
+            ConfigOverrides {
+                cwd: Some(code_home.path().to_path_buf()),
+                ..Default::default()
+            },
+            code_home.path().to_path_buf(),
+        )?;
+
+        assert_eq!(config.context_mode, Some(ContextMode::OneM));
+        assert_eq!(config.model_context_window, Some(1_047_576));
+        assert_eq!(config.model_auto_compact_token_limit, Some(942_818));
+        Ok(())
+    }
+
+    #[test]
+    fn sync_model_settings_clears_fast_mode_for_third_party_models() -> anyhow::Result<()> {
+        let code_home = TempDir::new()?;
+        let mut config = Config::load_from_base_config_with_overrides(
+            ConfigToml::default(),
+            ConfigOverrides {
+                cwd: Some(code_home.path().to_path_buf()),
+                ..Default::default()
+            },
+            code_home.path().to_path_buf(),
+        )?;
+        config.service_tier = Some(ServiceTier::Fast);
+
+        assert!(config.sync_model_settings_for_model("opencode-go/glm-5.1"));
+
+        assert_eq!(config.model_provider_id, crate::OPENCODE_GO_PROVIDER_ID);
+        assert_eq!(config.service_tier, None);
+        Ok(())
+    }
+
+    #[test]
+    fn context_mode_one_m_expands_supported_opencode_go_context() -> anyhow::Result<()> {
+        let code_home = TempDir::new()?;
+        let cfg = toml::from_str::<ConfigToml>(
+            r#"
+model = "opencode-go/deepseek-v4-pro"
 context_mode = "1m"
 "#,
         )?;

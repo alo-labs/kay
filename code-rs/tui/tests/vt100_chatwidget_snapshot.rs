@@ -2643,6 +2643,13 @@ fn agents_toggle_claude_opus_persists_via_slash_command() {
 
 #[test]
 fn model_selection_visibility() {
+    let _lock = ENV_LOCK.lock().unwrap();
+    let _env = EnvGuard::new(&[
+        "OPENAI_API_KEY",
+        "CODEX_API_KEY",
+        "OPENCODE_GO_API_KEY",
+        "MINIMAX_API_KEY",
+    ]);
     let seeded_presets = vec![
         make_model_preset(
             "opencode-go/kimi-k2.6",
@@ -2741,9 +2748,8 @@ fn model_selection_visibility() {
 
     let empty_frame = normalize_output(render_chat_widget_to_vt100(&mut empty_harness, 100, 32));
     assert!(empty_frame.contains("No models are unlocked yet."));
-    assert!(!empty_frame.contains("OpenCode Go"));
-    assert!(!empty_frame.contains("MiniMax"));
-    assert!(!empty_frame.contains("OpenAI"));
+    assert!(!empty_frame.contains("KIMI-K2.6"));
+    assert!(!empty_frame.contains("MINIMAX-M2.7"));
 
     insta::assert_snapshot!("model_selection_visibility__empty_credentials_hint", empty_frame);
 }

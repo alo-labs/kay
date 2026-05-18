@@ -52,6 +52,7 @@ use crate::client_common::ResponsesApiRequest;
 use crate::client_common::create_reasoning_param_for_request;
 use crate::client_common::replace_image_payloads_for_model;
 use crate::client_common::rewrite_image_generation_calls_for_input;
+use crate::client_common::strip_reasoning_content_for_responses_input;
 use crate::config::Config;
 use crate::config_types::ReasoningEffort as ReasoningEffortConfig;
 use crate::config_types::ReasoningSummary as ReasoningSummaryConfig;
@@ -742,6 +743,7 @@ impl ModelClient {
         let mut input_with_instructions = prompt.get_formatted_input();
         rewrite_image_generation_calls_for_input(&mut input_with_instructions);
         replace_image_payloads_for_model(&mut input_with_instructions, request_model);
+        strip_reasoning_content_for_responses_input(&mut input_with_instructions);
 
         let want_format = prompt.text_format.clone().or_else(|| {
             prompt.output_schema.as_ref().map(|schema| crate::client_common::TextFormat {
@@ -1199,6 +1201,7 @@ impl ModelClient {
         let mut input_with_instructions = prompt.get_formatted_input();
         rewrite_image_generation_calls_for_input(&mut input_with_instructions);
         replace_image_payloads_for_model(&mut input_with_instructions, request_model);
+        strip_reasoning_content_for_responses_input(&mut input_with_instructions);
 
         // Build `text` parameter with conditional verbosity and optional format.
         // - Omit entirely for ChatGPT auth unless a `text.format` or output schema is present.

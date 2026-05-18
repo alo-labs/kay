@@ -442,7 +442,6 @@
         {
           "properties": {
             "content": {
-              "default": null,
               "items": {
                 "$ref": "#/definitions/ReasoningItemContent"
               },
