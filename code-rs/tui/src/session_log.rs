@@ -358,6 +358,25 @@ pub(crate) fn log_outbound_op(op: &Op) {
     write_record("from_tui", "op", op);
 }
 
+pub(crate) fn log_configure_session_model(
+    model_provider_id: &str,
+    model_provider_name: &str,
+    model: &str,
+) {
+    if !LOGGER.is_enabled() {
+        return;
+    }
+    let value = json!({
+        "ts": now_ts(),
+        "dir": "from_tui",
+        "kind": "configure_session_model",
+        "model_provider_id": model_provider_id,
+        "model_provider_name": model_provider_name,
+        "model": model,
+    });
+    LOGGER.write_json_line(value);
+}
+
 pub(crate) fn log_session_end() {
     if !LOGGER.is_enabled() {
         return;

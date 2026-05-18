@@ -23486,6 +23486,10 @@ Have we met every part of this goal and is there no further work to do?"#
     }
 
     pub(crate) fn apply_model_provider_selection(&mut self, provider_id: String) {
+        // Provider keys are saved by the bottom-pane UI while the chat session is
+        // already running, so refresh cached OpenAI auth before using the key.
+        self.reload_auth();
+
         let provider_id = provider_id.trim().to_ascii_lowercase();
         if provider_id.is_empty() {
             return;
@@ -23586,6 +23590,12 @@ Have we met every part of this goal and is there no further work to do?"#
             demo_developer_message: self.config.demo_developer_message.clone(),
             dynamic_tools: Vec::new(),
         };
+        session_log::log_outbound_op(&op);
+        session_log::log_configure_session_model(
+            &self.config.model_provider_id,
+            &self.config.model_provider.name,
+            &self.config.model,
+        );
         self.submit_op(op);
     }
 
@@ -31610,6 +31620,41 @@ use code_core::protocol::OrderMeta;
             assert_eq!(chat.config.model_provider_id, MINIMAX_PROVIDER_ID);
             assert_eq!(chat.config.model_provider.name, "MiniMax");
             assert_eq!(chat.config.model, "MiniMax-M2.7");
+        });
+    }
+
+    #[test]
+    fn provider_selection_reloads_openai_api_key_saved_mid_session() {
+        let _runtime_guard = enter_test_runtime_guard();
+        let code_home = tempdir().expect("temp code home");
+        auth::save_provider_api_key(code_home.path(), "minimax", "sk-minimax")
+            .expect("minimax provider key should be saved");
+
+        let mut harness = ChatWidgetHarness::new();
+        harness.with_chat(|chat| {
+            chat.config.code_home = code_home.path().to_path_buf();
+            chat.auth_manager = auth::AuthManager::shared_with_mode_and_originator(
+                code_home.path().to_path_buf(),
+                AuthMode::ApiKey,
+                "code_cli_rs".to_string(),
+            );
+            chat.apply_model_provider_selection(MINIMAX_PROVIDER_ID.to_string());
+            assert_eq!(chat.config.model_provider_id, MINIMAX_PROVIDER_ID);
+            assert!(
+                chat.auth_manager.auth().is_none(),
+                "OpenAI auth should not be cached before the OpenAI key is saved"
+            );
+
+            auth::save_provider_api_key(code_home.path(), "openai", "sk-openai")
+                .expect("openai API key should be saved");
+            chat.apply_model_provider_selection("openai".to_string());
+
+            assert_eq!(chat.config.model_provider_id, "openai");
+            let auth = chat
+                .auth_manager
+                .auth()
+                .expect("OpenAI API key auth should be reloaded");
+            assert_eq!(auth.mode, AuthMode::ApiKey);
         });
     }
 

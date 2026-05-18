@@ -48,6 +48,23 @@ const ALL_TEXT_VERBOSITY: &[TextVerbosityConfig] = &[
 ];
 
 static PRESETS: Lazy<Vec<ModelPreset>> = Lazy::new(|| {
+    let opencode_go_preset = |model: &str, display_name: &str| ModelPreset {
+        id: model.to_string(),
+        model: model.to_string(),
+        display_name: display_name.to_string(),
+        description: "OpenCode Go coding model.".to_string(),
+        default_reasoning_effort: ReasoningEffort::Medium,
+        supported_reasoning_efforts: vec![ReasoningEffortPreset {
+            effort: ReasoningEffort::Medium,
+            description: "Balanced responses for everyday coding loops".to_string(),
+        }],
+        supported_text_verbosity: &[TextVerbosityConfig::Medium],
+        is_default: false,
+        upgrade: None,
+        pro_only: false,
+        show_in_picker: true,
+    };
+
     vec![
         ModelPreset {
             id: "gpt-5.5".to_string(),
@@ -156,6 +173,14 @@ static PRESETS: Lazy<Vec<ModelPreset>> = Lazy::new(|| {
             pro_only: false,
             show_in_picker: true,
         },
+        opencode_go_preset("opencode-go/glm-5.1", "OpenCode Go GLM 5.1"),
+        opencode_go_preset("opencode-go/kimi-k2.6", "OpenCode Go Kimi K2.6"),
+        opencode_go_preset("opencode-go/mimo-v2.5-pro", "OpenCode Go MiMo V2.5 Pro"),
+        opencode_go_preset("opencode-go/mimo-v2.5", "OpenCode Go MiMo V2.5"),
+        opencode_go_preset("opencode-go/minimax-m2.7", "OpenCode Go MiniMax M2.7"),
+        opencode_go_preset("opencode-go/qwen3.6-plus", "OpenCode Go Qwen3.6 Plus"),
+        opencode_go_preset("opencode-go/deepseek-v4-pro", "OpenCode Go DeepSeek V4 Pro"),
+        opencode_go_preset("opencode-go/deepseek-v4-flash", "OpenCode Go DeepSeek V4 Flash"),
         ModelPreset {
             id: "gpt-5.3-codex".to_string(),
             model: "gpt-5.3-codex".to_string(),
@@ -724,6 +749,21 @@ mod tests {
     fn minimax_available_for_api_key_auth() {
         let presets = builtin_model_presets(Some(AuthMode::ApiKey), false);
         assert!(presets.iter().any(|preset| preset.id == "MiniMax-M2.7"));
+    }
+
+    #[test]
+    fn opencode_go_models_available_for_api_key_auth() {
+        let presets = builtin_model_presets(Some(AuthMode::ApiKey), false);
+        assert!(
+            presets
+                .iter()
+                .any(|preset| preset.id == "opencode-go/kimi-k2.6")
+        );
+        assert!(
+            presets
+                .iter()
+                .any(|preset| preset.id == "opencode-go/deepseek-v4-flash")
+        );
     }
 
     #[test]
