@@ -125,6 +125,40 @@ pub fn infer_model_provider_id(model: &str) -> Option<&'static str> {
     None
 }
 
+fn normalized_model_matches_request(requested_model: &str, response_model: &str) -> bool {
+    if response_model == requested_model {
+        return true;
+    }
+
+    response_model
+        .strip_prefix(requested_model)
+        .is_some_and(|suffix| suffix.starts_with('-') && suffix.len() > 1)
+}
+
+/// Returns true when the provider response model is equivalent to the requested
+/// model slug.
+///
+/// Some OpenAI-compatible third-party providers return the upstream model slug
+/// (`glm-5.1`) even when Kay requested the namespaced provider slug
+/// (`opencode-go/glm-5.1`). That is expected normalization, not model
+/// rerouting.
+pub fn response_model_matches_request(requested_model: &str, response_model: &str) -> bool {
+    let requested = requested_model.trim().to_ascii_lowercase();
+    let response = response_model.trim().to_ascii_lowercase();
+
+    if normalized_model_matches_request(&requested, &response) {
+        return true;
+    }
+
+    let Some(provider_id) = infer_model_provider_id(&requested) else {
+        return false;
+    };
+
+    let requested_slug = provider_model_slug(provider_id, &requested);
+    let response_slug = provider_model_slug(provider_id, &response);
+    normalized_model_matches_request(requested_slug.as_ref(), response_slug.as_ref())
+}
+
 pub const STANDARD_CONTEXT_WINDOW_272K: u64 = CONTEXT_WINDOW_272K;
 pub const EXTENDED_CONTEXT_WINDOW_1M: u64 = CONTEXT_WINDOW_1M;
 
@@ -630,6 +664,7 @@ mod tests {
     use super::find_family_for_model;
     use super::infer_model_provider_id;
     use super::provider_model_slug;
+    use super::response_model_matches_request;
     use super::MINIMAX_PROVIDER_ID;
     use super::OPENCODE_GO_PROVIDER_ID;
 
@@ -758,6 +793,31 @@ mod tests {
             provider_model_slug("opencode-go", "other-provider/kimi-k2.6").as_ref(),
             "other-provider/kimi-k2.6"
         );
+    }
+
+    #[test]
+    fn response_model_match_accepts_third_party_provider_slug_normalization() {
+        assert!(response_model_matches_request(
+            "opencode-go/glm-5.1",
+            "glm-5.1"
+        ));
+        assert!(response_model_matches_request(
+            "opencode-go/kimi-k2.6",
+            "kimi-k2.6"
+        ));
+        assert!(response_model_matches_request(
+            "minimax/MiniMax-M2.7",
+            "MiniMax-M2.7"
+        ));
+    }
+
+    #[test]
+    fn response_model_match_keeps_openai_version_suffix_behavior() {
+        assert!(response_model_matches_request(
+            "gpt-5.4",
+            "gpt-5.4-2026-04-01"
+        ));
+        assert!(!response_model_matches_request("gpt-5.4", "gpt-5.5"));
     }
 
     #[test]
