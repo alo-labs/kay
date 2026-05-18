@@ -1023,7 +1023,10 @@ fn reclaim_worktrees_from_file(path: &std::path::Path, label: &str) {
     let _ = std::fs::remove_file(path);
 }
 
-fn maybe_apply_terminal_theme_detection(config: &mut Config, theme_configured_explicitly: bool) {
+pub(crate) fn maybe_apply_terminal_theme_detection(
+    config: &mut Config,
+    theme_configured_explicitly: bool,
+) {
     if theme_configured_explicitly {
         tracing::info!(
             "Terminal theme autodetect skipped due to explicit theme configuration"
@@ -1058,6 +1061,14 @@ fn maybe_apply_terminal_theme_detection(config: &mut Config, theme_configured_ex
     let term_program_version =
         std::env::var("TERM_PROGRAM_VERSION").ok().filter(|value| !value.is_empty());
     let colorfgbg = std::env::var("COLORFGBG").ok().filter(|value| !value.is_empty());
+
+    if term.as_deref().is_some_and(|value| value.eq_ignore_ascii_case("dumb")) {
+        tracing::info!(
+            "Terminal theme autodetect unavailable in TERM=dumb; using Dark - Carbon Night fallback"
+        );
+        apply_detected_theme(theme, true);
+        return;
+    }
 
     if let Some(cached) = config.tui.cached_terminal_background.as_ref() {
         if cached_background_matches_env(
@@ -1391,6 +1402,7 @@ mod tests {
     use super::*;
     use code_core::config::ProjectConfig;
     use code_core::config_types::SandboxWorkspaceWrite;
+    use code_core::config_types::ThemeName;
     use code_core::protocol::AskForApproval;
     use std::collections::HashMap;
     use tempfile::TempDir;
@@ -1518,6 +1530,50 @@ mod tests {
             other => panic!("expected workspace-write sandbox, got {other:?}"),
         }
 
+        Ok(())
+    }
+
+    #[test]
+    fn dumb_terminal_falls_back_to_dark_theme_when_background_is_unknown() -> std::io::Result<()> {
+        struct EnvVarGuard {
+            key: &'static str,
+            previous: Option<String>,
+        }
+
+        impl EnvVarGuard {
+            fn new(key: &'static str) -> Self {
+                Self {
+                    key,
+                    previous: std::env::var(key).ok(),
+                }
+            }
+        }
+
+        impl Drop for EnvVarGuard {
+            fn drop(&mut self) {
+                match &self.previous {
+                    Some(value) => unsafe {
+                        std::env::set_var(self.key, value);
+                    },
+                    None => unsafe {
+                        std::env::remove_var(self.key);
+                    },
+                }
+            }
+        }
+
+        let _term_guard = EnvVarGuard::new("TERM");
+        unsafe {
+            std::env::set_var("TERM", "dumb");
+        }
+
+        let (mut config, _config_toml) = make_trusted_config(None)?;
+        assert!(matches!(config.tui.theme.name, ThemeName::DarkCarbonNight));
+        config.tui.theme.name = ThemeName::LightPhoton;
+
+        maybe_apply_terminal_theme_detection(&mut config, false);
+
+        assert!(matches!(config.tui.theme.name, ThemeName::DarkCarbonNight));
         Ok(())
     }
 

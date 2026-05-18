@@ -22,7 +22,6 @@ use ratatui::widgets::Widget;
 use crate::app_event::AppEvent;
 use crate::app_event_sender::AppEventSender;
 use crate::chatwidget::BackgroundOrderTicket;
-use crate::theme::{custom_theme_is_dark, map_theme_for_palette, palette_mode, PaletteMode};
 use crate::thread_spawner;
 
 use super::BottomPane;
@@ -59,7 +58,7 @@ impl ThemeSelectionView {
         tail_ticket: BackgroundOrderTicket,
         before_ticket: BackgroundOrderTicket,
     ) -> Self {
-        let current_theme = map_theme_for_palette(current_theme, custom_theme_is_dark());
+        let current_theme = display_theme_for_selection(current_theme);
         let themes = Self::get_theme_options();
         let selected_theme_index = themes
             .iter()
@@ -95,21 +94,6 @@ impl ThemeSelectionView {
     }
 
     fn get_theme_options() -> Vec<(ThemeName, &'static str, &'static str)> {
-        if matches!(palette_mode(), PaletteMode::Ansi16) {
-            return vec![
-                (
-                    ThemeName::LightPhotonAnsi16,
-                    "Light (16-color)",
-                    "High-contrast light palette for limited terminals",
-                ),
-                (
-                    ThemeName::DarkCarbonAnsi16,
-                    "Dark (16-color)",
-                    "High-contrast dark palette for limited terminals",
-                ),
-            ];
-        }
-
         let mut v = vec![
             // Light themes (at top)
             (
@@ -186,9 +170,6 @@ impl ThemeSelectionView {
         ];
         // Append custom theme if available (use saved label and light/dark prefix)
         if let Some(label0) = crate::theme::custom_theme_label() {
-            if matches!(palette_mode(), PaletteMode::Ansi16) {
-                return v;
-            }
             // Sanitize any leading Light/Dark prefix the model may have included
             let mut label = label0.trim().to_string();
             for pref in ["Light - ", "Dark - ", "Light ", "Dark "] {
@@ -212,7 +193,7 @@ impl ThemeSelectionView {
     }
 
     fn allow_custom_theme_generation() -> bool {
-        !matches!(palette_mode(), PaletteMode::Ansi16)
+        true
     }
 
     fn move_selection_up(&mut self) {
@@ -992,6 +973,14 @@ enum ProgressMsg {
         error: String,
         _raw_snippet: String,
     },
+}
+
+fn display_theme_for_selection(theme: ThemeName) -> ThemeName {
+    match theme {
+        ThemeName::LightPhotonAnsi16 => ThemeName::LightPhoton,
+        ThemeName::DarkCarbonAnsi16 => ThemeName::DarkCarbonNight,
+        other => other,
+    }
 }
 
 impl ThemeSelectionView {

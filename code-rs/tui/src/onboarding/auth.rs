@@ -41,8 +41,7 @@ pub(crate) enum SignInState {
     ChatGptContinueInBrowser(ContinueInBrowserState),
     ChatGptSuccessMessage,
     ChatGptSuccess,
-    EnvVarMissing,
-    EnvVarFound,
+    ProviderManagerQueued,
 }
 
 #[derive(Debug)]
@@ -80,7 +79,6 @@ impl KeyboardHandler for AuthModeWidget {
                     AuthMode::ChatgptAuthTokens => self.start_chatgpt_login(),
                     AuthMode::ApiKey => self.verify_api_key(),
                 },
-                SignInState::EnvVarMissing => self.sign_in_state = SignInState::PickMode,
                 SignInState::ChatGptSuccessMessage => {
                     self.sign_in_state = SignInState::ChatGptSuccess
                 }
@@ -121,7 +119,7 @@ impl AuthModeWidget {
             Line::from(vec![
                 Span::raw("  "),
                 Span::styled(
-                    "or connect an API key for usage-based billing",
+                    "or connect provider API keys for OpenCode Go, MiniMax, or OpenAI",
                     Style::default().add_modifier(Modifier::BOLD),
                 ),
             ]),
@@ -200,15 +198,15 @@ impl AuthModeWidget {
         ));
         let api_key_label = if matches!(self.login_status, LoginStatus::AuthMode(AuthMode::ApiKey))
         {
-            "Continue using API key"
+            "Continue with provider API keys"
         } else {
-            "Provide your own API key"
+            "Connect provider API keys"
         };
         lines.extend(create_mode_item(
             1,
             AuthMode::ApiKey,
             api_key_label,
-            "Pay for what you use",
+            "OpenCode Go, MiniMax, or OpenAI",
         ));
         lines.push(Line::from(""));
         lines.push(
@@ -309,22 +307,9 @@ impl AuthModeWidget {
     }
 
     fn render_env_var_found(&self, area: Rect, buf: &mut Buffer) {
-        let lines = vec![Line::from("✓ Using OPENAI_API_KEY").fg(crate::colors::success())];
-
-        Paragraph::new(lines)
-            .wrap(Wrap { trim: false })
-            .render(area, buf);
-    }
-
-    fn render_env_var_missing(&self, area: Rect, buf: &mut Buffer) {
         let lines = vec![
-            Line::from(
-                "  To use Kay with the OpenAI API, set OPENAI_API_KEY in your environment",
-            )
-            .style(Style::default().fg(crate::colors::info())),
-            Line::from(""),
-            Line::from("  Press Enter to return")
-                .style(Style::default().add_modifier(Modifier::DIM)),
+            Line::from("✓ Provider manager will open after Kay starts")
+                .fg(crate::colors::success()),
         ];
 
         Paragraph::new(lines)
@@ -377,15 +362,12 @@ impl AuthModeWidget {
         }
     }
 
-    /// TODO: Read/write from the correct hierarchy config overrides + auth json + OPENAI_API_KEY.
+    /// TODO: Read/write from the correct hierarchy config overrides + auth json + provider keys.
     fn verify_api_key(&mut self) {
-        if matches!(self.login_status, LoginStatus::AuthMode(AuthMode::ApiKey)) {
-            // We already have an API key configured (e.g., from auth.json or env),
-            // so mark this step complete immediately.
-            self.sign_in_state = SignInState::EnvVarFound;
-        } else {
-            self.sign_in_state = SignInState::EnvVarMissing;
+        if let Ok(mut args) = self.chat_widget_args.lock() {
+            args.open_provider_credentials_on_startup = true;
         }
+        self.sign_in_state = SignInState::ProviderManagerQueued;
 
         self.event_tx.send(AppEvent::RequestRedraw);
     }
@@ -429,10 +411,9 @@ impl StepStateProvider for AuthModeWidget {
     fn get_step_state(&self) -> StepState {
         match &self.sign_in_state {
             SignInState::PickMode
-            | SignInState::EnvVarMissing
             | SignInState::ChatGptContinueInBrowser(_)
             | SignInState::ChatGptSuccessMessage => StepState::InProgress,
-            SignInState::ChatGptSuccess | SignInState::EnvVarFound => StepState::Complete,
+            SignInState::ChatGptSuccess | SignInState::ProviderManagerQueued => StepState::Complete,
         }
     }
 }
@@ -452,12 +433,82 @@ impl WidgetRef for AuthModeWidget {
             SignInState::ChatGptSuccess => {
                 self.render_chatgpt_success(area, buf);
             }
-            SignInState::EnvVarMissing => {
-                self.render_env_var_missing(area, buf);
-            }
-            SignInState::EnvVarFound => {
+            SignInState::ProviderManagerQueued => {
                 self.render_env_var_found(area, buf);
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use code_core::config::{Config, ConfigOverrides, ConfigToml};
+    use ratatui::buffer::Buffer;
+    use ratatui::layout::Rect;
+    use std::sync::mpsc;
+    use crate::app::ChatWidgetArgs;
+    use crate::app_event_sender::AppEventSender;
+    use crate::LoginStatus;
+
+    #[test]
+    fn onboarding_pick_mode_mentions_provider_keys_explicitly() {
+        let widget = test_widget();
+        let area = Rect::new(0, 0, 120, 20);
+        let mut buf = Buffer::empty(area);
+
+        widget.render_pick_mode(area, &mut buf);
+
+        let rendered = buffer_to_string(&buf, area);
+        assert!(rendered.contains("Connect provider API keys"));
+        assert!(rendered.contains("OpenCode Go, MiniMax, or OpenAI"));
+    }
+
+    fn test_widget() -> AuthModeWidget {
+        let (tx, _rx) = mpsc::channel();
+        let event_tx = AppEventSender::new(tx);
+        let config = Config::load_from_base_config_with_overrides(
+            ConfigToml::default(),
+            ConfigOverrides::default(),
+            std::env::temp_dir(),
+        )
+        .expect("config");
+
+        AuthModeWidget {
+            event_tx,
+            highlighted_mode: AuthMode::ApiKey,
+            error: None,
+            sign_in_state: SignInState::PickMode,
+            code_home: std::env::temp_dir(),
+            login_status: LoginStatus::NotAuthenticated,
+            preferred_auth_method: AuthMode::ApiKey,
+            chat_widget_args: std::sync::Arc::new(std::sync::Mutex::new(ChatWidgetArgs {
+                config,
+                initial_prompt: None,
+                initial_images: Vec::new(),
+                enhanced_keys_supported: false,
+                terminal_info: crate::tui::TerminalInfo {
+                    picker: None,
+                    font_size: (8, 16),
+                },
+                show_order_overlay: false,
+                enable_perf: false,
+                resume_picker: false,
+                latest_upgrade_version: None,
+                open_provider_credentials_on_startup: false,
+            })),
+        }
+    }
+
+    fn buffer_to_string(buf: &Buffer, area: Rect) -> String {
+        let mut out = String::new();
+        for y in area.y..area.y + area.height {
+            for x in area.x..area.x + area.width {
+                let ch = buf[(x, y)].symbol().chars().next().unwrap_or(' ');
+                out.push(ch);
+            }
+            out.push('\n');
+        }
+        out
     }
 }

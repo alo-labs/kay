@@ -1,10 +1,14 @@
 use chrono::Utc;
+use code_core::auth;
 use code_core::AuthManager;
 use code_core::ChatCompletionsFormat;
 use code_core::CodexAuth;
+use code_core::create_minimax_provider;
 use code_core::ModelProviderInfo;
+use code_core::MINIMAX_PROVIDER_ID;
 use code_core::WireApi;
 use code_core::remote_models::RemoteModelsManager;
+use code_app_server_protocol::AuthMode;
 use code_protocol::openai_models::ModelInfo;
 use code_protocol::openai_models::ModelsResponse;
 use pretty_assertions::assert_eq;
@@ -131,6 +135,56 @@ async fn refresh_remote_models_uses_cache_when_fresh() {
 
     // Second refresh should hit the fresh in-memory snapshot and avoid the network.
     manager.refresh_remote_models().await;
+    let requests = server.received_requests().await.expect("requests");
+    assert_eq!(requests.len(), 1);
+}
+
+#[tokio::test]
+async fn refresh_remote_models_uses_minimax_provider_key() {
+    if skip_if_no_network() {
+        return;
+    }
+
+    let server = MockServer::start().await;
+    let response = ModelsResponse {
+        models: vec![remote_model("MiniMax-M2.7", "MiniMax", 1)],
+    };
+
+    Mock::given(method("GET"))
+        .and(path("/v1/models"))
+        .and(header("authorization", "Bearer sk-minimax"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_json(&response)
+                .insert_header("ETag", "etag-minimax"),
+        )
+        .up_to_n_times(1)
+        .mount(&server)
+        .await;
+
+    let code_home = tempdir().expect("temp dir");
+    auth::save_provider_api_key(code_home.path(), MINIMAX_PROVIDER_ID, "sk-minimax")
+        .expect("minimax provider key should be saved");
+
+    let provider = create_minimax_provider();
+        let manager = RemoteModelsManager::new(
+            AuthManager::shared_with_mode_and_originator(
+                code_home.path().to_path_buf(),
+                AuthMode::ApiKey,
+                "code_cli_rs".to_string(),
+            ),
+            ModelProviderInfo {
+                base_url: Some(format!("{}/v1", server.uri())),
+                ..provider
+            },
+            code_home.path().to_path_buf(),
+        );
+
+    manager.refresh_remote_models().await;
+    let models = manager.remote_models_snapshot().await;
+    assert_eq!(models.len(), 1);
+    assert_eq!(models[0].slug, "MiniMax-M2.7");
+
     let requests = server.received_requests().await.expect("requests");
     assert_eq!(requests.len(), 1);
 }

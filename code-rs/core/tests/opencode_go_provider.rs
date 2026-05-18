@@ -204,8 +204,14 @@ async fn opencode_go_namespaced_model_slug_is_stripped_in_chat_completions_reque
     wait_for_event(&codex, |ev| matches!(ev, EventMsg::TaskComplete(_))).await;
 
     let requests = server.received_requests().await.expect("requests");
-    assert_eq!(requests.len(), 1);
-    let body: serde_json::Value = requests[0].body_json().expect("json body");
+    let chat_requests = requests
+        .iter()
+        .filter(|request| {
+            request.method.as_str() == "POST" && request.url.path().ends_with("/chat/completions")
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(chat_requests.len(), 1);
+    let body: serde_json::Value = chat_requests[0].body_json().expect("json body");
     assert_eq!(body["model"], "kimi-k2.6");
     assert!(
         body["messages"]

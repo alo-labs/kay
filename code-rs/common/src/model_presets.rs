@@ -141,6 +141,22 @@ static PRESETS: Lazy<Vec<ModelPreset>> = Lazy::new(|| {
             show_in_picker: true,
         },
         ModelPreset {
+            id: "MiniMax-M2.7".to_string(),
+            model: "MiniMax-M2.7".to_string(),
+            display_name: "MiniMax-M2.7".to_string(),
+            description: "Balanced MiniMax coding model.".to_string(),
+            default_reasoning_effort: ReasoningEffort::Medium,
+            supported_reasoning_efforts: vec![ReasoningEffortPreset {
+                effort: ReasoningEffort::Medium,
+                description: "Balanced responses for everyday coding loops".to_string(),
+            }],
+            supported_text_verbosity: &[TextVerbosityConfig::Medium],
+            is_default: false,
+            upgrade: None,
+            pro_only: false,
+            show_in_picker: true,
+        },
+        ModelPreset {
             id: "gpt-5.3-codex".to_string(),
             model: "gpt-5.3-codex".to_string(),
             display_name: "gpt-5.3-codex".to_string(),
@@ -702,6 +718,12 @@ mod tests {
         let presets = builtin_model_presets(Some(AuthMode::ApiKey), false);
         assert!(presets.iter().any(|preset| preset.id == "gpt-5.4"));
         assert!(presets.iter().any(|preset| preset.id == "gpt-5.4-mini"));
+    }
+
+    #[test]
+    fn minimax_available_for_api_key_auth() {
+        let presets = builtin_model_presets(Some(AuthMode::ApiKey), false);
+        assert!(presets.iter().any(|preset| preset.id == "MiniMax-M2.7"));
     }
 
     #[test]

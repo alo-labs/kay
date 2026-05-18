@@ -2,6 +2,8 @@ use crate::config_types::Personality;
 use crate::config_types::ContextMode;
 use crate::config_types::ReasoningEffort;
 use crate::config_types::ReasoningSummary;
+use crate::MINIMAX_PROVIDER_ID;
+use crate::OPENCODE_GO_PROVIDER_ID;
 use crate::tool_apply_patch::ApplyPatchToolType;
 use code_protocol::openai_models::ConfigShellToolType;
 use code_protocol::openai_models::InputModality;
@@ -89,6 +91,38 @@ pub fn provider_model_slug<'a>(provider_id: &str, model_slug: &'a str) -> Cow<'a
     }
 
     Cow::Borrowed(model_slug)
+}
+
+/// Infer the provider id from a model slug when the slug clearly belongs to a
+/// non-OpenAI provider.
+///
+/// OpenAI-compatible GPT model slugs still normalize to `openai`, but callers
+/// that only care about third-party providers can filter that value out.
+pub fn infer_model_provider_id(model: &str) -> Option<&'static str> {
+    let model = model.trim();
+    if model.is_empty() {
+        return None;
+    }
+
+    if model.eq_ignore_ascii_case("MiniMax-M2.7")
+        || provider_model_slug(MINIMAX_PROVIDER_ID, model).as_ref() != model
+    {
+        return Some(MINIMAX_PROVIDER_ID);
+    }
+
+    if provider_model_slug(OPENCODE_GO_PROVIDER_ID, model).as_ref() != model {
+        return Some(OPENCODE_GO_PROVIDER_ID);
+    }
+
+    let normalized = provider_model_slug("openai", model)
+        .as_ref()
+        .trim()
+        .to_ascii_lowercase();
+    if normalized.starts_with("gpt-") && !normalized.starts_with("gpt-oss") {
+        return Some("openai");
+    }
+
+    None
 }
 
 pub const STANDARD_CONTEXT_WINDOW_272K: u64 = CONTEXT_WINDOW_272K;
@@ -583,7 +617,10 @@ mod tests {
     use super::ChatCompletionsRoleStrategy;
     use super::ChatCompletionsReasoningStrategy;
     use super::find_family_for_model;
+    use super::infer_model_provider_id;
     use super::provider_model_slug;
+    use super::MINIMAX_PROVIDER_ID;
+    use super::OPENCODE_GO_PROVIDER_ID;
 
     #[test]
     fn image_generation_support_tracks_image_input_modality() {
@@ -696,6 +733,17 @@ mod tests {
             provider_model_slug("opencode-go", "other-provider/kimi-k2.6").as_ref(),
             "other-provider/kimi-k2.6"
         );
+    }
+
+    #[test]
+    fn infer_model_provider_id_prefers_third_party_models() {
+        assert_eq!(infer_model_provider_id("MiniMax-M2.7"), Some(MINIMAX_PROVIDER_ID));
+        assert_eq!(
+            infer_model_provider_id("opencode-go/kimi-k2.6"),
+            Some(OPENCODE_GO_PROVIDER_ID)
+        );
+        assert_eq!(infer_model_provider_id("gpt-5.4"), Some("openai"));
+        assert_eq!(infer_model_provider_id("custom-model"), None);
     }
 }
 

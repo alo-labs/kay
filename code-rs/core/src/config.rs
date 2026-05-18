@@ -36,6 +36,7 @@ use crate::git_info::resolve_root_git_project_for_trust;
 use crate::model_family::ModelFamily;
 use crate::model_family::resolve_context_mode_limits;
 use crate::model_family::derive_default_model_family;
+use crate::model_family::infer_model_provider_id;
 use crate::model_family::find_family_for_model;
 use crate::model_provider_info::ModelProviderInfo;
 use crate::model_provider_info::built_in_model_providers;
@@ -1138,19 +1139,13 @@ impl Config {
             model_providers.entry(key).or_insert(provider);
         }
 
-        let model_provider_id = model_provider
+        let model_provider_explicit = model_provider.is_some()
+            || config_profile.model_provider.is_some()
+            || cfg.model_provider.is_some();
+        let mut model_provider_id = model_provider
             .or(config_profile.model_provider)
             .or(cfg.model_provider)
             .unwrap_or_else(|| "openai".to_string());
-        let model_provider = model_providers
-            .get(&model_provider_id)
-            .ok_or_else(|| {
-                std::io::Error::new(
-                    std::io::ErrorKind::NotFound,
-                    format!("Model provider `{model_provider_id}` not found"),
-                )
-            })?
-            .clone();
 
         // Capture workspace-write details early to avoid borrow after partial moves
         let cfg_workspace = cfg.sandbox_workspace_write.clone();
@@ -1315,6 +1310,22 @@ impl Config {
             .or(config_profile.model)
             .or(cfg.model)
             .unwrap_or_else(|| default_model_slug.to_string());
+
+        if !model_provider_explicit
+            && let Some(inferred_model_provider_id) = infer_model_provider_id(&model)
+            && !inferred_model_provider_id.eq_ignore_ascii_case("openai")
+        {
+            model_provider_id = inferred_model_provider_id.to_string();
+        }
+        let model_provider = model_providers
+            .get(&model_provider_id)
+            .ok_or_else(|| {
+                std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    format!("Model provider `{model_provider_id}` not found"),
+                )
+            })?
+            .clone();
 
         let model_personality = config_profile
             .model_personality
@@ -2219,6 +2230,7 @@ args = ["-y", "@upstash/context7-mcp"]
         persist_model_selection(
             code_home.path(),
             None,
+            "openai",
             "gpt-5.1-codex",
             Some(ReasoningEffort::High),
             None,
@@ -2228,6 +2240,7 @@ args = ["-y", "@upstash/context7-mcp"]
         let serialized = tokio::fs::read_to_string(code_home.path().join(CONFIG_TOML_FILE)).await?;
         let parsed: ConfigToml = toml::from_str(&serialized)?;
 
+        assert_eq!(parsed.model_provider.as_deref(), Some("openai"));
         assert_eq!(parsed.model.as_deref(), Some("gpt-5.1-codex"));
         assert_eq!(parsed.model_reasoning_effort, Some(ReasoningEffort::High));
 
@@ -2254,6 +2267,7 @@ model = "gpt-4.1"
         persist_model_selection(
             code_home.path(),
             None,
+            "openai",
             "o4-mini",
             Some(ReasoningEffort::High),
             None,
@@ -2263,6 +2277,7 @@ model = "gpt-4.1"
         let serialized = tokio::fs::read_to_string(config_path).await?;
         let parsed: ConfigToml = toml::from_str(&serialized)?;
 
+        assert_eq!(parsed.model_provider.as_deref(), Some("openai"));
         assert_eq!(parsed.model.as_deref(), Some("o4-mini"));
         assert_eq!(parsed.model_reasoning_effort, Some(ReasoningEffort::High));
         assert_eq!(
@@ -2283,6 +2298,7 @@ model = "gpt-4.1"
         persist_model_selection(
             code_home.path(),
             Some("dev"),
+            "openai",
             "gpt-5.1-codex",
             Some(ReasoningEffort::Medium),
             None,
@@ -2296,6 +2312,7 @@ model = "gpt-4.1"
             .get("dev")
             .expect("profile should be created");
 
+        assert_eq!(profile.model_provider.as_deref(), Some("openai"));
         assert_eq!(profile.model.as_deref(), Some("gpt-5.1-codex"));
         assert_eq!(
             profile.model_reasoning_effort,
@@ -2326,6 +2343,7 @@ model = "gpt-5.1-codex"
         persist_model_selection(
             code_home.path(),
             Some("dev"),
+            "openai",
             "o4-high",
             Some(ReasoningEffort::Medium),
             None,
@@ -2339,6 +2357,7 @@ model = "gpt-5.1-codex"
             .profiles
             .get("dev")
             .expect("dev profile should survive updates");
+        assert_eq!(dev_profile.model_provider.as_deref(), Some("openai"));
         assert_eq!(dev_profile.model.as_deref(), Some("o4-high"));
         assert_eq!(
             dev_profile.model_reasoning_effort,
@@ -2353,6 +2372,53 @@ model = "gpt-5.1-codex"
             Some("gpt-5.1-codex"),
         );
 
+        Ok(())
+    }
+
+    #[test]
+    fn chatgpt_auth_with_minimax_model_infers_minimax_provider() -> std::io::Result<()> {
+        let cwd = TempDir::new()?;
+        std::fs::write(cwd.path().join(".git"), "gitdir: nowhere")?;
+
+        let code_home = TempDir::new()?;
+        let auth_file = crate::auth::get_auth_file(code_home.path());
+        let auth_dot_json = crate::auth::AuthDotJson {
+            auth_mode: Some(AuthMode::ChatGPT),
+            openai_api_key: None,
+            tokens: Some(crate::token_data::TokenData {
+                id_token: Default::default(),
+                access_token: "dummy-access-token".to_string(),
+                refresh_token: "dummy-refresh-token".to_string(),
+                account_id: Some("account-123".to_string()),
+            }),
+            last_refresh: Some(chrono::Utc::now()),
+            provider_credentials: std::iter::once((
+                crate::MINIMAX_PROVIDER_ID.to_string(),
+                crate::auth::ProviderCredentialEntry {
+                    api_key: "sk-minimax".to_string(),
+                },
+            ))
+            .collect(),
+        };
+        crate::auth::write_auth_json(&auth_file, &auth_dot_json)?;
+
+        let cfg = ConfigToml {
+            model: Some("MiniMax-M2.7".to_string()),
+            ..Default::default()
+        };
+
+        let config = Config::load_from_base_config_with_overrides(
+            cfg,
+            ConfigOverrides {
+                cwd: Some(cwd.path().to_path_buf()),
+                ..Default::default()
+            },
+            code_home.path().to_path_buf(),
+        )?;
+
+        assert_eq!(config.model, "MiniMax-M2.7");
+        assert_eq!(config.model_provider_id, crate::MINIMAX_PROVIDER_ID);
+        assert_eq!(config.model_provider.name, "MiniMax");
         Ok(())
     }
     struct PrecedenceTestFixture {
