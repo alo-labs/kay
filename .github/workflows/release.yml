@@ -231,8 +231,21 @@ jobs:
     needs: [determine-version]
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
+      max-parallel: 5
       matrix:
         include:
+          # Queue the slow/user-critical release assets first. Matrix jobs still
+          # run in parallel; this order matters when runner capacity is tight.
+          # macOS ARM and Windows builds
+          - os: macos-14
+            target: aarch64-apple-darwin
+            artifact: kay-aarch64-apple-darwin
+            legacy_artifact: code-aarch64-apple-darwin
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact: kay-x86_64-pc-windows-msvc.exe
+            legacy_artifact: code-x86_64-pc-windows-msvc.exe
           # Linux builds
           - os: ubuntu-24.04
             target: x86_64-unknown-linux-musl
@@ -248,15 +261,6 @@ jobs:
             target: x86_64-apple-darwin
             artifact: kay-x86_64-apple-darwin
             legacy_artifact: code-x86_64-apple-darwin
-          - os: macos-14
-            target: aarch64-apple-darwin
-            artifact: kay-aarch64-apple-darwin
-            legacy_artifact: code-aarch64-apple-darwin
-          # Windows build
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            artifact: kay-x86_64-pc-windows-msvc.exe
-            legacy_artifact: code-x86_64-pc-windows-msvc.exe
 
     steps:
       - name: Checkout code
