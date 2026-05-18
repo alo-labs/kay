@@ -10,6 +10,8 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 usage() {
   cat <<'EOF'
 Usage: wait-for-gh-run.sh [OPTIONS]
@@ -24,6 +26,10 @@ Options:
 
 If neither --run nor --workflow is provided, the latest run on the current
 branch is selected automatically.
+
+Successful Release workflow runs on main also upgrade the local `kay` command
+to the latest published release. Set KAY_SKIP_LOCAL_UPGRADE=1 to bypass this
+for diagnostics only.
 EOF
 }
 
@@ -155,6 +161,23 @@ format_duration() {
   fi
 }
 
+maybe_upgrade_local_kay_after_release() {
+  local workflow_name="$1"
+  local branch_name="$2"
+
+  if [[ "${KAY_SKIP_LOCAL_UPGRADE:-0}" == "1" ]]; then
+    echo "Skipping local Kay upgrade because KAY_SKIP_LOCAL_UPGRADE=1." >&2
+    return
+  fi
+
+  if [[ "$workflow_name" != "Release" || "$branch_name" != "main" ]]; then
+    return
+  fi
+
+  echo "Release succeeded on main; upgrading local Kay installation to latest..." >&2
+  bash "$SCRIPT_DIR/upgrade-local-kay-latest.sh"
+}
+
 if [[ -z "$BRANCH" ]]; then
   BRANCH=$(default_branch)
 fi
@@ -281,6 +304,7 @@ while true; do
       else
         echo "Run $RUN_ID succeeded." >&2
       fi
+      maybe_upgrade_local_kay_after_release "$workflow_name" "$branch_name"
       exit 0
     else
       if [[ "$PRINT_FAILURE_LOGS" == true ]]; then
