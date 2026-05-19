@@ -394,7 +394,7 @@ struct GenerateTsCommand {
 #[derive(Debug, Parser)]
 struct OrderReplayArgs {
     /// Path to a response.json captured under ~/.kay/debug_logs/*_response.json
-    /// (legacy ~/.code/debug_logs/ and ~/.codex/debug_logs/ are still read).
+    /// (legacy ~/.codex/debug_logs/ is still read).
     response_json: std::path::PathBuf,
     /// Path to kay-tui.log (typically ~/.kay/debug_logs/kay-tui.log).
     tui_log: std::path::PathBuf,
@@ -733,7 +733,7 @@ fn run_bridge_subscription(cmd: BridgeSubscriptionCommand) -> anyhow::Result<()>
     }
 
     if let Some(parent) = override_path.parent() {
-        fs::create_dir_all(parent).context("failed to create .code dir")?;
+        fs::create_dir_all(parent).context("failed to create .kay dir")?;
     }
     let data = serde_json::to_string_pretty(&sub).context("serialize subscription")?;
     fs::write(&override_path, data).context("write subscription override")?;
@@ -968,7 +968,7 @@ fn normalise_cli_vec(values: Vec<String>, fallback: Vec<String>) -> Vec<String> 
 fn find_subscription_override_path(start: &Path) -> Option<PathBuf> {
     let mut current = Some(start);
     while let Some(dir) = current {
-        let candidate = dir.join(".code").join(SUBSCRIPTION_OVERRIDE_FILE);
+        let candidate = dir.join(".kay").join(SUBSCRIPTION_OVERRIDE_FILE);
         if candidate.exists() {
             return Some(candidate);
         }
@@ -990,13 +990,13 @@ fn resolve_subscription_override_path(start: &Path) -> PathBuf {
         return dir.join(SUBSCRIPTION_OVERRIDE_FILE);
     }
 
-    start.join(".code").join(SUBSCRIPTION_OVERRIDE_FILE)
+    start.join(".kay").join(SUBSCRIPTION_OVERRIDE_FILE)
 }
 
 fn find_meta_dir(start: &Path) -> Option<PathBuf> {
     let mut current = Some(start);
     while let Some(dir) = current {
-        let candidate = dir.join(".code").join("kay-bridge.json");
+        let candidate = dir.join(".kay").join("kay-bridge.json");
         if candidate.exists() {
             return candidate.parent().map(Path::to_path_buf);
         }
@@ -1008,7 +1008,7 @@ fn find_meta_dir(start: &Path) -> Option<PathBuf> {
 fn find_code_dir(start: &Path) -> Option<PathBuf> {
     let mut current = Some(start);
     while let Some(dir) = current {
-        let candidate = dir.join(".code");
+        let candidate = dir.join(".kay");
         if candidate.is_dir() {
             return Some(candidate);
         }

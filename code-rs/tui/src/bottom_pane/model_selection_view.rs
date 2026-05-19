@@ -12,6 +12,7 @@ use code_core::model_family::model_supports_configurable_reasoning_effort_for_pr
 use code_core::model_family::model_supports_fast_mode_for_provider;
 use code_core::model_family::supports_extended_context;
 use code_core::model_family::provider_model_slug;
+use code_core::model_family::response_model_matches_request;
 use code_core::model_visibility::VisibleProvider;
 use code_core::{MINIMAX_PROVIDER_ID, OPENCODE_GO_PROVIDER_ID};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
@@ -173,6 +174,8 @@ pub(crate) struct ModelSelectionView {
     scroll_top: Cell<usize>,
     current_provider_id: String,
     current_model: String,
+    latest_request_model: Option<String>,
+    latest_response_model: Option<String>,
     current_effort: ReasoningEffort,
     current_service_tier: Option<ServiceTier>,
     current_context_mode: Option<ContextMode>,
@@ -231,6 +234,8 @@ impl ModelSelectionView {
             scroll_top: Cell::new(0),
             current_provider_id,
             current_model,
+            latest_request_model: None,
+            latest_response_model: None,
             current_effort,
             current_service_tier,
             current_context_mode,
@@ -239,6 +244,16 @@ impl ModelSelectionView {
             is_complete: false,
             target,
         }
+    }
+
+    pub(crate) fn with_runtime_models(
+        mut self,
+        latest_request_model: Option<String>,
+        latest_response_model: Option<String>,
+    ) -> Self {
+        self.latest_request_model = latest_request_model;
+        self.latest_response_model = latest_response_model;
+        self
     }
 
     pub(crate) fn update_presets(&mut self, presets: Vec<ModelPreset>) {
@@ -461,6 +476,116 @@ impl ModelSelectionView {
         Self::format_model_header(&normalized)
     }
 
+    fn format_runtime_model(model: &str) -> String {
+        Self::format_model_header(model)
+    }
+
+    fn push_runtime_model_rows(&self, lines: &mut Vec<ModelLine>) {
+        if !matches!(self.target, ModelSelectionTarget::Session) {
+            lines.push(ModelLine {
+                line: Line::from(vec![
+                    Span::styled(
+                        format!("{}: ", self.target.current_label()),
+                        Style::default().fg(crate::colors::text_dim()),
+                    ),
+                    Span::styled(
+                        if self.target.supports_follow_chat() && self.use_chat_model {
+                            "Follow Chat Mode".to_string()
+                        } else {
+                            Self::format_model_header(&self.current_model)
+                        },
+                        Style::default()
+                            .fg(crate::colors::warning())
+                            .add_modifier(Modifier::BOLD),
+                    ),
+                ]),
+                is_selected: false,
+            });
+            return;
+        }
+
+        let selected_model = Self::format_model_header(&self.current_model);
+        match self.latest_response_model.as_deref() {
+            Some(response_model) => {
+                let request_model = self
+                    .latest_request_model
+                    .as_deref()
+                    .unwrap_or(self.current_model.as_str());
+                lines.push(ModelLine {
+                    line: Line::from(vec![
+                        Span::styled(
+                            "Last response model: ",
+                            Style::default().fg(crate::colors::text_dim()),
+                        ),
+                        Span::styled(
+                            Self::format_runtime_model(response_model),
+                            Style::default()
+                                .fg(crate::colors::warning())
+                                .add_modifier(Modifier::BOLD),
+                        ),
+                    ]),
+                    is_selected: false,
+                });
+                lines.push(ModelLine {
+                    line: Line::from(vec![
+                        Span::styled(
+                            "Last request model: ",
+                            Style::default().fg(crate::colors::text_dim()),
+                        ),
+                        Span::styled(
+                            Self::format_runtime_model(request_model),
+                            Style::default().fg(crate::colors::text()),
+                        ),
+                    ]),
+                    is_selected: false,
+                });
+                lines.push(ModelLine {
+                    line: Line::from(vec![
+                        Span::styled(
+                            "Selected model: ",
+                            Style::default().fg(crate::colors::text_dim()),
+                        ),
+                        Span::styled(selected_model, Style::default().fg(crate::colors::text())),
+                    ]),
+                    is_selected: false,
+                });
+                if !response_model_matches_request(request_model, response_model) {
+                    lines.push(ModelLine {
+                        line: Line::from(vec![Span::styled(
+                            "Warning: last response model differs from the requested model.",
+                            Style::default().fg(crate::colors::error()),
+                        )]),
+                        is_selected: false,
+                    });
+                }
+            }
+            None => {
+                lines.push(ModelLine {
+                    line: Line::from(vec![
+                        Span::styled(
+                            "Selected model: ",
+                            Style::default().fg(crate::colors::text_dim()),
+                        ),
+                        Span::styled(
+                            selected_model,
+                            Style::default()
+                                .fg(crate::colors::warning())
+                                .add_modifier(Modifier::BOLD),
+                        ),
+                    ]),
+                    is_selected: false,
+                });
+                lines.push(ModelLine {
+                    line: Line::from(vec![Span::styled(
+                        "Last response model: waiting for a completed response",
+                        Style::default().fg(crate::colors::text_dim()),
+                    )]),
+                    is_selected: false,
+                });
+            }
+        }
+    }
+
     fn provider_header_line(provider: VisibleProvider) -> ModelLine {
         ModelLine {
             line: Line::from(vec![Span::styled(
@@ -670,25 +795,7 @@ impl ModelSelectionView {
     fn rendered_rows(&self) -> Vec<ModelLine> {
         let mut lines = Vec::new();
 
-        lines.push(ModelLine {
-            line: Line::from(vec![
-                Span::styled(
-                    format!("{}: ", self.target.current_label()),
-                    Style::default().fg(crate::colors::text_dim()),
-                ),
-                Span::styled(
-                    if self.target.supports_follow_chat() && self.use_chat_model {
-                        "Follow Chat Mode".to_string()
-                    } else {
-                        Self::format_model_header(&self.current_model)
-                    },
-                    Style::default()
-                        .fg(crate::colors::warning())
-                        .add_modifier(Modifier::BOLD),
-                ),
-            ]),
-            is_selected: false,
-        });
+        self.push_runtime_model_rows(&mut lines);
 
         if self.target.supports_follow_chat() && self.use_chat_model
             || self.current_model_supports_configurable_reasoning_effort()
@@ -1335,6 +1442,64 @@ mod tests {
             }
         }
         order
+    }
+
+    #[test]
+    fn session_model_view_shows_last_response_model_before_selected_model() {
+        let presets = vec![make_preset("opencode-go/glm-5.1")];
+        let (tx, _rx) = mpsc::channel::<AppEvent>();
+        let view = ModelSelectionView::new(
+            presets,
+            OPENCODE_GO_PROVIDER_ID.to_string(),
+            "opencode-go/glm-5.1".to_string(),
+            ReasoningEffort::Low,
+            None,
+            None,
+            false,
+            ModelSelectionTarget::Session,
+            AppEventSender::new(tx),
+        )
+        .with_runtime_models(Some("glm-5.1".to_string()), Some("glm-5.1".to_string()));
+
+        let rows = view
+            .rendered_rows()
+            .into_iter()
+            .map(|row| row.line.to_string())
+            .collect::<Vec<_>>();
+
+        assert!(rows[0].contains("Last response model: GLM-5.1"), "{rows:?}");
+        assert!(rows[1].contains("Last request model: GLM-5.1"), "{rows:?}");
+        assert!(rows[2].contains("Selected model: OPENCODE-Go/glm-5.1"), "{rows:?}");
+    }
+
+    #[test]
+    fn session_model_view_warns_when_last_response_differs_from_request() {
+        let presets = vec![make_preset("opencode-go/glm-5.1")];
+        let (tx, _rx) = mpsc::channel::<AppEvent>();
+        let view = ModelSelectionView::new(
+            presets,
+            OPENCODE_GO_PROVIDER_ID.to_string(),
+            "opencode-go/glm-5.1".to_string(),
+            ReasoningEffort::Low,
+            None,
+            None,
+            false,
+            ModelSelectionTarget::Session,
+            AppEventSender::new(tx),
+        )
+        .with_runtime_models(Some("glm-5.1".to_string()), Some("gpt-5.4".to_string()));
+
+        let rows = view
+            .rendered_rows()
+            .into_iter()
+            .map(|row| row.line.to_string())
+            .collect::<Vec<_>>();
+
+        assert!(
+            rows.iter()
+                .any(|row| row.contains("Warning: last response model differs")),
+            "{rows:?}"
+        );
     }
 
     #[test]

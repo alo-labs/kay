@@ -8,6 +8,7 @@ This file captures the durable architecture view for the repo. The codebase is a
 - Root-level docs explain user-facing behavior and workflow guidance
 - GSD and Silver Bullet metadata live outside the product code, under `.planning/` and `~/.claude/.silver-bullet/`
 - Built-in model providers include `opencode-go`; matching provider-local model slugs are normalized on the Responses/compact wire paths before request dispatch
+- Each model turn records the provider-normalized request model in the session JSONL `turn_context`, and the TUI keeps the latest response model observed from provider metadata for user-visible routing checks
 
 ## Data Flow
 
@@ -15,6 +16,7 @@ This file captures the durable architecture view for the repo. The codebase is a
 2. Project workflow decisions are captured in `.planning/`
 3. Docs and workflow scaffolding document the stable operating model
 4. Model/provider compatibility flows through config loading, provider registration, and resume replay, with outbound model slugs normalized only where the target wire format expects provider-local names
+5. Runtime model observability flows from core stream metadata into token usage events, then into `/status` and `/model` so users can compare selected, requested, and last response model values without relying on model self-identification
 
 ## Provider-Model Abstractions
 

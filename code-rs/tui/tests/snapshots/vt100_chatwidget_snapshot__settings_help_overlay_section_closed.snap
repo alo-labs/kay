@@ -1,6 +1,5 @@
 ---
 source: tui/tests/vt100_chatwidget_snapshot.rs
-assertion_line: 2529
 expression: section_closed
 ---
  +------------------------------------------------------------------------------------------------+
@@ -10,14 +9,14 @@ expression: section_closed
  |                                                                                                |
  | ›  Model              + Select Model & Reasoning --------------------------------------------+ |
  |    Theme              |                                                                      | |
- |    Updates            |  Current model: GPT-5.4                                              | |
- |    Accounts           |  Reasoning effort: Medium                                            | |
- |    Agents             |                                                                      | |
- |    Prompts            |  Mode Settings                                                       | |
- |    Memories           |  Fast mode speeds up OpenAI replies. 1M Context is available on supp | |
- |    Skills             |  › Fast Mode: disabled                                               | |
- |    Auto Drive         |    1M Context: auto                                                  | |
- |    Review             |  Press Enter to cycle Disabled, Enabled, and Auto.                   | |
+ |    Updates            |  Selected model: GPT-5.4                                             | |
+ |    Accounts           |  Last response model: waiting for a completed response               | |
+ |    Agents             |  Reasoning effort: Medium                                            | |
+ |    Prompts            |                                                                      | |
+ |    Memories           |  Mode Settings                                                       | |
+ |    Skills             |  Fast mode speeds up OpenAI replies. 1M Context is available on supp | |
+ |    Auto Drive         |  › Fast Mode: disabled                                               | |
+ |    Review             |    1M Context: auto                                                  | |
  |    Planning           |                                                                      | |
  |    Validation         |  ↑↓ Navigate  Enter Select  Esc Cancel                               | |
  |    Chrome             |                                                                      | |

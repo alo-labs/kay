@@ -23,7 +23,7 @@ Only run the lint when explicitly requested be by the user OR only the code you'
 
 ## Kay Bridge (events from apps -> Kay)
 - Local Sentry-style telemetry plus two-way control: error/console streaming, pageviews/screenshots, and control commands. Install in apps via npm: `@alo-labs/kay-bridge`.
-- Host writes `.code/kay-bridge.json` (url/secret/port) per workspace; Kay polls it and connects as a consumer.
+- Host writes `.kay/kay-bridge.json` (url/secret/port) per workspace; Kay polls it and connects as a consumer.
 - Bridge clients send console/errors/screenshot/pageview/control events.
 - Adjust subscriptions with the internal tool `kay_bridge` (actions: subscribe | screenshot | javascript). `subscribe` sets the workspace default level (errors|warn|info|trace) and enables all capabilities; `screenshot` requests a capture; `javascript` runs provided JS on the bridge client (requires `code`). Examples: `{"action":"subscribe","level":"trace"}`, `{"action":"screenshot"}`, `{"action":"javascript","code":"window.location.href"}`.
 - Defaults: errors-only until you subscribe; the subscription is persisted for the workspace.

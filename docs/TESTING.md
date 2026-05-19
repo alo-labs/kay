@@ -7,6 +7,7 @@ This file is the canonical home for test strategy and verification guidance.
 - Run `./build-fast.sh` from the repo root before finishing work
 - Treat warnings as failures and fix them before completion
 - For provider-registration and resume-compatibility changes, add a focused regression check for the built-in provider path before closing
+- For runtime model observability changes, add focused TUI coverage that proves `/model` shows the latest response model and warns when the response model differs from the request model
 
 ## Reliability Grade
 
@@ -18,7 +19,8 @@ The practical scorecard is:
 2. Focused regressions cover the code path that changed.
 3. Live end-to-end validation covers the supported OCG note-app workflow when provider, model, or orchestration behavior changes.
 4. Transcript JSONL remains readable for triage and post-incident review.
-5. Upstream drift is triaged and merged deliberately instead of being allowed to accumulate silently.
+5. Runtime model routing can be verified from Kay-owned metadata (`turn_context`, `/status`, and `/model`) rather than model self-reporting.
+6. Upstream drift is triaged and merged deliberately instead of being allowed to accumulate silently.
 
 Upstream high-risk changes are not a release blocker by themselves. They are a merge-review obligation: classify them, record the decision, and either adopt or defer them with an owner.
 

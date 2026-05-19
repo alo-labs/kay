@@ -28,7 +28,7 @@ use crate::CodexAuth;
 
 mod cache;
 
-const MODEL_CACHE_FILE: &str = "models_cache.json";
+const MODEL_CACHE_PREFIX: &str = "models_cache";
 const DEFAULT_MODEL_CACHE_TTL: Duration = Duration::from_secs(300);
 const REMOTE_MODELS_REQUEST_TIMEOUT: Duration = Duration::from_secs(10);
 const CODEX_AUTO_BALANCED_MODEL: &str = "codex-auto-balanced";
@@ -49,6 +49,7 @@ struct RemoteModelsState {
 pub struct RemoteModelsManager {
     state: RwLock<RemoteModelsState>,
     auth_manager: Arc<AuthManager>,
+    provider_id: String,
     provider: ModelProviderInfo,
     code_home: PathBuf,
     cache_ttl: Duration,
@@ -56,10 +57,17 @@ pub struct RemoteModelsManager {
 }
 
 impl RemoteModelsManager {
-    pub fn new(auth_manager: Arc<AuthManager>, provider: ModelProviderInfo, code_home: PathBuf) -> Self {
+    pub fn new(
+        auth_manager: Arc<AuthManager>,
+        provider_id: impl Into<String>,
+        provider: ModelProviderInfo,
+        code_home: PathBuf,
+    ) -> Self {
+        remove_legacy_shared_cache(&code_home);
         Self {
             state: RwLock::new(RemoteModelsState::default()),
             auth_manager,
+            provider_id: provider_id.into(),
             provider,
             code_home,
             cache_ttl: DEFAULT_MODEL_CACHE_TTL,
@@ -356,7 +364,39 @@ impl RemoteModelsManager {
     }
 
     fn cache_path(&self) -> PathBuf {
-        self.code_home.join(MODEL_CACHE_FILE)
+        let provider_id = self.provider_id.trim();
+        let provider_id = if provider_id.is_empty() {
+            "openai"
+        } else {
+            provider_id
+        };
+        let safe_provider_id: String = provider_id
+            .chars()
+            .map(|ch| {
+                if ch.is_ascii_alphanumeric() || ch == '-' || ch == '_' {
+                    ch
+                } else {
+                    '_'
+                }
+            })
+            .collect();
+        self.code_home
+            .join(format!("{MODEL_CACHE_PREFIX}.{safe_provider_id}.json"))
+    }
+}
+
+fn remove_legacy_shared_cache(code_home: &std::path::Path) {
+    let legacy_cache = code_home.join(format!("{MODEL_CACHE_PREFIX}.json"));
+    match std::fs::remove_file(&legacy_cache) {
+        Ok(()) => tracing::debug!(
+            "removed obsolete shared /models cache at {}",
+            legacy_cache.display()
+        ),
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
+        Err(err) => tracing::debug!(
+            "failed to remove obsolete shared /models cache at {}: {err}",
+            legacy_cache.display()
+        ),
     }
 }
 
