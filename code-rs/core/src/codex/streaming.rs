@@ -76,6 +76,73 @@ const AUTO_CONTEXT_JUDGE_DEVELOPER_MESSAGE: &str = concat!(
     "only when nearby context appears genuinely essential to finishing the active thread correctly."
 );
 
+fn kay_runtime_developer_message(config: &crate::config::Config, request_model: &str) -> String {
+    let requested_model = request_model.trim();
+    let requested_model = if requested_model.is_empty() {
+        config.model.as_str()
+    } else {
+        requested_model
+    };
+    let wire_model =
+        crate::model_family::provider_model_slug(&config.model_provider_id, requested_model);
+    format!(
+        "Kay runtime metadata: current_provider_id={}; current_provider_name={}; current_model={}; wire_model={}; KAY_HOME={}. Treat these values as authoritative for questions about the active provider, active model, and Kay home. Do not infer the active model/provider from `models_cache*.json`; those files are discovery caches only. Do not use `~/.code`, `.code`, `CODE_HOME`, or `CODEX_HOME` as Kay's config/cache root; use `KAY_HOME`.",
+        config.model_provider_id,
+        config.model_provider.name,
+        requested_model,
+        wire_model,
+        config.code_home.display()
+    )
+}
+
+fn to_proto_personality(
+    personality: crate::config_types::Personality,
+) -> code_protocol::config_types::Personality {
+    match personality {
+        crate::config_types::Personality::None => code_protocol::config_types::Personality::None,
+        crate::config_types::Personality::Friendly => {
+            code_protocol::config_types::Personality::Friendly
+        }
+        crate::config_types::Personality::Pragmatic => {
+            code_protocol::config_types::Personality::Pragmatic
+        }
+    }
+}
+
+async fn persist_turn_context_item(
+    sess: &Session,
+    tc: &TurnContext,
+    selected_model: &str,
+    effective_family: &crate::model_family::ModelFamily,
+) {
+    let actual_request_model =
+        crate::model_family::provider_model_slug(&tc.client.config().model_provider_id, selected_model)
+            .into_owned();
+    let effort = crate::model_family::model_supports_configurable_reasoning_effort_for_provider(
+        &tc.client.config().model_provider_id,
+        selected_model,
+    )
+    .then_some(to_proto_reasoning_effort(tc.client.get_reasoning_effort()));
+
+    let item = code_protocol::protocol::TurnContextItem {
+        cwd: tc.cwd.clone(),
+        approval_policy: to_proto_approval_policy(tc.approval_policy),
+        sandbox_policy: to_proto_sandbox_policy(tc.sandbox_policy.clone()),
+        model: actual_request_model,
+        personality: tc.client.model_personality().map(to_proto_personality),
+        collaboration_mode: None,
+        effort,
+        summary: to_proto_reasoning_summary(tc.client.get_reasoning_summary()),
+        user_instructions: tc.user_instructions.clone(),
+        developer_instructions: tc.demo_developer_message.clone(),
+        final_output_json_schema: tc.final_output_json_schema.clone(),
+        truncation_policy: Some(effective_family.truncation_policy.clone()),
+    };
+
+    sess.persist_rollout_items(&[code_protocol::protocol::RolloutItem::TurnContext(item)])
+        .await;
+}
+
 #[derive(Clone, Debug, Default)]
 struct ImageGenerationTurnMetadata {
     requested_model: String,
@@ -784,6 +851,7 @@ pub(super) async fn submission_loop(
                 let remote_models_manager = auth_manager.as_ref().map(|mgr| {
                     Arc::new(RemoteModelsManager::new(
                         Arc::clone(mgr),
+                        config.model_provider_id.clone(),
                         provider.clone(),
                         config.code_home.clone(),
                     ))
@@ -2983,6 +3051,7 @@ async fn run_turn(
     let mut did_usage_limit_model_fallback = false;
     let mut forced_model_override: Option<String> = None;
     let mut fallback_metadata_warning_sent = false;
+    let mut recorded_turn_context = false;
     // Attempt input starts as the provided input, and may be augmented with
     // items from a previous dropped stream attempt so we don't lose progress.
     let mut attempt_input: Vec<ResponseItem> = input.clone();
@@ -3060,6 +3129,17 @@ async fn run_turn(
             prompt.model_family_override = Some(override_family);
         }
 
+        let effective_request_model = prompt
+            .model_override
+            .clone()
+            .unwrap_or_else(|| tc.client.get_model());
+        prompt
+            .prepend_developer_messages
+            .push(kay_runtime_developer_message(
+                tc.client.config(),
+                &effective_request_model,
+            ));
+
         if used_fallback_model_metadata
             && forced_model_override.is_none()
             && !fallback_metadata_warning_sent
@@ -3084,6 +3164,10 @@ async fn run_turn(
             .model_family_override
             .as_ref()
             .unwrap_or_else(|| tc.client.default_model_family());
+        if !recorded_turn_context {
+            persist_turn_context_item(sess, tc, &effective_request_model, effective_family).await;
+            recorded_turn_context = true;
+        }
         let tools_config = tc.client.build_tools_config_with_sandbox_for_family(
             tc.sandbox_policy.clone(),
             effective_family,
@@ -4764,14 +4848,14 @@ fn web_search_query(query: &Option<String>, queries: &Option<Vec<String>>) -> Op
 // Helper utilities for agent output/progress management
 fn ensure_agent_dir(cwd: &Path, agent_id: &str) -> Result<PathBuf, String> {
     let safe_agent_id = crate::fs_sanitize::safe_path_component(agent_id, "agent");
-    let dir = cwd.join(".code").join("agents").join(safe_agent_id);
+    let dir = cwd.join(".kay").join("agents").join(safe_agent_id);
     std::fs::create_dir_all(&dir)
         .map_err(|e| format!("Failed to create agent dir {}: {}", dir.display(), e))?;
     Ok(dir)
 }
 
 pub(super) fn ensure_user_dir(cwd: &Path) -> Result<PathBuf, String> {
-    let dir = cwd.join(".code").join("users");
+    let dir = cwd.join(".kay").join("users");
     std::fs::create_dir_all(&dir)
         .map_err(|e| format!("Failed to create user dir {}: {}", dir.display(), e))?;
     Ok(dir)
@@ -7914,6 +7998,17 @@ async fn handle_kill(
     ).await
 }
 
+fn create_kay_shell_env(sess: &Session) -> HashMap<String, String> {
+    let mut env = create_env(&sess.shell_environment_policy);
+    env.insert(
+        "KAY_HOME".to_string(),
+        sess.client.code_home().display().to_string(),
+    );
+    env.remove("CODE_HOME");
+    env.remove("CODEX_HOME");
+    env
+}
+
 fn to_exec_params(params: ShellToolCallParams, sess: &Session) -> ExecParams {
     let timeout_ms = params
         .timeout_ms
@@ -7926,7 +8021,7 @@ fn to_exec_params(params: ShellToolCallParams, sess: &Session) -> ExecParams {
         shell_script: None,
         cwd: sess.resolve_path(params.workdir.clone()),
         timeout_ms,
-        env: create_env(&sess.shell_environment_policy),
+        env: create_kay_shell_env(sess),
         with_escalated_permissions,
         justification: params.justification,
     }
@@ -7981,7 +8076,7 @@ fn to_exec_params_from_shell_command(params: ShellCommandToolCallParams, sess: &
         }),
         cwd: sess.resolve_path(params.workdir.clone()),
         timeout_ms,
-        env: create_env(&sess.shell_environment_policy),
+        env: create_kay_shell_env(sess),
         with_escalated_permissions,
         justification: params.justification,
     }

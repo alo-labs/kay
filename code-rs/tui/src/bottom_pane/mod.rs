@@ -762,6 +762,8 @@ impl BottomPane<'_> {
         presets: Vec<ModelPreset>,
         current_provider_id: String,
         current_model: String,
+        latest_request_model: Option<String>,
+        latest_response_model: Option<String>,
         current_effort: ReasoningEffort,
         current_service_tier: Option<ServiceTier>,
         current_context_mode: Option<ContextMode>,
@@ -778,7 +780,8 @@ impl BottomPane<'_> {
             use_chat_model,
             target,
             self.app_event_tx.clone(),
-        );
+        )
+        .with_runtime_models(latest_request_model, latest_response_model);
         self.active_view = Some(Box::new(view));
         self.active_view_kind = ActiveViewKind::Other;
         // Status shown in composer title now

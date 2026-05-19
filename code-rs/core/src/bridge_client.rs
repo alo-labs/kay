@@ -372,7 +372,7 @@ pub(crate) fn send_bridge_control(action: &str, args: serde_json::Value) {
     }
 }
 
-/// Spawn a background task that watches `.code/kay-bridge.json` and
+/// Spawn a background task that watches `.kay/kay-bridge.json` and
 /// connects as a consumer to the external bridge host when available.
 pub(crate) fn spawn_bridge_listener(session: std::sync::Arc<Session>) {
     let cwd = session.get_cwd().to_path_buf();
@@ -551,7 +551,7 @@ fn maybe_resubscribe(state: &mut SubscriptionState) {
 fn find_meta_path(start: &Path) -> Option<PathBuf> {
     let mut current = Some(start);
     while let Some(dir) = current {
-        let candidate = dir.join(".code/kay-bridge.json");
+        let candidate = dir.join(".kay/kay-bridge.json");
         if candidate.exists() {
             return Some(candidate);
         }
@@ -572,7 +572,7 @@ fn subscription_override_path(start: &Path) -> Option<PathBuf> {
 
     let mut current = Some(start);
     while let Some(dir) = current {
-        let candidate = dir.join(".code").join(SUBSCRIPTION_OVERRIDE_FILE);
+        let candidate = dir.join(".kay").join(SUBSCRIPTION_OVERRIDE_FILE);
         if candidate.exists() {
             return Some(candidate);
         }
@@ -594,7 +594,7 @@ fn resolve_subscription_override_path(start: &Path) -> PathBuf {
         return dir.join(SUBSCRIPTION_OVERRIDE_FILE);
     }
 
-    start.join(".code").join(SUBSCRIPTION_OVERRIDE_FILE)
+    start.join(".kay").join(SUBSCRIPTION_OVERRIDE_FILE)
 }
 
 fn find_meta_dir(start: &Path) -> Option<PathBuf> {
@@ -604,7 +604,7 @@ fn find_meta_dir(start: &Path) -> Option<PathBuf> {
 fn find_code_dir(start: &Path) -> Option<PathBuf> {
     let mut current = Some(start);
     while let Some(dir) = current {
-        let candidate = dir.join(".code");
+        let candidate = dir.join(".kay");
         if candidate.is_dir() {
             return Some(candidate);
         }

@@ -56,12 +56,14 @@ impl App<'_> {
         }
         let remote_tx = self.app_event_tx.clone();
         let remote_auth_manager = self._server.auth_manager();
+        let remote_provider_id = self.config.model_provider_id.clone();
         let remote_provider = self.config.model_provider.clone();
         let remote_code_home = self.config.code_home.clone();
         let remote_using_chatgpt_hint = self.config.using_chatgpt_auth;
         tokio::spawn(async move {
             let remote_manager = code_core::remote_models::RemoteModelsManager::new(
                 remote_auth_manager.clone(),
+                remote_provider_id,
                 remote_provider,
                 remote_code_home,
             );

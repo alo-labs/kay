@@ -58,6 +58,10 @@ Notes
 - `/theme`: customize the app theme.
 - `/verbosity (high|medium|low)`: change text verbosity.
 - `/model`: choose your default model from the providers you have configured.
+  At the top of the selector, Kay shows the last completed turn's response
+  model, the last request model, and the currently selected model. If the
+  response model differs from the request model, the selector warns so provider
+  reroutes are visible without asking the model to identify itself.
 - `/fast`: open the model selector and toggle Fast mode.
 - `/reasoning (minimal|low|medium|high)`: change reasoning effort.
 - `/prompts`: manage custom prompts.

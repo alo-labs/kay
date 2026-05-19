@@ -1,7 +1,7 @@
 {
   "task_id": "github-issues-12-19-runtime-fixes",
   "task_granularity": 2,
-  "updated_at": "2026-05-16T17:48:36Z",
+  "updated_at": "2026-05-18T22:51:38Z",
   "_notes": [
     "Added Kay brand renaming policy and inventory docs in the current session.",
     "Refreshed during the Kay reliability-grade policy update in the current session.",
@@ -16,7 +16,8 @@
     "This checklist records every governed doc key present under docs/ plus root README.md and CHANGELOG.md.",
     "Refreshed during the primary binary rename from code to kay, including install, release, and command docs.",
     "Refreshed during MiniMax/runtime-isolation fixes for GitHub issues #12 and #15-#19.",
-    "Reconciled the docs governance contract so doc-scheme files are updated only when governance changes, matching this hook remediation."
+    "Reconciled the docs governance contract so doc-scheme files are updated only when governance changes, matching this hook remediation.",
+    "Refreshed for runtime model observability: session JSONL records request model, /model shows last response/request/selected model, and focused TUI coverage verifies matching and mismatch warnings."
   ],
   "docs": {
     "docs/ARCHITECTURE.md": "updated",
@@ -27,8 +28,8 @@
     "docs/authentication.md": "updated",
     "docs/auto-drive.md": "updated",
     "docs/config.md": "updated",
-    "docs/doc-scheme.md": "updated",
-    "docs/doc-scheme.json": "updated",
+    "docs/doc-scheme.md": "not-needed: governance contract unchanged for runtime model observability",
+    "docs/doc-scheme.json": "not-needed: governance contract unchanged for runtime model observability",
     "docs/example-config.md": "updated",
     "docs/exec.md": "updated",
     "docs/execpolicy.md": "updated",
@@ -70,12 +71,12 @@
       "2026-05-11": "not-needed: changelog unchanged in this session"
     },
     "docs/doc-scheme.md": {
-      "Current Shape": "updated",
-      "Governed Documents": "updated"
+      "Current Shape": "not-needed: governance contract unchanged for runtime model observability",
+      "Governed Documents": "not-needed: governance contract unchanged for runtime model observability"
     },
     "docs/doc-scheme.json": {
-      "version": "updated",
-      "required_docs": "updated"
+      "version": "not-needed: governance contract unchanged for runtime model observability",
+      "required_docs": "not-needed: governance contract unchanged for runtime model observability"
     },
     "docs/knowledge/2026-05.md": {
       "Architecture Patterns": "not-needed: knowledge log unchanged in this session",
@@ -97,7 +98,7 @@
     },
     "docs/ARCHITECTURE.md": {
       "System Shape": "updated",
-      "Data Flow": "not-needed: no architecture changes in this task"
+      "Data Flow": "updated"
     },
     "docs/index.md": {
       "Repository Governance": "updated"

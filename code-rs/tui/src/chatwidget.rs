@@ -23314,6 +23314,8 @@ Have we met every part of this goal and is there no further work to do?"#
             visible_presets,
             self.config.model_provider_id.clone(),
             self.config.model.clone(),
+            self.session_requested_model.clone(),
+            self.session_latest_response_model.clone(),
             self.config.model_reasoning_effort,
             self.config.service_tier,
             self.config.context_mode,
@@ -23339,6 +23341,8 @@ Have we met every part of this goal and is there no further work to do?"#
             presets,
             self.config.model_provider_id.clone(),
             self.config.review_model.clone(),
+            None,
+            None,
             self.config.review_model_reasoning_effort,
             self.config.service_tier,
             self.config.context_mode,
@@ -23373,6 +23377,8 @@ Have we met every part of this goal and is there no further work to do?"#
             presets,
             self.config.model_provider_id.clone(),
             current,
+            None,
+            None,
             effort,
             self.config.service_tier,
             self.config.context_mode,
@@ -23407,6 +23413,8 @@ Have we met every part of this goal and is there no further work to do?"#
             presets,
             self.config.model_provider_id.clone(),
             current,
+            None,
+            None,
             effort,
             self.config.service_tier,
             self.config.context_mode,
@@ -23441,6 +23449,8 @@ Have we met every part of this goal and is there no further work to do?"#
             presets,
             self.config.model_provider_id.clone(),
             current,
+            None,
+            None,
             effort,
             self.config.service_tier,
             self.config.context_mode,
@@ -23473,6 +23483,8 @@ Have we met every part of this goal and is there no further work to do?"#
                 presets,
                 self.config.model_provider_id.clone(),
                 current,
+                None,
+                None,
                 effort,
                 self.config.service_tier,
                 self.config.context_mode,
@@ -23498,6 +23510,8 @@ Have we met every part of this goal and is there no further work to do?"#
             presets,
             self.config.model_provider_id.clone(),
             self.config.auto_drive.model.clone(),
+            None,
+            None,
             self.config.auto_drive.model_reasoning_effort,
             self.config.service_tier,
             self.config.context_mode,
@@ -23965,6 +23979,8 @@ Have we met every part of this goal and is there no further work to do?"#
         }
 
         if updated {
+            self.session_requested_model = None;
+            self.session_latest_response_model = None;
             self.submit_configure_session_op();
             self.refresh_bottom_pane_token_usage();
 
@@ -24751,6 +24767,8 @@ Have we met every part of this goal and is there no further work to do?"#
                 presets,
                 self.config.model_provider_id.clone(),
                 self.config.model.clone(),
+                self.session_requested_model.clone(),
+                self.session_latest_response_model.clone(),
                 self.config.model_reasoning_effort,
                 self.config.service_tier,
                 self.config.context_mode,
@@ -25223,6 +25241,10 @@ Have we met every part of this goal and is there no further work to do?"#
             false,
             ModelSelectionTarget::Session,
             self.app_event_tx.clone(),
+        )
+        .with_runtime_models(
+            self.session_requested_model.clone(),
+            self.session_latest_response_model.clone(),
         );
         ModelSettingsContent::new(view)
     }
