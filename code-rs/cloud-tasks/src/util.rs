@@ -71,7 +71,7 @@ fn resolve_log_path() -> Option<PathBuf> {
     } else if let Ok(home) = code_core::config::find_kay_home() {
         home.join("debug_logs")
     } else if let Some(home) = user_home_dir() {
-        home.join(".code").join("debug_logs")
+        home.join(".kay").join("debug_logs")
     } else {
         return None;
     };

@@ -110,9 +110,12 @@ async fn refresh_remote_models_uses_cache_when_fresh() {
         .await;
 
     let code_home = tempdir().expect("temp dir");
+    std::fs::write(code_home.path().join("models_cache.json"), "{}")
+        .expect("write legacy shared cache");
     let provider = provider_for(server.uri());
     let manager = RemoteModelsManager::new(
         auth_manager_chatgpt(),
+        "openai",
         provider,
         code_home.path().to_path_buf(),
     );
@@ -137,6 +140,47 @@ async fn refresh_remote_models_uses_cache_when_fresh() {
     manager.refresh_remote_models().await;
     let requests = server.received_requests().await.expect("requests");
     assert_eq!(requests.len(), 1);
+    assert!(!code_home.path().join("models_cache.json").exists());
+}
+
+#[tokio::test]
+async fn remote_model_cache_is_scoped_by_provider_id() {
+    if skip_if_no_network() {
+        return;
+    }
+
+    let server = MockServer::start().await;
+    let response = ModelsResponse {
+        models: vec![remote_model("cached", "Cached", 1)],
+    };
+    Mock::given(method("GET"))
+        .and(path("/models"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(&response))
+        .up_to_n_times(2)
+        .mount(&server)
+        .await;
+
+    let code_home = tempdir().expect("temp dir");
+    let provider = provider_for(server.uri());
+    let openai_manager = RemoteModelsManager::new(
+        auth_manager_chatgpt(),
+        "openai",
+        provider.clone(),
+        code_home.path().to_path_buf(),
+    );
+    openai_manager.refresh_remote_models().await;
+
+    let minimax_manager = RemoteModelsManager::new(
+        auth_manager_chatgpt(),
+        MINIMAX_PROVIDER_ID,
+        provider,
+        code_home.path().to_path_buf(),
+    );
+    minimax_manager.refresh_remote_models().await;
+
+    assert!(code_home.path().join("models_cache.openai.json").exists());
+    assert!(code_home.path().join("models_cache.minimax.json").exists());
+    assert!(!code_home.path().join("models_cache.json").exists());
 }
 
 #[tokio::test]
@@ -173,6 +217,7 @@ async fn refresh_remote_models_uses_minimax_provider_key() {
                 AuthMode::ApiKey,
                 "code_cli_rs".to_string(),
             ),
+            MINIMAX_PROVIDER_ID,
             ModelProviderInfo {
                 base_url: Some(format!("{}/v1", server.uri())),
                 ..provider
@@ -216,6 +261,7 @@ async fn refresh_remote_models_refetches_when_cache_stale() {
 
     let manager = RemoteModelsManager::new(
         auth_manager_chatgpt(),
+        "openai",
         provider.clone(),
         code_home.path().to_path_buf(),
     );
@@ -223,7 +269,7 @@ async fn refresh_remote_models_refetches_when_cache_stale() {
     assert_eq!(manager.remote_models_snapshot().await[0].slug, "stale");
 
     // Rewrite the cache to be stale.
-    let cache_path = code_home.path().join("models_cache.json");
+    let cache_path = code_home.path().join("models_cache.openai.json");
     let contents = std::fs::read_to_string(&cache_path).expect("cache file exists");
     let mut json: serde_json::Value = serde_json::from_str(&contents).expect("cache json");
     let old = (Utc::now() - chrono::Duration::hours(1)).to_rfc3339();
@@ -249,6 +295,7 @@ async fn refresh_remote_models_refetches_when_cache_stale() {
     // New manager should load the stale cache and refetch.
     let manager = RemoteModelsManager::new(
         auth_manager_chatgpt(),
+        "openai",
         provider,
         code_home.path().to_path_buf(),
     );
@@ -285,13 +332,14 @@ async fn refresh_remote_models_sends_if_none_match_and_handles_304() {
     let provider = provider_for(server.uri());
     let manager = RemoteModelsManager::new(
         auth_manager_chatgpt(),
+        "openai",
         provider.clone(),
         code_home.path().to_path_buf(),
     );
     manager.refresh_remote_models().await;
 
     // Rewrite cache to be stale.
-    let cache_path = code_home.path().join("models_cache.json");
+    let cache_path = code_home.path().join("models_cache.openai.json");
     let contents = std::fs::read_to_string(&cache_path).expect("cache file exists");
     let mut json: serde_json::Value = serde_json::from_str(&contents).expect("cache json");
     let old = (Utc::now() - chrono::Duration::hours(1)).to_rfc3339();
@@ -309,6 +357,7 @@ async fn refresh_remote_models_sends_if_none_match_and_handles_304() {
 
     let manager = RemoteModelsManager::new(
         auth_manager_chatgpt(),
+        "openai",
         provider,
         code_home.path().to_path_buf(),
     );
@@ -361,6 +410,7 @@ async fn construct_model_family_applies_remote_overrides() {
     let provider = provider_for(server.uri());
     let manager = RemoteModelsManager::new(
         auth_manager_chatgpt(),
+        "openai",
         provider,
         code_home.path().to_path_buf(),
     );

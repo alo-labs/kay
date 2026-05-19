@@ -68,7 +68,7 @@ pub fn discover_bridge_targets(cwd: &Path) -> Result<Vec<BridgeTarget>> {
     let mut current = Some(cwd);
 
     while let Some(dir) = current {
-        let candidate = dir.join(".code").join(META_FILE);
+        let candidate = dir.join(".kay").join(META_FILE);
         if candidate.exists() && seen.insert(candidate.clone()) {
             let raw = fs::read_to_string(&candidate).context("read bridge metadata")?;
             let meta: BridgeMeta = serde_json::from_str(&raw).context("parse bridge metadata")?;
