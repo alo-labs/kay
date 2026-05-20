@@ -482,15 +482,15 @@ pub struct AllowedCommand {
     pub match_kind: AllowedCommandMatchKind,
 }
 
-/// Configuration for a subagent slash command (e.g., plan/solve/kay or custom)
+/// Configuration for a subagent slash command (e.g., plan/solve/code or custom)
 #[derive(Deserialize, Debug, Clone, PartialEq, Default)]
 #[serde(rename_all = "kebab-case")]
 pub struct SubagentCommandConfig {
-    /// Name of the command (e.g., "plan", "solve", "kay", or custom)
+    /// Name of the command (e.g., "plan", "solve", "code", or custom)
     pub name: String,
 
     /// Whether agents launched for this command should run in read-only mode
-    /// Defaults: plan/solve=true, kay=false (applied if not specified here)
+    /// Defaults: plan/solve=true, code=false (applied if not specified here)
     #[serde(default)]
     pub read_only: bool,
 

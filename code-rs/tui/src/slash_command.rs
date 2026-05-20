@@ -154,7 +154,10 @@ impl SlashCommand {
     /// Command string without the leading '/'. Provided for compatibility with
     /// existing code that expects a method named `command()`.
     pub fn command(self) -> &'static str {
-        self.into()
+        match self {
+            SlashCommand::Kay => "code",
+            _ => self.into(),
+        }
     }
 
     /// Returns true if this command should expand into a prompt for the LLM.
@@ -259,6 +262,29 @@ pub fn process_slash_command_message(message: &str) -> ProcessedCommand {
         return ProcessedCommand::NotCommand(message.to_string());
     }
 
+    if matches!(canonical_command.as_str(), "code" | "kay") {
+        let command = SlashCommand::Kay;
+        if args_raw.is_empty() && command.requires_arguments() {
+            return ProcessedCommand::Error(format!(
+                "Error: /{} requires a task description. Usage: /{} <task>",
+                command.command(),
+                command.command()
+            ));
+        }
+
+        if let Some(expanded) = command.expand_prompt(args_raw) {
+            return ProcessedCommand::ExpandedPrompt(expanded);
+        }
+
+        let command_text = if args_raw.is_empty() {
+            format!("/{}", command.command())
+        } else {
+            format!("/{} {}", command.command(), args_raw)
+        };
+
+        return ProcessedCommand::RegularCommand(command, command_text);
+    }
+
     // Try to parse the command
     if let Ok(command) = canonical_command.parse::<SlashCommand>() {
         if !command.is_available() {
@@ -343,8 +369,8 @@ mod tests {
     }
 
     #[test]
-    fn slash_command_kay_with_newline_arguments_is_recognized() {
-        let msg = "/kay\ninspect the failing build";
+    fn slash_command_code_with_newline_arguments_is_recognized() {
+        let msg = "/code\ninspect the failing build";
         match process_slash_command_message(msg) {
             ProcessedCommand::ExpandedPrompt(prompt) => {
                 assert!(prompt.contains("inspect the failing build"));

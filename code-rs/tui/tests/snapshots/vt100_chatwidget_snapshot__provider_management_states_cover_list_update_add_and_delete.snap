@@ -8,7 +8,7 @@ expression: "frames.join(\"\\n---FRAME---\\n\")"
  +------------------------------------------------------------------------------------------------+
 
 
- ★   /kay - perform a coding task (multiple agents)
+ ★   /code - perform a coding task (multiple agents)
 
 
  • Hello! How can I help you today?
@@ -37,7 +37,7 @@ expression: "frames.join(\"\\n---FRAME---\\n\")"
  +------------------------------------------------------------------------------------------------+
 
 
- ★   /kay - perform a coding task (multiple agents)
+ ★   /code - perform a coding task (multiple agents)
 
 
  • Hello! How can I help you today?
@@ -64,7 +64,7 @@ expression: "frames.join(\"\\n---FRAME---\\n\")"
  +------------------------------------------------------------------------------------------------+
  |                                               Kay                                              |
  +------------------------------------------------------------------------------------------------+
- ★   /kay - perform a coding task (multiple agents)
+ ★   /code - perform a coding task (multiple agents)
 
 
  • Hello! How can I help you today?

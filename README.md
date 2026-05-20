@@ -19,7 +19,7 @@ It carries forward the ergonomics of the Codex CLI lineage and the multi-provide
 - Runs as a local coding agent in your terminal.
 - Coordinates multi-step tasks with Auto Drive.
 - Supports browser-driven workflows through internal browser mode or CDP/Chrome.
-- Provides multi-agent commands such as `/plan`, `/kay`, `/solve`, and `/auto`.
+- Provides multi-agent commands such as `/plan`, `/code`, `/solve`, and `/auto`.
 - Exposes a provider workflow for adding, updating, and removing credentials.
 - Keeps its own state under `~/.kay` instead of inheriting a local Codex or Every Code environment.
 - Integrates with MCP tools, custom agents, and safety controls directly in the TUI.
@@ -122,7 +122,7 @@ Expand-Archive .\kay-x86_64-pc-windows-msvc.exe.zip
 4. Start a task:
    - Type a prompt directly into the TUI, for example: `refactor this module`
    - Or run a one-shot command with `kay exec "..."`.
-   - Use `/kay`, `/plan`, `/solve`, or `/auto` when you want a specialized workflow.
+   - Use `/code`, `/plan`, `/solve`, or `/auto` when you want a specialized workflow.
 
 5. Review the transcript later if you need provenance or debugging context. Kay stores JSONL transcripts under `~/.kay/history.jsonl` and related logs under `~/.kay/debug_logs/`, and the transcript viewer makes them easy to inspect.
 
@@ -175,7 +175,7 @@ The Every Code lineage also published a few workflow demos that map closely to K
 /solve "Why does deleting one user drop the whole database?"
 
 # Run the main coding workflow
-/kay "Show dark mode when I feel cranky"
+/code "Show dark mode when I feel cranky"
 ```
 
 ### Auto Drive
