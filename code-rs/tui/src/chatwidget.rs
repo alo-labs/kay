@@ -17,7 +17,6 @@ use std::sync::OnceLock;
 use std::time::{Duration, Instant, SystemTime};
 use std::fs;
 use std::process::{Command, Output};
-use std::str::FromStr;
 use base64::prelude::{Engine as _, BASE64_STANDARD};
 
 use ratatui::style::{Modifier, Style};
@@ -12034,6 +12033,7 @@ impl ChatWidget<'_> {
         let original_trimmed = original_text.trim();
         if original_trimmed.starts_with("/plan ")
             || original_trimmed.starts_with("/solve ")
+            || original_trimmed.starts_with("/code ")
             || original_trimmed.starts_with("/kay ")
         {
             self.last_agent_prompt = Some(original_text.clone());
@@ -12057,7 +12057,7 @@ impl ChatWidget<'_> {
                 // but allow any other saved subagent command to be executed here.
                 let is_builtin = matches!(
                     cmd_name.to_ascii_lowercase().as_str(),
-                    "plan" | "solve" | "kay"
+                    "plan" | "solve" | "code" | "kay"
                 );
                 if has_custom && !is_builtin {
                     let res = code_core::slash_commands::format_subagent_command(
@@ -12113,6 +12113,8 @@ impl ChatWidget<'_> {
                     ("plan", Some(rest.trim().to_string()))
                 } else if let Some(rest) = trimmed.strip_prefix("/solve ") {
                     ("solve", Some(rest.trim().to_string()))
+                } else if let Some(rest) = trimmed.strip_prefix("/code ") {
+                    ("code", Some(rest.trim().to_string()))
                 } else if let Some(rest) = trimmed.strip_prefix("/kay ") {
                     ("kay", Some(rest.trim().to_string()))
                 } else {
@@ -12439,7 +12441,12 @@ impl ChatWidget<'_> {
         let command_portion = trimmed.strip_prefix('/')?;
         let name = command_portion.split_whitespace().next()?;
         let canonical = name.to_ascii_lowercase();
-        SlashCommand::from_str(&canonical).ok()
+        match canonical.as_str() {
+            "plan" => Some(SlashCommand::Plan),
+            "solve" => Some(SlashCommand::Solve),
+            "code" | "kay" => Some(SlashCommand::Kay),
+            _ => None,
+        }
     }
 
     fn multiline_slash_command_requires_split(command_line: &str) -> bool {
@@ -28686,7 +28693,7 @@ Have we met every part of this goal and is there no further work to do?"#
         app_event_tx.send_background_event_with_ticket(&ticket, visible_message);
 
         let command_text = format!(
-            "/kay The /browser command failed to {context}. Recent error: {error}. Please diagnose and fix the environment (for example, install or configure Chrome) so /browser works in this workspace.",
+            "/code The /browser command failed to {context}. Recent error: {error}. Please diagnose and fix the environment (for example, install or configure Chrome) so /browser works in this workspace.",
             context = failure_context,
             error = truncated
         );
@@ -33787,7 +33794,7 @@ use code_core::protocol::OrderMeta;
             Some(SlashCommand::Plan)
         ));
         assert!(matches!(
-            ChatWidget::slash_command_from_line("/kay"),
+            ChatWidget::slash_command_from_line("/code"),
             Some(SlashCommand::Kay)
         ));
         assert_eq!(ChatWidget::slash_command_from_line("not-a-command"), None);
