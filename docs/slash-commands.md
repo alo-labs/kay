@@ -101,7 +101,7 @@ typically start multiple agents. They require a task/problem description.
 
 - `/plan <task>`: create a comprehensive plan (multiple agents). Prompt‑expanding.
 - `/solve <problem>`: solve a challenging problem (multiple agents). Prompt‑expanding.
-- `/kay <task>`: perform a coding task (multiple agents). Prompt‑expanding.
+- `/code <task>`: perform a coding task (multiple agents). Prompt‑expanding.
 
 ## Account & Exit
 
@@ -121,10 +121,9 @@ Implementation Notes
 - The authoritative list of commands is defined in
   `code-rs/tui/src/slash_command.rs` (the `SlashCommand` enum). When adding a
   new command, please update this document to keep the UI and docs in sync.
-- Prompt formatting for `/plan`, `/solve`, and `/kay` lives in
-  `code-rs/core/src/slash_commands.rs`. `/kay` is the canonical prompt-expanding
+- Prompt formatting for `/plan`, `/solve`, and `/code` lives in
+  `code-rs/core/src/slash_commands.rs`. `/code` is the canonical prompt-expanding
   command in the Kay UI.
-  The retired `/code` alias should not appear in user-facing docs, snapshots, or TUI help.
   Provider credential CRUD lives in `/provider`, which is the shared entry
   point for adding, updating, or removing OpenCode Go, MiniMax, and OpenAI API
   keys.

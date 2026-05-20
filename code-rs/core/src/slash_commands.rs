@@ -5,7 +5,7 @@ use crate::config_types::SubagentCommandConfig;
 use crate::external_agent_command_exists;
 
 // NOTE: These are the prompt formatters for the prompt‑expanding slash commands
-// (/plan, /solve, /kay). If you add or change a slash command, please update
+// (/plan, /solve, /code). If you add or change a slash command, please update
 // the user documentation in `docs/slash-commands.md` so the list stays in sync
 // with the UI and behavior.
 
@@ -74,7 +74,8 @@ pub struct SubagentResolution {
 pub fn default_read_only_for(name: &str) -> bool {
     match name {
         "plan" | "solve" => true,
-        _ => name != "kay",
+        "code" | "kay" => false,
+        _ => true,
     }
 }
 
@@ -92,7 +93,7 @@ fn resolve_models(explicit: &[String], agents: Option<&[AgentConfig]>) -> Vec<St
 }
 
 /// Format a subagent command (built-in or custom) using optional overrides
-/// from `[[subagents.commands]]`. When a `plan|solve|kay` entry exists, it
+/// from `[[subagents.commands]]`. When a `plan|solve|code` entry exists, it
 /// replaces the built-in defaults for that command.
 /// Default multi-line instructions for built-in commands.
 /// Returns None for custom subagent names.
@@ -113,7 +114,7 @@ pub fn default_instructions_for(name: &str) -> Option<String> {
 5. If no solutions work, then start additional agents. You should always try to gather additional debugging information to feed to the agents.
 6. Do no stop any agents prematurely - wait until problem is completely solved. Longer running agents may sometimes come up with unique solutions.
 7. Once you have a working solution, check all running agents once again - see if there's any new solutions which might be optimal before completing the task."#.to_string()),
-        "kay" => Some(r#"Complete a coding task using multiple state-of-the-art agents working in parallel.
+        "code" | "kay" => Some(r#"Complete a coding task using multiple state-of-the-art agents working in parallel.
 
 1. If you do not fully understand the task, research it briefly. Do not attempt to code or solve it, just understand the task in the context of the current code base.
 2. Provide full context to the agents so they can work on the task themselves. You do not need to guide them on how to write the code - focus on describing the current task and desired outcome.
@@ -210,14 +211,14 @@ pub fn format_solve_command(
     res.prompt
 }
 
-/// Format the /kay command into a prompt for the LLM
+/// Format the /code command into a prompt for the LLM
 /// Legacy wrapper retained for compatibility; now delegates to unified formatter.
 pub fn format_kay_command(
     task: &str,
     _models: Option<Vec<String>>,
     agents: Option<&[AgentConfig]>,
 ) -> String {
-    let res = format_subagent_command("kay", task, agents, None);
+    let res = format_subagent_command("code", task, agents, None);
     res.prompt
 }
 
@@ -253,9 +254,9 @@ pub fn handle_slash_command(input: &str, agents: Option<&[AgentConfig]>) -> Opti
                 Some(format_solve_command(&args, None, agents))
             }
         }
-        "/kay" => {
+        "/code" | "/kay" => {
             if args.is_empty() {
-                Some("Error: /kay requires a task description. Usage: /kay <task>".to_string())
+                Some("Error: /code requires a task description. Usage: /code <task>".to_string())
             } else {
                 Some(format_kay_command(&args, None, agents))
             }
@@ -384,8 +385,8 @@ mod tests {
         assert!(result.is_some());
         assert!(result.unwrap().contains("Solve a complicated problem"));
 
-        // Test /kay command
-        let result = handle_slash_command("/kay refactor the database module", None);
+        // Test /code command
+        let result = handle_slash_command("/code refactor the database module", None);
         assert!(result.is_some());
         let code_prompt = result.unwrap();
         assert!(code_prompt.contains("Complete a coding task"));

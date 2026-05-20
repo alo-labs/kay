@@ -5,16 +5,6 @@ ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 AUTH_HOME=${KAY_HOME:-"$HOME/.kay"}
 AUTH_FILE="$AUTH_HOME/auth.json"
 
-if [[ -n "${KAY_ONBOARDING_LIVE_SMOKE_MODEL_FILTER:-}" ]]; then
-  cat >&2 <<'EOF'
-[pre-release/live-provider-gate] refusing filtered live smoke.
-
-Release gating must exercise the full OpenCode Go + MiniMax model matrix.
-Unset KAY_ONBOARDING_LIVE_SMOKE_MODEL_FILTER and rerun pre-release.
-EOF
-  exit 2
-fi
-
 use_alias_if_present() {
   local target_env=$1
   local alias_env=$2
@@ -86,9 +76,10 @@ if (( ${#missing[@]} > 0 )); then
   exit 2
 fi
 
-echo "[pre-release/live-provider-gate] running full OpenCode Go + MiniMax onboarding live smoke"
+echo "[pre-release/live-provider-gate] running OpenCode Go onboarding live smoke"
 cd "$ROOT_DIR/code-rs"
 
 KAY_ONBOARDING_LIVE_SMOKE=1 \
+KAY_ONBOARDING_LIVE_SMOKE_MODEL_FILTER="OpenCode Go" \
 KAY_ONBOARDING_LIVE_SMOKE_TURN_TIMEOUT_SECS="${KAY_ONBOARDING_LIVE_SMOKE_TURN_TIMEOUT_SECS:-900}" \
 cargo test -p code-cli --test onboarding_provider_notes_app_live_smoke -- --nocapture

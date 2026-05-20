@@ -628,7 +628,10 @@ fn popular_commands_lines(_latest_version: Option<&str>) -> Vec<Line<'static>> {
             .style(Style::default().add_modifier(Modifier::DIM)),
     ]));
     lines.push(Line::from(vec![
-        Span::styled("/kay", Style::default().fg(crate::colors::primary())),
+        Span::styled(
+            format!("/{}", SlashCommand::Kay.command()),
+            Style::default().fg(crate::colors::primary()),
+        ),
         Span::from(" - "),
         Span::from(SlashCommand::Kay.description())
             .style(Style::default().add_modifier(Modifier::DIM)),
@@ -654,7 +657,10 @@ pub(crate) fn new_popular_commands_notice(
     if crate::chatwidget::is_test_mode() {
         let mut lines: Vec<Line<'static>> = Vec::new();
         lines.push(Line::from(""));
-        let legacy_line = "  /kay - perform a coding task (multiple agents)";
+        let legacy_line = format!(
+            "  /{} - perform a coding task (multiple agents)",
+            SlashCommand::Kay.command()
+        );
         #[cfg(any(test, feature = "test-helpers"))]
         println!("legacy command line: {legacy_line}");
         lines.push(Line::from(legacy_line));

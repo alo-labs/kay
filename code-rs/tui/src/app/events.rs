@@ -1028,7 +1028,7 @@ impl App<'_> {
                 }
                 AppEvent::DispatchCommand(command, command_text) => {
                     // Persist UI-only slash commands to cross-session history.
-                    // For prompt-expanding commands (/plan, /solve, /kay) we let the
+                    // For prompt-expanding commands (/plan, /solve, /code) we let the
                     // expanded prompt be recorded by the normal submission path.
                     if !command.is_prompt_expanding() {
                         let _ = self
