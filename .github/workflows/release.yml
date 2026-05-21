@@ -33,9 +33,11 @@ jobs:
   npm-auth-check:
     name: Validate npm auth
     runs-on: ubuntu-latest
+    outputs:
+      publish: ${{ steps.auth.outputs.publish }}
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
     timeout-minutes: 5
-    # Fail fast if npm auth is not usable; downstream jobs should not continue.
+    # Probe npm auth and record whether publication is possible; downstream jobs can still run.
     env:
       NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
     steps:
@@ -44,23 +46,26 @@ jobs:
         with:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
-      - name: Validate npm authentication (must fail fast if missing/invalid)
+      - name: Validate npm authentication
+        id: auth
         env:
           NODE_AUTH_TOKEN: ${{ env.NPM_TOKEN }}
         run: |
           set -euo pipefail
           if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
-            echo "::error::NPM_TOKEN is required for release publishing. Add a granular automation token with publish + bypass-2FA before running the Release workflow: https://docs.npmjs.com/creating-and-viewing-access-tokens#creating-access-tokens"
-            exit 1
+            echo "::warning::NPM_TOKEN is missing; npm publication will be skipped for this release."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
 
           echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > ~/.npmrc
 
           if npm whoami >/dev/null 2>&1; then
             echo "npm auth ok"
+            echo "publish=true" >> "$GITHUB_OUTPUT"
           else
-            echo "::error::npm auth failed (npm whoami). Ensure NPM_TOKEN is a granular/automation token with publish rights to @alo-labs/* and bypass 2FA enabled: https://docs.npmjs.com/creating-and-viewing-access-tokens#creating-access-tokens" >&2
-            exit 1
+            echo "::warning::npm auth failed (npm whoami); npm publication will be skipped for this release." >&2
+            echo "publish=false" >> "$GITHUB_OUTPUT"
           fi
 
   preflight-tests:
@@ -525,7 +530,7 @@ jobs:
 
   release:
     name: Publish to npm
-    needs: [determine-version, build-binaries, preflight-tests]
+    needs: [npm-auth-check, determine-version, build-binaries, preflight-tests]
     runs-on: ubuntu-latest
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
     timeout-minutes: 30
@@ -965,8 +970,10 @@ jobs:
       - name: Check if we should publish
         id: should_publish
         shell: bash
+        env:
+          NPM_AUTH_OK: ${{ needs.npm-auth-check.outputs.publish }}
         run: |
-          if [ -z "${{ secrets.NPM_TOKEN }}" ]; then
+          if [ "${NPM_AUTH_OK:-false}" != "true" ]; then
             echo "publish=false" >> "$GITHUB_OUTPUT"
           else
             echo "publish=true" >> "$GITHUB_OUTPUT"
@@ -1074,6 +1081,7 @@ jobs:
           git push -u origin HEAD:main
 
       - name: Publish per-target npm binary packages (last)
+        if: steps.should_publish.outputs.publish == 'true'
         env:
           NODE_AUTH_TOKEN: ${{ env.NPM_TOKEN }}
         shell: bash
