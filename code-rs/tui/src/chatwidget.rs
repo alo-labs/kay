@@ -12034,7 +12034,6 @@ impl ChatWidget<'_> {
         if original_trimmed.starts_with("/plan ")
             || original_trimmed.starts_with("/solve ")
             || original_trimmed.starts_with("/code ")
-            || original_trimmed.starts_with("/kay ")
         {
             self.last_agent_prompt = Some(original_text.clone());
         }
@@ -12057,7 +12056,7 @@ impl ChatWidget<'_> {
                 // but allow any other saved subagent command to be executed here.
                 let is_builtin = matches!(
                     cmd_name.to_ascii_lowercase().as_str(),
-                    "plan" | "solve" | "code" | "kay"
+                    "plan" | "solve" | "code"
                 );
                 if has_custom && !is_builtin {
                     let res = code_core::slash_commands::format_subagent_command(
@@ -12115,8 +12114,6 @@ impl ChatWidget<'_> {
                     ("solve", Some(rest.trim().to_string()))
                 } else if let Some(rest) = trimmed.strip_prefix("/code ") {
                     ("code", Some(rest.trim().to_string()))
-                } else if let Some(rest) = trimmed.strip_prefix("/kay ") {
-                    ("kay", Some(rest.trim().to_string()))
                 } else {
                     ("", None)
                 };
@@ -12444,7 +12441,7 @@ impl ChatWidget<'_> {
         match canonical.as_str() {
             "plan" => Some(SlashCommand::Plan),
             "solve" => Some(SlashCommand::Solve),
-            "code" | "kay" => Some(SlashCommand::Kay),
+            "code" => Some(SlashCommand::Kay),
             _ => None,
         }
     }
@@ -25471,7 +25468,7 @@ Have we met every part of this goal and is there no further work to do?"#
             }
         }
 
-        let mut commands: Vec<String> = vec!["plan".into(), "solve".into(), "kay".into()];
+        let mut commands: Vec<String> = vec!["plan".into(), "solve".into(), "code".into()];
         let custom: Vec<String> = self
             .config
             .subagent_commands
@@ -33797,6 +33794,7 @@ use code_core::protocol::OrderMeta;
             ChatWidget::slash_command_from_line("/code"),
             Some(SlashCommand::Kay)
         ));
+        assert_eq!(ChatWidget::slash_command_from_line("/kay build it"), None);
         assert_eq!(ChatWidget::slash_command_from_line("not-a-command"), None);
     }
 
