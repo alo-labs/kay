@@ -212,7 +212,7 @@ impl SlashCommand {
             SlashCommand::Solve => Some(code_core::slash_commands::format_solve_command(
                 args, None, None,
             )),
-            SlashCommand::Kay => Some(code_core::slash_commands::format_kay_command(
+            SlashCommand::Kay => Some(code_core::slash_commands::format_code_command(
                 args, None, None,
             )),
             _ => None,
@@ -262,7 +262,7 @@ pub fn process_slash_command_message(message: &str) -> ProcessedCommand {
         return ProcessedCommand::NotCommand(message.to_string());
     }
 
-    if matches!(canonical_command.as_str(), "code" | "kay") {
+    if matches!(canonical_command.as_str(), "code") {
         let command = SlashCommand::Kay;
         if args_raw.is_empty() && command.requires_arguments() {
             return ProcessedCommand::Error(format!(
@@ -283,6 +283,10 @@ pub fn process_slash_command_message(message: &str) -> ProcessedCommand {
         };
 
         return ProcessedCommand::RegularCommand(command, command_text);
+    }
+
+    if canonical_command == "kay" {
+        return ProcessedCommand::NotCommand(message.to_string());
     }
 
     // Try to parse the command
@@ -376,6 +380,16 @@ mod tests {
                 assert!(prompt.contains("inspect the failing build"));
             }
             other => panic!("expected ExpandedPrompt, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn slash_command_kay_is_not_recognized() {
+        match process_slash_command_message("/kay inspect the failing build") {
+            ProcessedCommand::NotCommand(text) => {
+                assert_eq!(text, "/kay inspect the failing build");
+            }
+            other => panic!("expected NotCommand, got {:?}", other),
         }
     }
 

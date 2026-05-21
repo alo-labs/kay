@@ -80,6 +80,8 @@ echo "[pre-release/live-provider-gate] running OpenCode Go onboarding live smoke
 cd "$ROOT_DIR/code-rs"
 
 KAY_ONBOARDING_LIVE_SMOKE=1 \
-KAY_ONBOARDING_LIVE_SMOKE_MODEL_FILTER="OpenCode Go" \
+# Keep the gate on OpenCode Go models only and exclude the MiniMax-flavored
+# OpenCode Go model so the release path does not depend on MiniMax credentials.
+KAY_ONBOARDING_LIVE_SMOKE_MODEL_FILTER="opencode-go/glm-5.1,opencode-go/kimi-k2.6,opencode-go/mimo-v2.5-pro,opencode-go/mimo-v2.5,opencode-go/qwen3.6-plus,opencode-go/deepseek-v4-pro,opencode-go/deepseek-v4-flash" \
 KAY_ONBOARDING_LIVE_SMOKE_TURN_TIMEOUT_SECS="${KAY_ONBOARDING_LIVE_SMOKE_TURN_TIMEOUT_SECS:-900}" \
 cargo test -p code-cli --test onboarding_provider_notes_app_live_smoke -- --nocapture

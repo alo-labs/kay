@@ -133,7 +133,7 @@ impl SubagentEditorView {
         let show_delete = !self.is_new
             && !matches!(
                 self.name_field.text().to_ascii_lowercase().as_str(),
-                "plan" | "solve" | "kay"
+                "plan" | "solve" | "code"
             );
         let last_btn_idx = if show_delete { 6 } else { 5 };
 
@@ -453,7 +453,7 @@ impl<'a> BottomPaneView<'a> for SubagentEditorView {
         lines.push(Line::from(""));
 
         // Buttons row
-        let show_delete = !self.is_new && !matches!(self.name_field.text().to_ascii_lowercase().as_str(), "plan" | "solve" | "kay");
+        let show_delete = !self.is_new && !matches!(self.name_field.text().to_ascii_lowercase().as_str(), "plan" | "solve" | "code");
         if self.confirm_delete {
             let confirm_style = sel(4).fg(crate::colors::error()).add_modifier(Modifier::BOLD);
             let back_style = sel(5).fg(crate::colors::text());

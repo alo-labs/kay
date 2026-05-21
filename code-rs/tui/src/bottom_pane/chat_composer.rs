@@ -1785,7 +1785,6 @@ impl ChatComposer {
                     if trimmed.starts_with("/plan ")
                         || trimmed.starts_with("/solve ")
                         || trimmed.starts_with("/code ")
-                        || trimmed.starts_with("/kay ")
                     {
                         self.app_event_tx.send(crate::app_event::AppEvent::PrepareAgents);
                     }
@@ -1956,7 +1955,7 @@ impl ChatComposer {
                             .map(|c| c.name.clone())
                             .filter(|n| {
                                 let l = n.to_ascii_lowercase();
-                                l != "plan" && l != "solve" && l != "code" && l != "kay"
+                                l != "plan" && l != "solve" && l != "code"
                             })
                             .collect();
                         // Stable sort for presentation
