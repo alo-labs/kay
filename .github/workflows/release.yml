@@ -1134,3 +1134,15 @@ jobs:
             exit 0
           fi
           npm publish --access public
+
+      - name: Announce release in Google Chat
+        shell: bash
+        env:
+          GCHAT_RELEASE_WEBHOOK: ${{ secrets.GCHAT_RELEASE_WEBHOOK }}
+          GCHAT_RELEASE_THREAD_KEY: kay-updates
+          GCHAT_RELEASE_TITLE: Kay Updates
+          RELEASE_TAG: v${{ steps.version.outputs.version }}
+          RELEASE_TITLE: Release v${{ steps.version.outputs.version }}
+          RELEASE_URL: https://github.com/${{ github.repository }}/releases/tag/v${{ steps.version.outputs.version }}
+          RELEASE_BODY_PATH: docs/release-notes/RELEASE_NOTES.md
+        run: node scripts/announce-google-chat-release.mjs

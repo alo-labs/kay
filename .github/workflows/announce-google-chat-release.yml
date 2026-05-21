@@ -1,0 +1,36 @@
+name: Announce Google Chat Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Release tag to announce, including the leading `v`
+        required: true
+        type: string
+
+jobs:
+  announce:
+    name: Announce release in Google Chat
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Send Google Chat announcement
+        env:
+          GCHAT_RELEASE_WEBHOOK: ${{ secrets.GCHAT_RELEASE_WEBHOOK }}
+          GCHAT_RELEASE_THREAD_KEY: kay-updates
+          GCHAT_RELEASE_TITLE: Kay Updates
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          RELEASE_TITLE: Release ${{ inputs.release_tag }}
+          RELEASE_URL: https://github.com/${{ github.repository }}/releases/tag/${{ inputs.release_tag }}
+          RELEASE_BODY_PATH: docs/release-notes/RELEASE_NOTES.md
+        run: node scripts/announce-google-chat-release.mjs
