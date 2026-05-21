@@ -74,7 +74,7 @@ pub struct SubagentResolution {
 pub fn default_read_only_for(name: &str) -> bool {
     match name {
         "plan" | "solve" => true,
-        "code" | "kay" => false,
+        "code" => false,
         _ => true,
     }
 }
@@ -114,7 +114,7 @@ pub fn default_instructions_for(name: &str) -> Option<String> {
 5. If no solutions work, then start additional agents. You should always try to gather additional debugging information to feed to the agents.
 6. Do no stop any agents prematurely - wait until problem is completely solved. Longer running agents may sometimes come up with unique solutions.
 7. Once you have a working solution, check all running agents once again - see if there's any new solutions which might be optimal before completing the task."#.to_string()),
-        "code" | "kay" => Some(r#"Complete a coding task using multiple state-of-the-art agents working in parallel.
+        "code" => Some(r#"Complete a coding task using multiple state-of-the-art agents working in parallel.
 
 1. If you do not fully understand the task, research it briefly. Do not attempt to code or solve it, just understand the task in the context of the current code base.
 2. Provide full context to the agents so they can work on the task themselves. You do not need to guide them on how to write the code - focus on describing the current task and desired outcome.
@@ -213,7 +213,7 @@ pub fn format_solve_command(
 
 /// Format the /code command into a prompt for the LLM
 /// Legacy wrapper retained for compatibility; now delegates to unified formatter.
-pub fn format_kay_command(
+pub fn format_code_command(
     task: &str,
     _models: Option<Vec<String>>,
     agents: Option<&[AgentConfig]>,
@@ -254,11 +254,11 @@ pub fn handle_slash_command(input: &str, agents: Option<&[AgentConfig]>) -> Opti
                 Some(format_solve_command(&args, None, agents))
             }
         }
-        "/code" | "/kay" => {
+        "/code" => {
             if args.is_empty() {
                 Some("Error: /code requires a task description. Usage: /code <task>".to_string())
             } else {
-                Some(format_kay_command(&args, None, agents))
+                Some(format_code_command(&args, None, agents))
             }
         }
         _ => None,
