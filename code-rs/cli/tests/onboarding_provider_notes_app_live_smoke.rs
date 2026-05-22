@@ -32,7 +32,7 @@ const TUI_COLS: u16 = 180;
 
 struct LiveKeySet {
     opencode_go: String,
-    minimax: String,
+    minimax: Option<String>,
 }
 
 struct LiveModelSpec {
@@ -160,7 +160,7 @@ fn env_key(name: &str) -> Option<String> {
 
 fn live_keys() -> Option<LiveKeySet> {
     let opencode_go = env_key("OPENCODE_GO_LIVE_API_KEY")?;
-    let minimax = env_key("MINIMAX_LIVE_API_KEY")?;
+    let minimax = env_key("MINIMAX_LIVE_API_KEY");
     Some(LiveKeySet {
         opencode_go,
         minimax,
@@ -234,7 +234,7 @@ fn clone_notes_app() -> (TempDir, PathBuf) {
 
 fn redact(text: &str, keys: &LiveKeySet) -> String {
     let mut redacted = text.to_string();
-    for key in [&keys.opencode_go, &keys.minimax] {
+    for key in Some(&keys.opencode_go).into_iter().chain(keys.minimax.as_ref()) {
         if !key.is_empty() {
             redacted = redacted.replace(key, "[REDACTED_API_KEY]");
         }
@@ -459,18 +459,20 @@ fn start_onboarding_provider_setup(
         ONBOARDING_TIMEOUT,
     );
 
-    harness.write_key(b"\x1b[B\r");
-    harness.wait_for(
-        keys,
-        &["Editing MiniMax provider key"],
-        ONBOARDING_TIMEOUT,
-    );
-    harness.write_line(&keys.minimax);
-    harness.wait_for(
-        keys,
-        &["MiniMax API key saved", "MiniMax", "(configured)"],
-        ONBOARDING_TIMEOUT,
-    );
+    if let Some(minimax_key) = keys.minimax.as_deref() {
+        harness.write_key(b"\x1b[B\r");
+        harness.wait_for(
+            keys,
+            &["Editing MiniMax provider key"],
+            ONBOARDING_TIMEOUT,
+        );
+        harness.write_line(minimax_key);
+        harness.wait_for(
+            keys,
+            &["MiniMax API key saved", "MiniMax", "(configured)"],
+            ONBOARDING_TIMEOUT,
+        );
+    }
 
     harness.write_key(b"\x1b");
     harness.wait_for(keys, &["Model:", "What can I code"], ONBOARDING_TIMEOUT);
@@ -484,9 +486,13 @@ fn auth_json(kay_home: &Path) -> Value {
     serde_json::from_str(&raw).expect("parse auth.json")
 }
 
-fn assert_onboarding_saved_all_credentials(kay_home: &Path) {
+fn assert_onboarding_saved_credentials(kay_home: &Path, keys: &LiveKeySet) {
     let auth = auth_json(kay_home);
-    for provider in ["opencode-go", "minimax"] {
+    let mut expected = vec!["opencode-go"];
+    if keys.minimax.is_some() {
+        expected.push("minimax");
+    }
+    for provider in expected {
         assert!(
             auth.pointer(&format!("/provider_credentials/{provider}/api_key"))
                 .and_then(Value::as_str)
@@ -871,7 +877,7 @@ fn onboarding_provider_keys_then_live_notes_turns_for_ocg_mm() {
     }
     let Some(keys) = live_keys() else {
         eprintln!(
-            "skipping onboarding provider live smoke: OPENCODE_GO_LIVE_API_KEY and MINIMAX_LIVE_API_KEY must be set"
+            "skipping onboarding provider live smoke: OPENCODE_GO_LIVE_API_KEY must be set"
         );
         return;
     };
@@ -881,7 +887,7 @@ fn onboarding_provider_keys_then_live_notes_turns_for_ocg_mm() {
     let (_workspace_guard, repo_dir) = clone_notes_app();
 
     let mut harness = start_onboarding_provider_setup(kay_home.path(), &repo_dir, &keys);
-    assert_onboarding_saved_all_credentials(kay_home.path());
+    assert_onboarding_saved_credentials(kay_home.path(), &keys);
 
     for (idx, spec) in selected_live_models().into_iter().enumerate() {
         run_tui_model_switch_and_live_notes_turn(&mut harness, kay_home.path(), &keys, spec, idx);
