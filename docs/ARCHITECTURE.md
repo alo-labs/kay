@@ -4,7 +4,7 @@ This file captures the durable architecture view for the repo. The codebase is a
 
 ## System Shape
 
-- Kay's Rust workspace and CLI binaries live under the current `code-rs/` workspace root
+- Kay's Rust workspace and CLI binaries live under the current `kay-rs/` workspace root
 - Root-level docs explain user-facing behavior and workflow guidance
 - GSD and Silver Bullet metadata live outside the product code, under `.planning/` and `~/.claude/.silver-bullet/`
 - Built-in model providers include `opencode-go`; matching provider-local model slugs are normalized on the Responses/compact wire paths before request dispatch
