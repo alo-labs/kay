@@ -131,13 +131,17 @@ only used to prove live work completed; model/provider identity is verified
 from Kay-side metadata, not from model self-reporting.
 
 This smoke is a required pre-release gate. `./pre-release.sh` runs it after the
-dev-fast build, CLI smokes, and workspace nextest suite. The gate refuses
-`KAY_ONBOARDING_LIVE_SMOKE_MODEL_FILTER` so release validation always covers
+dev-fast build, CLI smokes, and workspace nextest suite. By default it covers
 the full OpenCode Go + MiniMax matrix. It accepts credentials from
 `OPENCODE_GO_LIVE_API_KEY` / `MINIMAX_LIVE_API_KEY`, falls back to the normal
 `OPENCODE_GO_API_KEY` / `MINIMAX_API_KEY` env vars, and finally falls back to
 `provider_credentials.opencode-go.api_key` and
 `provider_credentials.minimax.api_key` in `$KAY_HOME/auth.json`.
+
+When a release explicitly excludes MiniMax.io provider tests, run
+`KAY_PRE_RELEASE_EXCLUDE_MINIMAX_PROVIDER_TESTS=1 ./pre-release.sh`. That keeps
+the OpenCode Go live matrix enabled while omitting direct MiniMax provider
+credential setup and live turns.
 
 For focused debugging, set `KAY_ONBOARDING_LIVE_SMOKE_MODEL_FILTER` to a comma
 separated subset of exact provider ids or model ids, such as
