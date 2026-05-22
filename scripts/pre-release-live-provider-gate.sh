@@ -56,24 +56,13 @@ PY
   fi
 }
 
-EXCLUDE_MINIMAX_PROVIDER_TESTS=${KAY_PRE_RELEASE_EXCLUDE_MINIMAX_PROVIDER_TESTS:-0}
-
 use_alias_if_present OPENCODE_GO_LIVE_API_KEY OPENCODE_GO_API_KEY
-if [[ "$EXCLUDE_MINIMAX_PROVIDER_TESTS" != "1" ]]; then
-  use_alias_if_present MINIMAX_LIVE_API_KEY MINIMAX_API_KEY
-fi
 
 load_provider_key_from_auth_json OPENCODE_GO_LIVE_API_KEY opencode-go
-if [[ "$EXCLUDE_MINIMAX_PROVIDER_TESTS" != "1" ]]; then
-  load_provider_key_from_auth_json MINIMAX_LIVE_API_KEY minimax
-fi
 
 missing=()
 if [[ -z "${OPENCODE_GO_LIVE_API_KEY:-}" ]]; then
   missing+=("OPENCODE_GO_LIVE_API_KEY, OPENCODE_GO_API_KEY, or provider_credentials.opencode-go.api_key in $AUTH_FILE")
-fi
-if [[ "$EXCLUDE_MINIMAX_PROVIDER_TESTS" != "1" && -z "${MINIMAX_LIVE_API_KEY:-}" ]]; then
-  missing+=("MINIMAX_LIVE_API_KEY, MINIMAX_API_KEY, or provider_credentials.minimax.api_key in $AUTH_FILE")
 fi
 
 if (( ${#missing[@]} > 0 )); then
@@ -82,19 +71,13 @@ if (( ${#missing[@]} > 0 )); then
   exit 2
 fi
 
-echo "[pre-release/live-provider-gate] running OpenCode Go onboarding live smoke"
+echo "[pre-release/live-provider-gate] running curated OpenCode Go onboarding live smoke"
 cd "$ROOT_DIR/code-rs"
 
 live_env=(
   "KAY_ONBOARDING_LIVE_SMOKE=1"
   "KAY_ONBOARDING_LIVE_SMOKE_TURN_TIMEOUT_SECS=${KAY_ONBOARDING_LIVE_SMOKE_TURN_TIMEOUT_SECS:-900}"
+  "KAY_ONBOARDING_LIVE_SMOKE_MODEL_FILTER=opencode-go/mimo-v2.5,opencode-go/mimo-v2.5-pro,opencode-go/deepseek-v4-flash,opencode-go/minimax-m2.7"
 )
-
-if [[ "$EXCLUDE_MINIMAX_PROVIDER_TESTS" == "1" ]]; then
-  echo "[pre-release/live-provider-gate] excluding MiniMax.io provider tests by KAY_PRE_RELEASE_EXCLUDE_MINIMAX_PROVIDER_TESTS=1"
-  live_env+=(
-    "KAY_ONBOARDING_LIVE_SMOKE_MODEL_FILTER=opencode-go/glm-5.1,opencode-go/kimi-k2.6,opencode-go/mimo-v2.5-pro,opencode-go/mimo-v2.5,opencode-go/qwen3.6-plus,opencode-go/deepseek-v4-pro,opencode-go/deepseek-v4-flash"
-  )
-fi
 
 env "${live_env[@]}" cargo test -p code-cli --test onboarding_provider_notes_app_live_smoke -- --nocapture

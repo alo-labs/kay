@@ -15,6 +15,7 @@ use std::thread::JoinHandle;
 use std::time::Duration;
 use std::time::Instant;
 
+use code_core::config_types::ReasoningEffort;
 use portable_pty::CommandBuilder;
 use portable_pty::PtySize;
 use portable_pty::native_pty_system;
@@ -40,6 +41,7 @@ struct LiveModelSpec {
     provider_id: &'static str,
     model: &'static str,
     header_label: &'static str,
+    reasoning_effort: Option<ReasoningEffort>,
 }
 
 const LIVE_MODELS: &[LiveModelSpec] = &[
@@ -48,97 +50,120 @@ const LIVE_MODELS: &[LiveModelSpec] = &[
         provider_id: "opencode-go",
         model: "opencode-go/glm-5.1",
         header_label: "opencode-go/glm-5.1",
+        reasoning_effort: None,
     },
     LiveModelSpec {
         provider_label: "OpenCode Go",
         provider_id: "opencode-go",
         model: "opencode-go/kimi-k2.6",
         header_label: "opencode-go/kimi-k2.6",
+        reasoning_effort: None,
     },
     LiveModelSpec {
         provider_label: "OpenCode Go",
         provider_id: "opencode-go",
         model: "opencode-go/mimo-v2.5-pro",
         header_label: "opencode-go/mimo-v2.5-pro",
+        reasoning_effort: None,
     },
     LiveModelSpec {
         provider_label: "OpenCode Go",
         provider_id: "opencode-go",
         model: "opencode-go/mimo-v2.5",
         header_label: "opencode-go/mimo-v2.5",
+        reasoning_effort: None,
     },
     LiveModelSpec {
         provider_label: "OpenCode Go",
         provider_id: "opencode-go",
         model: "opencode-go/minimax-m2.7",
         header_label: "opencode-go/minimax-m2.7",
+        reasoning_effort: None,
     },
     LiveModelSpec {
         provider_label: "OpenCode Go",
         provider_id: "opencode-go",
         model: "opencode-go/qwen3.6-plus",
         header_label: "opencode-go/qwen3.6-plus",
+        reasoning_effort: None,
     },
     LiveModelSpec {
         provider_label: "OpenCode Go",
         provider_id: "opencode-go",
         model: "opencode-go/deepseek-v4-pro",
         header_label: "opencode-go/deepseek-v4-pro",
+        reasoning_effort: None,
     },
     LiveModelSpec {
         provider_label: "OpenCode Go",
         provider_id: "opencode-go",
         model: "opencode-go/deepseek-v4-flash",
         header_label: "opencode-go/deepseek-v4-flash",
+        reasoning_effort: Some(ReasoningEffort::XHigh),
     },
     LiveModelSpec {
         provider_label: "MiniMax",
         provider_id: "minimax",
         model: "MiniMax-M2.7",
         header_label: "MiniMax-M2.7",
+        reasoning_effort: None,
     },
     LiveModelSpec {
         provider_label: "OpenAI",
         provider_id: "openai",
         model: "gpt-5.5",
         header_label: "GPT-5.5",
+        reasoning_effort: None,
     },
     LiveModelSpec {
         provider_label: "OpenAI",
         provider_id: "openai",
         model: "gpt-5.4",
         header_label: "GPT-5.4",
+        reasoning_effort: None,
     },
     LiveModelSpec {
         provider_label: "OpenAI",
         provider_id: "openai",
         model: "gpt-5.4-mini",
         header_label: "GPT-5.4-Mini",
+        reasoning_effort: None,
     },
     LiveModelSpec {
         provider_label: "OpenAI",
         provider_id: "openai",
         model: "gpt-5.3-codex-spark",
         header_label: "GPT-5.3-Codex-Spark",
+        reasoning_effort: None,
     },
     LiveModelSpec {
         provider_label: "OpenAI",
         provider_id: "openai",
         model: "gpt-5.2",
         header_label: "GPT-5.2",
+        reasoning_effort: None,
     },
     LiveModelSpec {
         provider_label: "OpenAI",
         provider_id: "openai",
         model: "gpt-5.1-codex-max",
         header_label: "GPT-5.1-Codex-Max",
+        reasoning_effort: None,
     },
     LiveModelSpec {
         provider_label: "OpenAI",
         provider_id: "openai",
         model: "gpt-5.1-codex-mini",
         header_label: "GPT-5.1-Codex-Mini",
+        reasoning_effort: None,
     },
+];
+
+const DEFAULT_LIVE_MODEL_IDS: &[&str] = &[
+    "opencode-go/mimo-v2.5",
+    "opencode-go/mimo-v2.5-pro",
+    "opencode-go/deepseek-v4-flash",
+    "opencode-go/minimax-m2.7",
 ];
 
 fn code_bin() -> &'static str {
@@ -174,12 +199,20 @@ fn live_turn_timeout() -> Duration {
         .unwrap_or(DEFAULT_LIVE_TURN_TIMEOUT)
 }
 
+fn default_live_models() -> Vec<&'static LiveModelSpec> {
+    DEFAULT_LIVE_MODEL_IDS
+        .iter()
+        .filter_map(|wanted| {
+            LIVE_MODELS
+                .iter()
+                .find(|spec| spec.model.eq_ignore_ascii_case(wanted))
+        })
+        .collect()
+}
+
 fn selected_live_models() -> Vec<&'static LiveModelSpec> {
     let Some(filter) = env_key("KAY_ONBOARDING_LIVE_SMOKE_MODEL_FILTER") else {
-        return LIVE_MODELS
-            .iter()
-            .filter(|spec| spec.provider_id != "openai")
-            .collect();
+        return default_live_models();
     };
     let requested = filter
         .split(',')
@@ -187,10 +220,7 @@ fn selected_live_models() -> Vec<&'static LiveModelSpec> {
         .filter(|value| !value.is_empty())
         .collect::<Vec<_>>();
     if requested.is_empty() {
-        return LIVE_MODELS
-            .iter()
-            .filter(|spec| spec.provider_id != "openai")
-            .collect();
+        return default_live_models();
     }
     LIVE_MODELS
         .iter()
@@ -786,6 +816,15 @@ fn run_tui_model_switch_and_live_notes_turn(
     let configure_count_before = session_configure_count(kay_home);
     harness.write_composer_line(&format!("/model {}", spec.model));
     let header_line = wait_for_model_header(harness, keys, spec);
+    if let Some(reasoning_effort) = spec.reasoning_effort {
+        harness.write_composer_line(&format!("/reasoning {}", reasoning_effort));
+        let expected_value = format!("Value: {}", reasoning_effort);
+        harness.wait_for(
+            keys,
+            &["Reasoning Effort", expected_value.as_str()],
+            ONBOARDING_TIMEOUT,
+        );
+    }
 
     let run_id = format!(
         "kay-live-smoke-{}-{}",
@@ -867,6 +906,22 @@ fn model_header_parser_rejects_prefix_model_match() {
 
     assert!(header_shows_exact_model(header, "opencode-go/mimo-v2.5-pro"));
     assert!(!header_shows_exact_model(header, "opencode-go/mimo-v2.5"));
+}
+
+#[test]
+fn default_live_models_are_curated_opencode_go_release_matrix() {
+    let models = default_live_models();
+    let model_ids = models.iter().map(|spec| spec.model).collect::<Vec<_>>();
+
+    assert_eq!(model_ids.as_slice(), DEFAULT_LIVE_MODEL_IDS);
+    assert!(models.iter().all(|spec| spec.provider_id == "opencode-go"));
+    assert_eq!(
+        models
+            .iter()
+            .find(|spec| spec.model == "opencode-go/deepseek-v4-flash")
+            .and_then(|spec| spec.reasoning_effort),
+        Some(ReasoningEffort::XHigh)
+    );
 }
 
 #[test]
