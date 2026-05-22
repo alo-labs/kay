@@ -40,16 +40,16 @@ CRITICAL_PATTERN_KEYS=(
 
 CRITICAL_PATTERN_REGEXES=(
     'prompts/.*\.md'
-    'codex-rs/core/src/openai_tools\.rs|code-rs/core/src/openai_tools\.rs'
-    'codex-rs/core/src/agent_tool\.rs|code-rs/core/src/agent_tool\.rs'
-    'codex-rs/core/src/protocol\.rs|code-rs/core/src/protocol\.rs'
-    'codex-rs/app-server-protocol/src/.*|code-rs/app-server-protocol/src/.*'
-    'codex-rs/mcp-types/src/.*|code-rs/mcp-types/src/.*'
-    'codex-rs/core/src/codex\.rs|code-rs/core/src/codex\.rs'
-    'codex-rs/exec/src/.*|code-rs/exec/src/.*'
-    'codex-rs/apply-patch/src/.*|code-rs/apply-patch/src/.*'
-    'codex-rs/core/src/acp\.rs|code-rs/core/src/acp\.rs'
-    'codex-rs/core/src/config.*\.rs|code-rs/core/src/config.*\.rs'
+    'codex-rs/core/src/openai_tools\.rs|kay-rs/core/src/openai_tools\.rs'
+    'codex-rs/core/src/agent_tool\.rs|kay-rs/core/src/agent_tool\.rs'
+    'codex-rs/core/src/protocol\.rs|kay-rs/core/src/protocol\.rs'
+    'codex-rs/app-server-protocol/src/.*|kay-rs/app-server-protocol/src/.*'
+    'codex-rs/mcp-types/src/.*|kay-rs/mcp-types/src/.*'
+    'codex-rs/core/src/codex\.rs|kay-rs/core/src/codex\.rs'
+    'codex-rs/exec/src/.*|kay-rs/exec/src/.*'
+    'codex-rs/apply-patch/src/.*|kay-rs/apply-patch/src/.*'
+    'codex-rs/core/src/acp\.rs|kay-rs/core/src/acp\.rs'
+    'codex-rs/core/src/config.*\.rs|kay-rs/core/src/config.*\.rs'
 )
 
 pattern_for_category() {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 
 import { ThreadEvent } from "../src/index";
+import { createMockClient } from "./testCodex";
 
 import {
   assistantMessage,
@@ -9,8 +10,6 @@ import {
   sse,
   startResponsesTestProxy,
 } from "./responsesProxy";
-
-const codexExecPath = path.join(process.cwd(), "..", "..", "code-rs", "target", "debug", "code");
 
 describe("Codex", () => {
   it("returns thread events", async () => {

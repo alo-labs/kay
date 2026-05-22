@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# diff-crates.sh: Compare codex-rs vs code-rs per crate
+# diff-crates.sh: Compare codex-rs vs kay-rs per crate
 #
 # Usage:
 #   ./scripts/upstream-merge/diff-crates.sh [crate-name]
@@ -19,7 +19,7 @@ cd "$ROOT_DIR"
 OUTPUT_DIR=".github/auto/upstream-diffs"
 mkdir -p "$OUTPUT_DIR"
 
-# List of crates that exist in both codex-rs and code-rs
+# List of crates that exist in both codex-rs and kay-rs
 SHARED_CRATES=(
     "ansi-escape"
     "app-server"
@@ -57,7 +57,7 @@ SHARED_CRATES=(
 diff_crate() {
     local crate_name="$1"
     local codex_path="codex-rs/${crate_name}"
-    local code_path="code-rs/${crate_name}"
+    local kay_path="kay-rs/${crate_name}"
 
     # Check if both directories exist
     if [[ ! -d "$codex_path" ]]; then
@@ -65,8 +65,8 @@ diff_crate() {
         return 1
     fi
 
-    if [[ ! -d "$code_path" ]]; then
-        echo "⚠️  Warning: $code_path does not exist (fork-only crate)"
+    if [[ ! -d "$kay_path" ]]; then
+        echo "⚠️  Warning: $kay_path does not exist (fork-only crate)"
         return 1
     fi
 
@@ -80,7 +80,7 @@ diff_crate() {
     temp_dir=$(mktemp -d)
     local sanitized_path="${temp_dir}/${crate_name}"
 
-    rsync -a --delete "$code_path/" "$sanitized_path/"
+    rsync -a --delete "$kay_path/" "$sanitized_path/"
     find "$sanitized_path" -name '.DS_Store' -delete
 
     # Rewrite code-* / code_* identifiers back to codex-* so the diff highlights
@@ -117,7 +117,7 @@ generate_summary() {
 
 Generated: ${timestamp}
 
-This report compares \`codex-rs\` (upstream baseline) vs \`code-rs\` (fork) for each shared crate.
+This report compares \`codex-rs\` (upstream baseline) vs \`kay-rs\` (fork) for each shared crate.
 
 ## Overview
 

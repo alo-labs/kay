@@ -7,7 +7,7 @@ REPO_ROOT="${REPO_ROOT:-$(cd "${SCRIPT_DIR}/.." && pwd)}"
 # Keep this list narrow: only transient build/cache artifacts.
 # Planning, spec, and design folders are intentionally preserved.
 cleanup_paths=(
-  "code-rs/target"
+  "kay-rs/target"
   "codex-rs/target"
   "target"
   ".tmp"

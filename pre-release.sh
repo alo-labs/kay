@@ -44,7 +44,7 @@ run_dev_fast_and_cli_smokes() {
   local target_dir="$BASE_CARGO_TARGET_DIR/pre-release-dev-fast"
 
   echo "[pre-release] building Kay CLI (dev-fast)"
-  cd "$ROOT_DIR/code-rs"
+  cd "$ROOT_DIR/kay-rs"
   CARGO_TARGET_DIR="$target_dir" cargo build --locked --profile dev-fast --bin kay --bin code
 
   echo "[pre-release] running Kay CLI smokes (skip cargo tests)"
@@ -56,7 +56,7 @@ run_dev_fast_and_cli_smokes() {
 
 run_workspace_nextest() {
   echo "[pre-release] running workspace tests (nextest)"
-  cd "$ROOT_DIR/code-rs"
+  cd "$ROOT_DIR/kay-rs"
   CARGO_TARGET_DIR="$BASE_CARGO_TARGET_DIR/pre-release-nextest" \
     cargo +stable nextest run --no-fail-fast --locked
 }

@@ -72,7 +72,7 @@ if (( ${#missing[@]} > 0 )); then
 fi
 
 echo "[pre-release/live-provider-gate] running curated OpenCode Go onboarding live smoke"
-cd "$ROOT_DIR/code-rs"
+cd "$ROOT_DIR/kay-rs"
 
 live_env=(
   "KAY_ONBOARDING_LIVE_SMOKE=1"
