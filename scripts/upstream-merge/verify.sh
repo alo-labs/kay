@@ -41,15 +41,15 @@ fi
   echo "[verify] STEP 2: cargo check (core tests compile)"
 }
 # Respect pre-set CARGO_HOME/TARGET_DIR to share caches across steps
-CODE_TARGET_DIR="$ROOT_DIR/code-rs/target"
+KAY_TARGET_DIR="$ROOT_DIR/kay-rs/target"
 export CARGO_HOME="${CARGO_HOME:-$ROOT_DIR/.cargo-home}"
 if [ -z "${CARGO_TARGET_DIR:-}" ]; then
-  export CARGO_TARGET_DIR="$CODE_TARGET_DIR"
+  export CARGO_TARGET_DIR="$KAY_TARGET_DIR"
 fi
 # Ensure rustup also uses a repo-local, writable directory to avoid HOME permission issues on CI
 export RUSTUP_HOME="${RUSTUP_HOME:-${CARGO_HOME%/}/rustup}"
 mkdir -p "$CARGO_HOME" "$CARGO_TARGET_DIR" "$RUSTUP_HOME" >/dev/null 2>&1 || true
-if ! (CARGO_TARGET_DIR="$CODE_TARGET_DIR" cd code-rs && cargo test -p code-core --test opencode_go_provider --no-run --quiet) 2>&1 | tee .github/auto/VERIFY_api-check.log; then
+if ! (CARGO_TARGET_DIR="$KAY_TARGET_DIR" cd kay-rs && cargo test -p code-core --test opencode_go_provider --no-run --quiet) 2>&1 | tee .github/auto/VERIFY_api-check.log; then
   status_api="fail"
 fi
 
@@ -65,17 +65,17 @@ guards_log=.github/auto/VERIFY_guards.log
 : > "$guards_log"
 
 # Guard A: Browser and agent tool wiring must still be advertised.
-if ! rg -n 'create_browser_tool|name:[[:space:]]*"browser"' code-rs/core/src/openai_tools.rs >/dev/null 2>&1; then
+if ! rg -n 'create_browser_tool|name:[[:space:]]*"browser"' kay-rs/core/src/openai_tools.rs >/dev/null 2>&1; then
   printf "[guards] no 'browser' tool references found in openai_tools.rs - tool family likely dropped\n" | tee -a "$guards_log"
   status_guards="fail"
 fi
-if ! rg -n 'create_agent_tool|name:[[:space:]]*"agent"' code-rs/core/src/openai_tools.rs >/dev/null 2>&1; then
+if ! rg -n 'create_agent_tool|name:[[:space:]]*"agent"' kay-rs/core/src/openai_tools.rs >/dev/null 2>&1; then
   printf "[guards] no 'agent' tool references found in openai_tools.rs - tool family likely dropped\n" | tee -a "$guards_log"
   status_guards="fail"
 fi
 
 # Guard B: default_client should reference code_version::wire_compatible_version for UA
-if ! rg -n 'code_version::wire_compatible_version' code-rs/core/src/default_client.rs >/dev/null 2>&1; then
+if ! rg -n 'code_version::wire_compatible_version' kay-rs/core/src/default_client.rs >/dev/null 2>&1; then
   printf "[guards] code_version::wire_compatible_version not referenced in core/default_client.rs\n" | tee -a "$guards_log"
   status_guards="fail"
 fi
@@ -91,7 +91,7 @@ DEFAULT_BRANCH_LOCAL=${DEFAULT_BRANCH:-main}
 # Try to fetch origin to ensure refs exist; ignore failure for local runs
 git fetch origin "$DEFAULT_BRANCH_LOCAL" >/dev/null 2>&1 || true
 range_ref="origin/${DEFAULT_BRANCH_LOCAL}..HEAD"
-changed_files=$(git diff --name-only $range_ref -- 'code-rs/tui/**' 'codex-cli/**' | tr '\n' ' ' || true)
+changed_files=$(git diff --name-only $range_ref -- 'kay-rs/tui/**' 'codex-cli/**' | tr '\n' ' ' || true)
 branding_log=.github/auto/VERIFY_branding.log
 : > "$branding_log"
 if [ -n "${changed_files:-}" ]; then

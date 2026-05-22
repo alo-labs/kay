@@ -5,7 +5,7 @@ import type { CodexConfigObject } from "../src/codexOptions";
 
 export const codexExecPath =
   process.env.CODEX_EXEC_PATH ??
-  path.join(process.cwd(), "..", "..", "codex-rs", "target", "debug", "codex");
+  path.join(process.cwd(), "..", "..", "kay-rs", "target", "debug", "code");
 
 type CreateTestClientOptions = {
   apiKey?: string;
@@ -23,6 +23,7 @@ export type TestClient = {
 export function createMockClient(url: string): TestClient {
   return createTestClient({
     config: {
+      model: "gpt-test-1",
       model_provider: "mock",
       model_providers: {
         mock: {
@@ -46,7 +47,7 @@ export function createTestClient(options: CreateTestClientOptions = {}): TestCli
       codexPathOverride: codexExecPath,
       baseUrl: options.baseUrl,
       apiKey: options.apiKey,
-      config: mergeTestConfig(options.baseUrl, options.config),
+      configOverrides: mergeTestConfig(options.baseUrl, options.config),
       env,
     }),
   };
@@ -61,6 +62,7 @@ function mergeTestConfig(
       ? config
       : {
           ...config,
+          model: config?.model ?? "gpt-test-1",
           // Built-in providers are merged before user config, so tests need a
           // custom provider entry to force SSE against the local mock server.
           model_provider: "mock",

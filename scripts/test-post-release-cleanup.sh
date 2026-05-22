@@ -6,7 +6,7 @@ SANDBOX="$(mktemp -d)"
 trap 'rm -rf "${SANDBOX}"' EXIT
 
 cleanup_paths=(
-  "code-rs/target"
+  "kay-rs/target"
   "codex-rs/target"
   "target"
   ".tmp"

@@ -22,8 +22,19 @@ export type StreamedTurn = {
 /** Alias for `StreamedTurn` to describe the result of `runStreamed()`. */
 export type RunStreamedResult = StreamedTurn;
 
+/** An input part to send to the agent. */
+export type UserInput =
+  | {
+      type: "text";
+      text: string;
+    }
+  | {
+      type: "local_image";
+      path: string;
+    };
+
 /** An input to send to the agent. */
-export type Input = string;
+export type Input = string | UserInput[];
 
 /** Represent a thread of conversation with the agent. One thread can have multiple consecutive turns. */
 export class Thread {
@@ -51,12 +62,12 @@ export class Thread {
   }
 
   /** Provides the input to the agent and streams events as they are produced during the turn. */
-  async runStreamed(input: string, options?: ThreadOptions): Promise<StreamedTurn> {
+  async runStreamed(input: Input, options?: ThreadOptions): Promise<StreamedTurn> {
     return { events: this.runStreamedInternal(input, options) };
   }
 
   private async *runStreamedInternal(
-    input: string,
+    input: Input,
     options?: ThreadOptions,
   ): AsyncGenerator<ThreadEvent> {
     const mergedOptions = {
@@ -66,15 +77,18 @@ export class Thread {
     if (options) {
       this._threadOptions = { ...mergedOptions };
     }
+    const { prompt, images } = normalizeInput(input);
     const generator = this._exec.run({
-      input,
+      input: prompt,
       baseUrl: this._options.baseUrl,
       apiKey: this._options.apiKey,
       threadId: this._id,
+      images,
       model: mergedOptions?.model,
       sandboxMode: mergedOptions?.sandboxMode,
       workingDirectory: mergedOptions?.workingDirectory,
       skipGitRepoCheck: mergedOptions?.skipGitRepoCheck,
+      signal: mergedOptions?.signal,
     });
 
     for await (const item of generator) {
@@ -100,7 +114,7 @@ export class Thread {
   }
 
   /** Provides the input to the agent and returns the completed turn. */
-  async run(input: string, options?: ThreadOptions): Promise<Turn> {
+  async run(input: Input, options?: ThreadOptions): Promise<Turn> {
     const generator = this.runStreamedInternal(input, options);
     const items: ThreadItem[] = [];
     let finalResponse: string = "";
@@ -124,6 +138,24 @@ export class Thread {
     }
     return { items, finalResponse, usage };
   }
+}
+
+function normalizeInput(input: Input): { prompt: string; images: string[] } {
+  if (typeof input === "string") {
+    return { prompt: input, images: [] };
+  }
+
+  const promptParts: string[] = [];
+  const images: string[] = [];
+  for (const item of input) {
+    if (item.type === "text") {
+      promptParts.push(item.text);
+    } else if (item.type === "local_image") {
+      images.push(item.path);
+    }
+  }
+
+  return { prompt: promptParts.join("\n\n"), images };
 }
 
 function mapCliEventToThreadEvents(
@@ -250,6 +282,7 @@ function normalizeUsage(raw: Record<string, unknown>): {
   input_tokens: number;
   cached_input_tokens: number;
   output_tokens: number;
+  reasoning_output_tokens: number;
 } {
   const toNumber = (value: unknown): number => {
     if (typeof value === "number" && Number.isFinite(value)) {
@@ -266,5 +299,6 @@ function normalizeUsage(raw: Record<string, unknown>): {
     input_tokens: toNumber(raw.input_tokens),
     cached_input_tokens: toNumber(raw.cached_input_tokens),
     output_tokens: toNumber(raw.output_tokens),
+    reasoning_output_tokens: toNumber(raw.reasoning_output_tokens),
   };
 }

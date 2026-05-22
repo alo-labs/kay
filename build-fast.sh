@@ -15,7 +15,8 @@ Environment flags:
   DETERMINISTIC_FORCE_RELEASE=0|1     Keep dev-fast (0) or switch to release-prod (1, default)
   DETERMINISTIC_NO_UUID=1             macOS only: strip LC_UUID on final executables
   BUILD_FAST_BINS="kay code code-tui"  Override bins to build (space or comma separated)
-  --workspace kay|code|codex|both     Select workspace to build (default: kay)
+  --workspace kay|kay-rs|code|code-rs|codex|both
+                                      Select workspace to build (default: kay)
 
 Examples:
   ./build-fast.sh
@@ -234,8 +235,8 @@ case "${CACHE_HOME}" in
 esac
 
 case "$WORKSPACE_CHOICE" in
-  kay|code|code-rs)
-    WORKSPACE_DIR="code-rs"
+  kay|kay-rs|code|code-rs)
+    WORKSPACE_DIR="kay-rs"
     CRATE_PREFIX="code"
     ;;
   codex|codex-rs)
@@ -243,7 +244,7 @@ case "$WORKSPACE_CHOICE" in
     CRATE_PREFIX="codex"
     ;;
   *)
-    echo "Error: Unknown workspace '${WORKSPACE_CHOICE}'. Use kay, code, codex, or both." >&2
+    echo "Error: Unknown workspace '${WORKSPACE_CHOICE}'. Use kay, kay-rs, code, code-rs, codex, or both." >&2
     exit 1
     ;;
 esac

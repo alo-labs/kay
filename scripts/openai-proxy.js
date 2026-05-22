@@ -20,7 +20,7 @@
 //   # 3) Run the local Kay binary with the proxy (dummy key to client)
 //   #    Build the binary first: ./build-fast.sh
 //   OPENAI_API_KEY="x" OPENAI_BASE_URL="http://127.0.0.1:${PORT:-5055}/v1" \
-//     ./code-rs/target/dev-fast/kay llm request \
+//     ./kay-rs/target/dev-fast/kay llm request \
 //       --developer "Say 'pong' as plain text" \
 //       --message "ping" \
 //       --format-type json_schema \

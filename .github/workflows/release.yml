@@ -97,7 +97,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          TOOLCHAIN=$(python -c "import sys, pathlib; p=pathlib.Path('code-rs/rust-toolchain.toml').read_text();
+          TOOLCHAIN=$(python -c "import sys, pathlib; p=pathlib.Path('kay-rs/rust-toolchain.toml').read_text();
           try:
               import tomllib as tl
           except ModuleNotFoundError:
@@ -123,7 +123,7 @@ jobs:
           prefix-key: v5-rust
           shared-key: code-preflight-${{ steps.rust_toolchain.outputs.channel }}
           workspaces: |
-            code-rs -> target
+            kay-rs -> target
           cache-targets: false
           cache-workspace-crates: true
           cache-on-failure: false
@@ -132,7 +132,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cd code-rs
+          cd kay-rs
           rustup run "$RUST_TOOLCHAIN" cargo build --locked --profile dev-fast --bin kay --bin code
 
       - name: CLI smokes (skip duplicated cargo tests)
@@ -157,7 +157,7 @@ jobs:
       - name: Workspace tests (nextest)
         shell: bash
         run: |
-          cd code-rs
+          cd kay-rs
           rustup run "$RUST_TOOLCHAIN" cargo nextest run --no-fail-fast --locked
 
       - name: Free disk after tests
@@ -289,7 +289,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          TOOLCHAIN=$(python -c "import sys, pathlib; p=pathlib.Path('code-rs/rust-toolchain.toml').read_text();
+          TOOLCHAIN=$(python -c "import sys, pathlib; p=pathlib.Path('kay-rs/rust-toolchain.toml').read_text();
           try:
               import tomllib as tl
           except ModuleNotFoundError:
@@ -312,7 +312,7 @@ jobs:
           prefix-key: v5-rust
           shared-key: code-${{ matrix.target }}-toolchain-${{ steps.rust_toolchain.outputs.channel }}
           workspaces: |
-            code-rs -> target
+            kay-rs -> target
           cache-targets: true
           cache-workspace-crates: true
           cache-on-failure: true
@@ -403,7 +403,7 @@ jobs:
 
       # Prefetch deps so --frozen works even with git deps
       - name: Prefetch dependencies (git + registry)
-        working-directory: code-rs
+        working-directory: kay-rs
         shell: bash
         env:
           CARGO_NET_GIT_FETCH_WITH_CLI: "true"
@@ -422,7 +422,7 @@ jobs:
           RUST_BACKTRACE: "1"
         run: |
           set -euo pipefail
-          cd code-rs
+          cd kay-rs
           (
             while sleep 60; do
               echo "cargo release build still running for ${{ matrix.target }}..."
@@ -443,7 +443,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          exe="code-rs/target/${{ matrix.target }}/release/kay"
+          exe="kay-rs/target/${{ matrix.target }}/release/kay"
           "$exe" --version
           "$exe" completion bash > /dev/null
 
@@ -451,7 +451,7 @@ jobs:
         if: matrix.os == 'windows-latest' && matrix.target == 'x86_64-pc-windows-msvc'
         shell: pwsh
         run: |
-          $exe = "code-rs/target/${{ matrix.target }}/release/kay.exe"
+          $exe = "kay-rs/target/${{ matrix.target }}/release/kay.exe"
           & $exe --version | Out-Null
           & $exe completion bash | Out-Null
 
@@ -464,11 +464,11 @@ jobs:
         run: |
           mkdir -p artifacts
           if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-            cp code-rs/target/${{ matrix.target }}/release/kay.exe artifacts/${{ matrix.artifact }}
-            cp code-rs/target/${{ matrix.target }}/release/kay.exe artifacts/${{ matrix.legacy_artifact }}
+            cp kay-rs/target/${{ matrix.target }}/release/kay.exe artifacts/${{ matrix.artifact }}
+            cp kay-rs/target/${{ matrix.target }}/release/kay.exe artifacts/${{ matrix.legacy_artifact }}
           else
-            cp code-rs/target/${{ matrix.target }}/release/kay artifacts/${{ matrix.artifact }}
-            cp code-rs/target/${{ matrix.target }}/release/kay artifacts/${{ matrix.legacy_artifact }}
+            cp kay-rs/target/${{ matrix.target }}/release/kay artifacts/${{ matrix.artifact }}
+            cp kay-rs/target/${{ matrix.target }}/release/kay artifacts/${{ matrix.legacy_artifact }}
           fi
 
       - name: Compress artifacts (Windows)
@@ -530,7 +530,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cargo-timings-${{ matrix.target }}
-          path: code-rs/target/cargo-timings/*.html
+          path: kay-rs/target/cargo-timings/*.html
           if-no-files-found: ignore
           compression-level: 0
 

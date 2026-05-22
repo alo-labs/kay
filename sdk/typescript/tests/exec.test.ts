@@ -109,7 +109,7 @@ describe("CodexExec", () => {
     process.env.CODEX_ENV_SHOULD_NOT_LEAK = "leak";
 
     try {
-      const exec = new CodexExec("codex", {
+      const exec = new CodexExec("codex", undefined, {
         KAY_HOME: "/tmp/kay-home",
         CUSTOM_ENV: "custom",
       });
