@@ -211,6 +211,12 @@ jobs:
               MAX_PUBLISHED="$v"
             fi
           done
+          # Also consider existing GitHub release tags. npm metadata can be
+          # unavailable when auth is missing or scoped package visibility changes.
+          MAX_TAG=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' | sed 's/^v//' | sort -V | tail -n1)
+          if [ -n "$MAX_TAG" ] && [ "$(printf '%s\n%s\n' "$MAX_PUBLISHED" "$MAX_TAG" | sort -V | tail -n1)" != "$MAX_PUBLISHED" ]; then
+            MAX_PUBLISHED="$MAX_TAG"
+          fi
           # Start with whichever is higher: CURRENT_VERSION or MAX_PUBLISHED
           CANDIDATE=$(printf '%s\n%s\n' "$CURRENT_VERSION" "$MAX_PUBLISHED" | sort -V | tail -n1)
           # If equal to MAX_PUBLISHED, bump patch once
