@@ -88,52 +88,97 @@ fn build_chat_completions_payload(
 
     let mut reasoning_by_anchor_index: std::collections::HashMap<usize, String> =
         std::collections::HashMap::new();
-    for (idx, item) in input.iter().enumerate() {
-        if let ResponseItem::Reasoning {
-            content: Some(items),
-            ..
-        } = item
-        {
-            let mut text = String::new();
-            for c in items {
-                match c {
-                    ReasoningItemContent::ReasoningText { text: t }
-                    | ReasoningItemContent::Text { text: t } => text.push_str(t),
-                }
+
+    // Determine the last role that would be emitted to Chat Completions.
+    let mut last_emitted_role: Option<&str> = None;
+    for item in &input {
+        match item {
+            ResponseItem::Message { role, .. } => last_emitted_role = Some(role.as_str()),
+            ResponseItem::FunctionCall { .. }
+            | ResponseItem::ToolSearchCall { .. }
+            | ResponseItem::LocalShellCall { .. } => {
+                last_emitted_role = Some("assistant")
             }
-            if text.trim().is_empty() {
+            ResponseItem::FunctionCallOutput { .. } | ResponseItem::ToolSearchOutput { .. } => {
+                last_emitted_role = Some("tool")
+            }
+            ResponseItem::CompactionSummary { .. } | ResponseItem::ContextCompaction { .. } => {
+                last_emitted_role = Some("assistant")
+            }
+            ResponseItem::Reasoning { .. } | ResponseItem::Other => {}
+            ResponseItem::CustomToolCall { .. } => {}
+            ResponseItem::CustomToolCallOutput { .. } => {}
+            ResponseItem::WebSearchCall { .. } => {}
+            ResponseItem::ImageGenerationCall { .. } => {}
+            ResponseItem::GhostSnapshot { .. } => {}
+        }
+    }
+
+    // Find the last user message index in the input.
+    let mut last_user_index: Option<usize> = None;
+    for (idx, item) in input.iter().enumerate() {
+        if let ResponseItem::Message { role, .. } = item
+            && role == "user"
+        {
+            last_user_index = Some(idx);
+        }
+    }
+
+    // Attach reasoning only if the conversation does not end with a user message.
+    if !matches!(last_emitted_role, Some("user")) {
+        for (idx, item) in input.iter().enumerate() {
+            if let Some(u_idx) = last_user_index
+                && idx <= u_idx
+            {
                 continue;
             }
 
-            let mut attached = false;
-            if idx > 0
-                && let ResponseItem::Message { role, .. } = &input[idx - 1]
-                && role == "assistant"
+            if let ResponseItem::Reasoning {
+                content: Some(items),
+                ..
+            } = item
             {
-                reasoning_by_anchor_index
-                    .entry(idx - 1)
-                    .and_modify(|v| v.push_str(&text))
-                    .or_insert(text.clone());
-                attached = true;
-            }
+                let mut text = String::new();
+                for c in items {
+                    match c {
+                        ReasoningItemContent::ReasoningText { text: t }
+                        | ReasoningItemContent::Text { text: t } => text.push_str(t),
+                    }
+                }
+                if text.trim().is_empty() {
+                    continue;
+                }
 
-            if !attached && idx + 1 < input.len() {
-                match &input[idx + 1] {
-                    ResponseItem::FunctionCall { .. }
-                    | ResponseItem::ToolSearchCall { .. }
-                    | ResponseItem::LocalShellCall { .. } => {
-                        reasoning_by_anchor_index
-                            .entry(idx + 1)
-                            .and_modify(|v| v.push_str(&text))
-                            .or_insert(text.clone());
+                let mut attached = false;
+                if idx > 0
+                    && let ResponseItem::Message { role, .. } = &input[idx - 1]
+                    && role == "assistant"
+                {
+                    reasoning_by_anchor_index
+                        .entry(idx - 1)
+                        .and_modify(|v| v.push_str(&text))
+                        .or_insert(text.clone());
+                    attached = true;
+                }
+
+                if !attached && idx + 1 < input.len() {
+                    match &input[idx + 1] {
+                        ResponseItem::FunctionCall { .. }
+                        | ResponseItem::ToolSearchCall { .. }
+                        | ResponseItem::LocalShellCall { .. } => {
+                            reasoning_by_anchor_index
+                                .entry(idx + 1)
+                                .and_modify(|v| v.push_str(&text))
+                                .or_insert(text.clone());
+                        }
+                        ResponseItem::Message { role, .. } if role == "assistant" => {
+                            reasoning_by_anchor_index
+                                .entry(idx + 1)
+                                .and_modify(|v| v.push_str(&text))
+                                .or_insert(text.clone());
+                        }
+                        _ => {}
                     }
-                    ResponseItem::Message { role, .. } if role == "assistant" => {
-                        reasoning_by_anchor_index
-                            .entry(idx + 1)
-                            .and_modify(|v| v.push_str(&text))
-                            .or_insert(text.clone());
-                    }
-                    _ => {}
                 }
             }
         }
@@ -191,7 +236,9 @@ fn build_chat_completions_payload(
                     messages.push(message);
                 }
             }
-            ResponseItem::CompactionSummary { .. } => {
+            ResponseItem::CompactionSummary { .. } | ResponseItem::ContextCompaction { .. } => {
+                // Compaction summaries are only meaningful to the Responses API; omit them
+                // when translating to Chat Completions.
                 continue;
             }
             ResponseItem::FunctionCall {

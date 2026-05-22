@@ -173,6 +173,10 @@ struct CompactHistoryRequest<'a> {
     #[serde(borrow)]
     input: &'a [ResponseItem],
     instructions: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    service_tier: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    prompt_cache_key: Option<&'a str>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -885,7 +889,8 @@ impl ModelClient {
             }
             req_builder = req_builder
                 .header("conversation_id", session_id_str.clone())
-                .header("session_id", session_id_str.clone());
+                .header("session_id", session_id_str.clone())
+                .header("thread_id", session_id_str.clone());
             if let Ok(window_id) = HeaderValue::from_str(&self.current_window_id(session_id)) {
                 req_builder = req_builder.header(X_CODEX_WINDOW_ID_HEADER, window_id);
             }
@@ -1367,6 +1372,7 @@ impl ModelClient {
                 // Send `conversation_id`/`session_id` so the server can hit the prompt-cache.
                 .header("conversation_id", session_id_str.clone())
                 .header("session_id", session_id_str.clone())
+                .header("thread_id", session_id_str.clone())
                 .header(reqwest::header::ACCEPT, "text/event-stream")
                 .json(&payload_json);
             if let Ok(window_id) = HeaderValue::from_str(&self.current_window_id(session_id)) {
@@ -1958,17 +1964,8 @@ impl ModelClient {
             .or_else(|| find_family_for_model(request_model))
             .unwrap_or_else(|| self.config.model_family.clone());
         let session_id = prompt.session_id_override.unwrap_or(self.session_id);
+        let session_id_str = session_id.to_string();
         let instructions = prompt.get_full_instructions(&family).into_owned();
-        let payload = CompactHistoryRequest {
-            model: request_model,
-            input: &prompt.input,
-            instructions: instructions.clone(),
-        };
-        let payload_json = serde_json::json!({
-            "model": payload.model,
-            "input": payload.input,
-            "instructions": instructions,
-        });
         let mut request_id = String::new();
 
         loop {
@@ -1979,6 +1976,26 @@ impl ModelClient {
                 .provider
                 .effective_auth_with_provider_key(&base_auth, provider_api_key.as_deref())
                 .await?;
+            let service_tier = if auth
+                .as_ref()
+                .is_some_and(|auth| auth.mode == AuthMode::ApiKey)
+            {
+                None
+            } else {
+                match self.config.service_tier {
+                    Some(ServiceTier::Fast) => Some("priority".to_string()),
+                    Some(service_tier) => Some(service_tier.to_string()),
+                    None => None,
+                }
+            };
+            let payload = CompactHistoryRequest {
+                model: request_model,
+                input: &prompt.input,
+                instructions: instructions.clone(),
+                service_tier,
+                prompt_cache_key: Some(session_id_str.as_str()),
+            };
+            let payload_json = serde_json::to_value(&payload)?;
             let mut request = self
                 .provider
                 .create_compact_request_builder_with_auth(&self.client, &auth)
@@ -2007,6 +2024,11 @@ impl ModelClient {
             if let Ok(window_id) = HeaderValue::from_str(&self.current_window_id(session_id)) {
                 request = request.header(X_CODEX_WINDOW_ID_HEADER, window_id);
             }
+
+            request = request
+                .header("conversation_id", session_id_str.clone())
+                .header("session_id", session_id_str.clone())
+                .header("thread_id", session_id_str.clone());
 
             if let Some(auth) = auth.as_ref()
                 && auth.mode.is_chatgpt()

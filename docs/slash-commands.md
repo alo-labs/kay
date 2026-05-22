@@ -16,8 +16,12 @@ Notes
 - `/browser`: open internal browser.
 - `/chrome`: connect to your Chrome browser.
 - `/new`: start a new chat during a conversation.
+- `/clear`: clear the terminal and start a new chat.
 - `/resume`: resume a past session for this folder.
 - `/rename <name>`: rename the current session (shown in the resume list).
+- `/quit`: exit Kay.
+- `/exit`: exit Kay.
+- `/logout`: log out of Kay.
 - `/login`: manage Kay sign-ins (select, add, or disconnect accounts).
 - `/provider`: manage provider API keys for OpenCode Go, MiniMax, and OpenAI without editing config files.
 - `/settings [section]`: open the settings panel. Optional section argument
@@ -28,6 +32,7 @@ Notes
 
 - `/init`: create an `AGENTS.md` file with instructions for Kay.
 - `/diff`: show `git diff` (including untracked files).
+- `/copy`: copy the last assistant response as markdown.
 - `/undo`: open a snapshot picker so you can restore workspace files to a
   previous Kay snapshot and optionally rewind the conversation to that point.
 - `/branch [task]`: create a worktree branch and switch to it. If a
