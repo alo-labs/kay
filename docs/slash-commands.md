@@ -124,10 +124,10 @@ typically start multiple agents. They require a task/problem description.
 Implementation Notes
 
 - The authoritative list of commands is defined in
-  `code-rs/tui/src/slash_command.rs` (the `SlashCommand` enum). When adding a
+  `kay-rs/tui/src/slash_command.rs` (the `SlashCommand` enum). When adding a
   new command, please update this document to keep the UI and docs in sync.
 - Prompt formatting for `/plan`, `/solve`, and `/code` lives in
-  `code-rs/core/src/slash_commands.rs`. `/code` is the canonical prompt-expanding
+  `kay-rs/core/src/slash_commands.rs`. `/code` is the canonical prompt-expanding
   command in the Kay UI.
   Provider credential CRUD lives in `/provider`, which is the shared entry
   point for adding, updating, or removing OpenCode Go, MiniMax, and OpenAI API

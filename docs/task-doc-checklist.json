@@ -1,7 +1,7 @@
 {
-  "task_id": "github-issues-12-19-runtime-fixes",
+  "task_id": "v0.9.15-kay-rs-workspace-rename",
   "task_granularity": 2,
-  "updated_at": "2026-05-18T22:51:38Z",
+  "updated_at": "2026-05-22T17:10:04Z",
   "_notes": [
     "Added Kay brand renaming policy and inventory docs in the current session.",
     "Refreshed during the Kay reliability-grade policy update in the current session.",
@@ -17,41 +17,42 @@
     "Refreshed during the primary binary rename from code to kay, including install, release, and command docs.",
     "Refreshed during MiniMax/runtime-isolation fixes for GitHub issues #12 and #15-#19.",
     "Reconciled the docs governance contract so doc-scheme files are updated only when governance changes, matching this hook remediation.",
-    "Refreshed for runtime model observability: session JSONL records request model, /model shows last response/request/selected model, and focused TUI coverage verifies matching and mismatch warnings."
+    "Refreshed for runtime model observability: session JSONL records request model, /model shows last response/request/selected model, and focused TUI coverage verifies matching and mismatch warnings.",
+    "Refreshed during the v0.9.15 kay-rs workspace path migration so active docs, repo instructions, and path references describe kay-rs as the active Rust workspace."
   ],
   "docs": {
     "docs/ARCHITECTURE.md": "updated",
     "docs/CHANGELOG.md": "not-needed: changelog unchanged in this session",
-    "docs/TESTING.md": "updated",
-    "docs/advanced.md": "updated",
-    "docs/agents.md": "updated",
-    "docs/authentication.md": "updated",
-    "docs/auto-drive.md": "updated",
+    "docs/TESTING.md": "not-needed: test policy unchanged for workspace path migration",
+    "docs/advanced.md": "not-needed: unchanged by workspace path migration",
+    "docs/agents.md": "not-needed: unchanged by workspace path migration",
+    "docs/authentication.md": "not-needed: unchanged by workspace path migration",
+    "docs/auto-drive.md": "not-needed: unchanged by workspace path migration",
     "docs/config.md": "updated",
-    "docs/doc-scheme.md": "not-needed: governance contract unchanged for runtime model observability",
-    "docs/doc-scheme.json": "not-needed: governance contract unchanged for runtime model observability",
-    "docs/example-config.md": "updated",
+    "docs/doc-scheme.md": "not-needed: governance contract unchanged for workspace path migration",
+    "docs/doc-scheme.json": "not-needed: governance contract unchanged for workspace path migration",
+    "docs/example-config.md": "not-needed: unchanged by workspace path migration",
     "docs/exec.md": "updated",
     "docs/execpolicy.md": "updated",
     "docs/exit-confirmation-prompt-design.md": "not-needed: unchanged in this session",
-    "docs/faq.md": "updated",
-    "docs/getting-started.md": "updated",
-    "docs/homebrew.md": "updated",
-    "docs/index.md": "updated",
+    "docs/faq.md": "not-needed: unchanged by workspace path migration",
+    "docs/getting-started.md": "not-needed: unchanged by workspace path migration",
+    "docs/homebrew.md": "not-needed: unchanged by workspace path migration",
+    "docs/index.md": "not-needed: docs navigation unchanged for workspace path migration",
     "docs/install.md": "updated",
-    "docs/integration-zed.md": "updated",
+    "docs/integration-zed.md": "not-needed: unchanged by workspace path migration",
     "docs/kay-brand-renaming-inventory.md": "updated",
-    "docs/kay-brand-renaming-policy.md": "updated",
+    "docs/kay-brand-renaming-policy.md": "not-needed: rename policy unchanged",
     "docs/knowledge/2026-05.md": "not-needed: knowledge log unchanged in this session",
     "docs/knowledge/INDEX.md": "not-needed: no docs index changes in this task",
     "docs/lessons/2026-05.md": "not-needed: lessons log unchanged in this session",
     "docs/platform-sandboxing.md": "not-needed: unchanged in this session",
     "docs/prompts.md": "not-needed: unchanged in this session",
-    "docs/release-notes/RELEASE_NOTES.md": "updated",
-    "docs/sandbox.md": "updated",
+    "docs/release-notes/RELEASE_NOTES.md": "not-needed: release notes unchanged; no release cut in this task",
+    "docs/sandbox.md": "not-needed: unchanged by workspace path migration",
     "docs/sessions/2026-05-11-19-07-24.md": "not-needed: unchanged in this session",
     "docs/settings.md": "not-needed: unchanged in this session",
-    "docs/skills.md": "updated",
+    "docs/skills.md": "not-needed: unchanged by workspace path migration",
     "docs/slash-commands.md": "updated",
     "docs/task-doc-checklist.json": "updated",
     "docs/tui-alternate-screen.md": "updated",
@@ -63,7 +64,6 @@
     "docs/workflows/devops-cycle.md": "not-needed: no workflow changes in this task",
     "docs/workflows/full-dev-cycle.md": "not-needed: no workflow changes in this task",
     "README.md": "updated",
-    "docs/install.md": "updated",
     "CHANGELOG.md": "not-needed: root release changelog unchanged for this task"
   },
   "sections": {
@@ -88,7 +88,7 @@
       "practice:docs": "not-needed: lessons log unchanged in this session"
     },
     "docs/slash-commands.md": {
-      "Prompt-Expanding (Multi-Agent)": "updated",
+      "Prompt-Expanding (Multi-Agent)": "not-needed: unchanged by workspace path migration",
       "Implementation Notes": "updated"
     },
     "docs/task-doc-checklist.json": {
@@ -98,28 +98,28 @@
     },
     "docs/ARCHITECTURE.md": {
       "System Shape": "updated",
-      "Data Flow": "updated"
+      "Data Flow": "not-needed: unchanged by workspace path migration"
     },
     "docs/index.md": {
-      "Repository Governance": "updated"
+      "Repository Governance": "not-needed: docs navigation unchanged for workspace path migration"
     },
     "docs/TESTING.md": {
-      "Required Gate": "updated",
-      "Reliability Grade": "updated",
-      "Recommended Checks": "not-needed: no further testing-doc changes in this task",
-      "Upstream Sync Policy": "updated"
+      "Required Gate": "not-needed: testing policy unchanged for workspace path migration",
+      "Reliability Grade": "not-needed: testing policy unchanged for workspace path migration",
+      "Recommended Checks": "not-needed: testing policy unchanged for workspace path migration",
+      "Upstream Sync Policy": "not-needed: testing policy unchanged for workspace path migration"
     },
     "docs/kay-brand-renaming-inventory.md": {
-      "Legend": "updated",
+      "Legend": "not-needed: unchanged by workspace path migration",
       "Current Inventory": "updated",
-      "Sweep Order": "updated",
-      "Review Rule": "updated"
+      "Sweep Order": "not-needed: unchanged by workspace path migration",
+      "Review Rule": "not-needed: unchanged by workspace path migration"
     },
     "docs/kay-brand-renaming-policy.md": {
-      "Scope": "updated",
-      "Decision Rules": "updated",
-      "Reconciliation Workflow": "updated",
-      "Acceptance Criteria": "updated"
+      "Scope": "not-needed: rename policy unchanged",
+      "Decision Rules": "not-needed: rename policy unchanged",
+      "Reconciliation Workflow": "not-needed: rename policy unchanged",
+      "Acceptance Criteria": "not-needed: rename policy unchanged"
     },
     "docs/knowledge/INDEX.md": {
       "Monthly Files": "not-needed: no docs index changes in this task"
