@@ -5,10 +5,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="${REPO_ROOT:-$(cd "${SCRIPT_DIR}/.." && pwd)}"
 
 # Keep this list narrow: only transient build/cache artifacts created by local
-# build-fast runs. Preserved binaries live under ./code-rs/bin and ./bin.
+# build-fast runs. Preserved binaries live under ./kay-rs/bin and ./bin.
 cleanup_paths=(
   "${TARGET_CACHE_DIR_ABS:-}"
-  "code-rs/target"
+  "kay-rs/target"
   "codex-rs/target"
   "target"
 )

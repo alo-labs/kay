@@ -25,25 +25,28 @@
           pnpm
           husky
         ];
-        code-rs = import ./code-rs {
+        kay-rs = import ./kay-rs {
           pkgs = pkgsWithRust;
           inherit monorepo-deps;
         };
       in
       {
         packages = {
-          code-rs = code-rs.package;
-          default = code-rs.package;
+          kay-rs = kay-rs.package;
+          code-rs = kay-rs.package;
+          default = kay-rs.package;
         };
 
         devShells = {
-          code-rs = code-rs.devShell;
-          default = code-rs.devShell;
+          kay-rs = kay-rs.devShell;
+          code-rs = kay-rs.devShell;
+          default = kay-rs.devShell;
         };
 
         apps = {
-          code-rs = code-rs.app;
-          default = code-rs.app;
+          kay-rs = kay-rs.app;
+          code-rs = kay-rs.app;
+          default = kay-rs.app;
         };
       }
     );

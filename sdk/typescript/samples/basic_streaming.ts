@@ -9,7 +9,7 @@ import path from "node:path";
 
 const codexPathOverride =
   process.env.CODEX_EXECUTABLE ??
-  path.join(process.cwd(), "..", "..", "code-rs", "target", "debug", "code");
+  path.join(process.cwd(), "..", "..", "kay-rs", "target", "debug", "code");
 
 const codex = new Codex({ codexPathOverride });
 const thread = codex.startThread();

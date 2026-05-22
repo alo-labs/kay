@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { createRequire } from "node:module";
 
 import readline from "node:readline";
 
@@ -7,12 +8,25 @@ import { SandboxMode } from "./threadOptions";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+const moduleRequire = createRequire(import.meta.url);
+const CODEX_NPM_NAME = "@alo-labs/kay";
+const INTERNAL_ORIGINATOR_ENV = "CODEX_INTERNAL_ORIGINATOR_OVERRIDE";
+const TYPESCRIPT_SDK_ORIGINATOR = "codex_sdk_ts";
+const PLATFORM_PACKAGE_BY_TARGET: Record<string, string> = {
+  "x86_64-unknown-linux-musl": "@alo-labs/kay-linux-x64-musl",
+  "aarch64-unknown-linux-musl": "@alo-labs/kay-linux-arm64-musl",
+  "x86_64-apple-darwin": "@alo-labs/kay-darwin-x64",
+  "aarch64-apple-darwin": "@alo-labs/kay-darwin-arm64",
+  "x86_64-pc-windows-msvc": "@alo-labs/kay-win32-x64",
+};
+
 export type CodexExecArgs = {
   input: string;
 
   baseUrl?: string;
   apiKey?: string;
   threadId?: string | null;
+  images?: string[];
   // --model
   model?: string;
   // --sandbox
@@ -21,15 +35,23 @@ export type CodexExecArgs = {
   workingDirectory?: string;
   // --skip-git-repo-check
   skipGitRepoCheck?: boolean;
+  // AbortSignal to cancel the execution.
+  signal?: AbortSignal;
 };
 
 export class CodexExec {
   private executablePath: string;
   private configOverrides?: CodexConfigObject;
+  private envOverride?: Record<string, string>;
 
-  constructor(executablePath: string | null = null, configOverrides?: CodexConfigObject) {
+  constructor(
+    executablePath: string | null = null,
+    configOverrides?: CodexConfigObject,
+    env?: Record<string, string>,
+  ) {
     this.executablePath = executablePath || findCodexPath();
     this.configOverrides = configOverrides;
+    this.envOverride = env;
   }
 
   async *run(args: CodexExecArgs): AsyncGenerator<string> {
@@ -68,18 +90,35 @@ export class CodexExec {
       commandArgs.push("resume", args.threadId);
     }
 
-    const env = {
-      ...process.env,
-    };
+    if (args.images?.length) {
+      for (const image of args.images) {
+        commandArgs.push("--image", image);
+      }
+    }
+
+    const env: Record<string, string> = {};
+    if (this.envOverride) {
+      Object.assign(env, this.envOverride);
+    } else {
+      for (const [key, value] of Object.entries(process.env)) {
+        if (value !== undefined) {
+          env[key] = value;
+        }
+      }
+    }
     if (args.baseUrl) {
       env.OPENAI_BASE_URL = args.baseUrl;
     }
     if (args.apiKey) {
       env.CODEX_API_KEY = args.apiKey;
     }
+    if (!env[INTERNAL_ORIGINATOR_ENV]) {
+      env[INTERNAL_ORIGINATOR_ENV] = TYPESCRIPT_SDK_ORIGINATOR;
+    }
 
     const child = spawn(this.executablePath, commandArgs, {
       env,
+      signal: args.signal,
     });
 
     let spawnError: unknown | null = null;
@@ -285,21 +324,18 @@ function findCodexPath() {
     throw new Error(`Unsupported target triple: ${targetTriple}`);
   }
 
-  let vendorRoot: string;
+  let packageRoot: string;
   try {
     const codexPackageJsonPath = moduleRequire.resolve(`${CODEX_NPM_NAME}/package.json`);
     const codexRequire = createRequire(codexPackageJsonPath);
     const platformPackageJsonPath = codexRequire.resolve(`${platformPackage}/package.json`);
-    vendorRoot = path.join(path.dirname(platformPackageJsonPath), "vendor");
+    packageRoot = path.dirname(platformPackageJsonPath);
   } catch {
     throw new Error(
-      `Unable to locate Codex CLI binaries. Ensure ${CODEX_NPM_NAME} is installed with optional dependencies.`,
+      `Unable to locate Kay CLI binaries. Ensure ${CODEX_NPM_NAME} is installed with optional dependencies.`,
     );
   }
 
-  const archRoot = path.join(vendorRoot, targetTriple);
-  const codexBinaryName = process.platform === "win32" ? "codex.exe" : "codex";
-  const binaryPath = path.join(archRoot, "codex", codexBinaryName);
-
-  return binaryPath;
+  const binaryName = `kay-${targetTriple}${process.platform === "win32" ? ".exe" : ""}`;
+  return path.join(packageRoot, "bin", binaryName);
 }
