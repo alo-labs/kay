@@ -53,11 +53,13 @@ pub enum SlashCommand {
     Browser,
     Chrome,
     New,
+    Clear,
     Init,
     Compact,
     Undo,
     Review,
     Cloud,
+    Copy,
     Diff,
     Mention,
     Cmd,
@@ -93,6 +95,7 @@ pub enum SlashCommand {
     Kay,
     Logout,
     Quit,
+    Exit,
     #[cfg(debug_assertions)]
     TestApproval,
 }
@@ -116,7 +119,9 @@ impl SlashCommand {
             SlashCommand::Undo => "restore the workspace to the last Kay snapshot",
             SlashCommand::Review => "review your changes for potential issues",
             SlashCommand::Cloud => "browse, apply, and create cloud tasks",
-            SlashCommand::Quit => "exit Kay",
+            SlashCommand::Quit | SlashCommand::Exit => "exit Kay",
+            SlashCommand::Clear => "clear the terminal and start a new chat",
+            SlashCommand::Copy => "copy last response as markdown",
             SlashCommand::Diff => "show git diff (including untracked files)",
             SlashCommand::Mention => "mention a file",
             SlashCommand::Cmd => "run a project command",
@@ -244,7 +249,7 @@ pub fn process_slash_command_message(message: &str) -> ProcessedCommand {
     let args_raw = parts.next().map(|s| s.trim()).unwrap_or("");
     let canonical_command = command_str.to_ascii_lowercase();
 
-    if matches!(canonical_command.as_str(), "quit" | "exit") {
+    if !has_slash && matches!(canonical_command.as_str(), "quit" | "exit") {
         if !has_slash && !args_raw.is_empty() {
             return ProcessedCommand::NotCommand(message.to_string());
         }
@@ -410,6 +415,23 @@ mod tests {
                 assert_eq!(command_text, "/provider");
             }
             other => panic!("expected RegularCommand, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn upstream_compat_commands_are_regular_commands() {
+        for (input, expected) in [
+            ("/exit", SlashCommand::Exit),
+            ("/clear", SlashCommand::Clear),
+            ("/copy", SlashCommand::Copy),
+        ] {
+            match process_slash_command_message(input) {
+                ProcessedCommand::RegularCommand(command, command_text) => {
+                    assert_eq!(command, expected);
+                    assert_eq!(command_text, input);
+                }
+                other => panic!("expected RegularCommand for {input}, got {:?}", other),
+            }
         }
     }
 }

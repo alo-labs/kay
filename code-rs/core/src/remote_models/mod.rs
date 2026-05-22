@@ -527,6 +527,7 @@ mod tests {
             supported_in_api: true,
             priority: 0,
             additional_speed_tiers: Vec::new(),
+            service_tiers: Vec::new(),
             availability_nux: None,
             upgrade: None,
             base_instructions: String::new(),
@@ -577,6 +578,16 @@ mod tests {
         let models = vec![model("mimo-v2.5")];
 
         assert!(find_remote_model_info(&models, "opencode-go/mimo-v2.5-pro").is_none());
+    }
+
+    #[test]
+    fn find_remote_model_info_matches_hyphenated_namespace_suffix() {
+        let models = vec![model("gpt-5.3-codex")];
+
+        let found = find_remote_model_info(&models, "custom-provider/gpt-5.3-codex")
+            .expect("hyphenated provider namespace should resolve");
+
+        assert_eq!(found.slug, "gpt-5.3-codex");
     }
 
     #[test]
