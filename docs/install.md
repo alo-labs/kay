@@ -35,7 +35,7 @@ source "$HOME/.cargo/env"
 ./build-fast.sh
 
 # Launch the TUI with a sample prompt from the preserved Kay workspace bin output.
-./code-rs/bin/kay -- "explain this codebase to me"
+./kay-rs/bin/kay -- "explain this codebase to me"
 ```
 
 > [!NOTE]

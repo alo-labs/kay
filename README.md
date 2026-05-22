@@ -140,7 +140,7 @@ source "$HOME/.cargo/env"
 ./build-fast.sh
 
 # Launch the TUI from the preserved Kay workspace bin output.
-./code-rs/bin/kay -- "explain this codebase to me"
+./kay-rs/bin/kay -- "explain this codebase to me"
 ```
 
 ## Demo Videos
@@ -370,7 +370,7 @@ git clone https://github.com/alo-labs/kay.git
 cd kay
 npm install
 ./build-fast.sh
-./code-rs/bin/kay
+./kay-rs/bin/kay
 ```
 
 If you want the repository hooks that ship with Kay, enable them locally:
