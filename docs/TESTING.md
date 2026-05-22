@@ -115,39 +115,35 @@ the first-start provider flow without `kay login`:
 ```bash
 KAY_ONBOARDING_LIVE_SMOKE=1 \
 OPENCODE_GO_LIVE_API_KEY=... \
-MINIMAX_LIVE_API_KEY=... \
 cargo test -p code-cli --test onboarding_provider_notes_app_live_smoke -- --nocapture
 ```
 
-That test starts Kay with an empty `KAY_HOME`, configures OpenCode Go and
-MiniMax through onboarding's provider manager, then iterates every supported
-OpenCode Go and MiniMax model. For each model it switches through the TUI
-`/model` command, asserts the TUI header shows the selected model, runs one
-live notes-app inspection turn, and verifies Kay's session log recorded the
-expected `model_provider_id` and `model` in the outbound session configuration.
-OpenAI API-key live testing is intentionally excluded from this smoke for now;
-OpenAI coverage should use a separate OAuth-mode smoke. The model response is
-only used to prove live work completed; model/provider identity is verified
-from Kay-side metadata, not from model self-reporting.
+That test starts Kay with an empty `KAY_HOME`, configures OpenCode Go through
+onboarding's provider manager, then iterates the curated OpenCode Go release
+matrix: MiMo V2.5, MiMo V2.5 Pro, DeepSeek V4 Flash at `xhigh` reasoning, and
+MiniMax M2.7 through OpenCode Go. For each model it switches through the TUI
+`/model` command, applies any model-specific `/reasoning` setting, asserts the
+TUI header shows the selected model, runs one live notes-app inspection turn,
+and verifies Kay's session log recorded the expected `model_provider_id` and
+`model` in the outbound session configuration. OpenAI API-key live testing is
+intentionally excluded from this smoke for now; OpenAI coverage should use a
+separate OAuth-mode smoke. Direct MiniMax.io provider testing is also excluded
+from the release gate; MiniMax M2.7 coverage runs through OpenCode Go. The model
+response is only used to prove live work completed; model/provider identity is
+verified from Kay-side metadata, not from model self-reporting.
 
 This smoke is a required pre-release gate. `./pre-release.sh` runs it after the
-dev-fast build, CLI smokes, and workspace nextest suite. By default it covers
-the full OpenCode Go + MiniMax matrix. It accepts credentials from
-`OPENCODE_GO_LIVE_API_KEY` / `MINIMAX_LIVE_API_KEY`, falls back to the normal
-`OPENCODE_GO_API_KEY` / `MINIMAX_API_KEY` env vars, and finally falls back to
-`provider_credentials.opencode-go.api_key` and
-`provider_credentials.minimax.api_key` in `$KAY_HOME/auth.json`.
-
-When a release explicitly excludes MiniMax.io provider tests, run
-`KAY_PRE_RELEASE_EXCLUDE_MINIMAX_PROVIDER_TESTS=1 ./pre-release.sh`. That keeps
-the OpenCode Go live matrix enabled while omitting direct MiniMax provider
-credential setup and live turns.
+dev-fast build, CLI smokes, and workspace nextest suite. The release gate uses
+only the curated OpenCode Go matrix above. It accepts credentials from
+`OPENCODE_GO_LIVE_API_KEY`, falls back to the normal `OPENCODE_GO_API_KEY` env
+var, and finally falls back to `provider_credentials.opencode-go.api_key` in
+`$KAY_HOME/auth.json`.
 
 For focused debugging, set `KAY_ONBOARDING_LIVE_SMOKE_MODEL_FILTER` to a comma
 separated subset of exact provider ids or model ids, such as
-`opencode-go,minimax` or `opencode-go/kimi-k2.6`. The default per-model live
-turn timeout is 15 minutes because some third-party providers can be slow after
-tool-use history accumulates.
+`opencode-go/minimax-m2.7` or `opencode-go/deepseek-v4-flash`. The default
+per-model live turn timeout is 15 minutes because some third-party providers
+can be slow after tool-use history accumulates.
 
 ## Upstream Sync Policy
 
