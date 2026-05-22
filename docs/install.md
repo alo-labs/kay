@@ -34,9 +34,9 @@ source "$HOME/.cargo/env"
 # Build everything (CLI, TUI, MCP servers). This is the same check CI runs.
 ./build-fast.sh
 
-# Launch the TUI with a sample prompt.
-./target/debug/kay -- "explain this codebase to me"
+# Launch the TUI with a sample prompt from the preserved Kay workspace bin output.
+./code-rs/bin/kay -- "explain this codebase to me"
 ```
 
 > [!NOTE]
-> The project treats compiler warnings as errors. The only required local check is `./build-fast.sh`; skip `rustfmt`/`clippy` unless asked.
+> The project treats compiler warnings as errors. The only required local check is `./build-fast.sh`, which also removes transient build artifacts after a successful build; skip `rustfmt`/`clippy` unless asked.

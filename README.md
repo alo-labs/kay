@@ -139,8 +139,8 @@ source "$HOME/.cargo/env"
 # Build everything the same way CI validates it.
 ./build-fast.sh
 
-# Launch the TUI.
-./target/debug/kay -- "explain this codebase to me"
+# Launch the TUI from the preserved Kay workspace bin output.
+./code-rs/bin/kay -- "explain this codebase to me"
 ```
 
 ## Demo Videos
@@ -361,7 +361,7 @@ Kay supports custom model providers that expose OpenAI-compatible Chat Completio
 
 ## Contributing
 
-We welcome contributions. Kay keeps the core build gate simple: run `./build-fast.sh` from the repository root and make sure it passes cleanly before you send changes.
+We welcome contributions. Kay keeps the core build gate simple: run `./build-fast.sh` from the repository root, let it clean the transient build artifacts it produces, and make sure it passes cleanly before you send changes.
 
 ### Development workflow
 
@@ -370,7 +370,7 @@ git clone https://github.com/alo-labs/kay.git
 cd kay
 npm install
 ./build-fast.sh
-./target/debug/kay
+./code-rs/bin/kay
 ```
 
 If you want the repository hooks that ship with Kay, enable them locally:

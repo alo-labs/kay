@@ -25,6 +25,9 @@ Examples:
   ./build-fast.sh run
   ./build-fast.sh perf
   ./build-fast.sh perf run
+
+Successful builds automatically remove transient build/cache directories.
+The runnable binary is copied into the selected workspace's ./bin/ directory.
 USAGE
 }
 
@@ -618,6 +621,12 @@ MACOSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET:-}
 FP
 }
 
+run_post_build_cleanup() {
+  echo "Cleaning transient build artifacts..."
+  REPO_ROOT="${REPO_ROOT}" TARGET_CACHE_DIR_ABS="${TARGET_CACHE_DIR_ABS}" \
+    bash "${REPO_ROOT}/scripts/local-build-cleanup.sh"
+}
+
 NEW_FPRINT_TEXT="$(collect_fingerprint)"
 NEW_FPRINT_HASH="$(printf "%s" "$NEW_FPRINT_TEXT" | shasum -a 256 2>/dev/null | awk '{print $1}')"
 
@@ -851,6 +860,8 @@ if [ $? -eq 0 ]; then
         echo "⚠️  Remember: Built without --locked due to Cargo.lock issues"
         echo "  Consider running 'cargo update' and committing the changes"
     fi
+
+    run_post_build_cleanup
 else
     echo "❌ Build failed"
     exit 1
