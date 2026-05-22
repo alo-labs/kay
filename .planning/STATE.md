@@ -1,33 +1,34 @@
 ---
 gsd_state_version: 1.0
-milestone: v0.9.6
-milestone_name: Kay Home Isolation
-status: Shipped
-last_updated: "2026-05-16T18:59:23Z"
-last_activity: 2026-05-16 — v0.9.6 archived, tagged, and released after the pre-release gate passed
+milestone: v0.9.15
+milestone_name: Kay Rust Workspace Rename
+status: planning
+last_updated: "2026-05-22T17:03:39.937Z"
+last_activity: 2026-05-22
 progress:
   total_phases: 1
-  completed_phases: 1
+  completed_phases: 0
   total_plans: 1
-  completed_plans: 1
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-16)
+See: .planning/PROJECT.md (updated 2026-05-23)
 
 **Core value:** Keep the CLI buildable, understandable, and safe to evolve
 without disturbing existing workflows.
-**Current focus:** Release complete; start the next milestone when ready
+**Current focus:** Phase 12: Kay Rust workspace path migration
 
 ## Current Position
 
-Phase: complete
-Plan: complete
-Status: shipped
-Last activity: 2026-05-16 — v0.9.6 archived, tagged, and released after the pre-release gate passed
+Phase: 12 — Kay Rust workspace path migration
+Plan: 12-01 — Rename active Rust workspace path from `code-rs/` to `kay-rs/`
+Status: Ready to execute
+Last activity: 2026-05-23 — Milestone v0.9.15 initialized for the workspace path migration
 
 ## Current Context
 
@@ -49,6 +50,9 @@ Last activity: 2026-05-16 — v0.9.6 archived, tagged, and released after the pr
 - [Dynamic model selection] Render provider headers in the fixed OpenCode Go, MiniMax, OpenAI order and show an explicit empty state when nothing is unlocked.
 - [Brand migration] Kay-first branding is now the default for first-party surfaces; legacy names stay only where compatibility or upstream comparison requires them.
 - [Brand migration] Daily upstream reconciliation is part of the migration process so common-file drift stays small and reviewable.
+- [Workspace rename] v0.9.15 is a path-only migration from `code-rs/` to `kay-rs/`; Rust crate names, imports, binaries, and protocol names stay unchanged.
+- [Workspace rename] No tracked or generated `code-rs -> kay-rs` filesystem compatibility symlink will remain after the rename.
+- [Workspace rename] `codex-rs/` remains the read-only upstream mirror until the separate mirror-removal plan is executed.
 - [KAY_HOME isolation] KAY_HOME is the canonical isolated root for Kay-owned writable state when it is set.
 - [KAY_HOME isolation] When KAY_HOME is unset, Kay uses its normal default home layout.
 - [KAY_HOME isolation] Session, transcript, auth, skills, worktree, and debug-log paths should resolve beneath the resolved Kay home tree.

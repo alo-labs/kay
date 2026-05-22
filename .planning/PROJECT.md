@@ -2,19 +2,30 @@
 
 ## Current State
 
-- v0.9.6 Kay Home Isolation shipped on 2026-05-16.
-- The KAY_HOME root isolation implementation is archived and the release gate
-  passed.
-- The next milestone has not been started yet.
+- v0.9.14 is the current shipped release.
+- v0.9.15 Kay Rust Workspace Rename is active.
+- The milestone is a path-only migration from `code-rs/` to `kay-rs/` while
+  preserving current crate names, imports, binaries, protocol names, and
+  compatibility command aliases.
 
 ## Core Value
 
 Keep the CLI buildable, understandable, and safe to evolve without disturbing
 existing workflows.
 
-## Current Milestone
+## Current Milestone: v0.9.15 Kay Rust Workspace Rename
 
-None. Start a new milestone when the next release cycle is defined.
+**Goal:** Rename the active Kay Rust workspace directory from `code-rs/` to
+`kay-rs/` without changing Rust crate identities or shipped binary
+compatibility.
+
+**Target features:**
+- Move the active Rust workspace to `kay-rs/` with no `code-rs` filesystem
+  symlink.
+- Update first-party build, CI, release, cleanup, upstream-sync, source-test,
+  and documentation references to the new workspace path.
+- Preserve `code-*` crate names, Rust imports, generated protocol names, and
+  compatibility binaries for a later phased rename.
 
 ## Key Decisions
 
@@ -22,6 +33,10 @@ None. Start a new milestone when the next release cycle is defined.
 - Legacy names remain only where compatibility or upstream comparison requires
   them.
 - Rename decisions are tracked in a living inventory.
+- The `code-rs/` to `kay-rs/` migration is path-only; crate/package/import
+  renames are deferred to later milestones.
+- No tracked or generated `code-rs -> kay-rs` compatibility symlink will remain
+  after the workspace path migration.
 - Daily upstream reconciliation is part of the migration process.
 - `KAY_HOME` is the canonical root for Kay-owned writable state when it is
   set.
@@ -33,4 +48,6 @@ None. Start a new milestone when the next release cycle is defined.
 
 ## Next Milestone Goals
 
-- Start the next GSD milestone when new work is ready.
+- Complete Phase 12 and validate the renamed workspace with the required
+  build, focused script checks, TypeScript SDK path tests, and pre-release
+  gate before pushing to `main`.
