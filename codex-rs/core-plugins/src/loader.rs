@@ -10,11 +10,9 @@ use crate::store::PluginStore;
 use crate::store::plugin_version_for_source;
 use codex_config::ConfigLayerStack;
 use codex_config::HooksFile;
-use codex_config::host_codex_path;
 use codex_config::types::McpServerConfig;
 use codex_config::types::PluginConfig;
 use codex_config::types::PluginMcpServerConfig;
-use codex_config::merge_toml_values;
 use codex_core_skills::SkillMetadata;
 use codex_core_skills::config_rules::SkillConfigRules;
 use codex_core_skills::config_rules::resolve_disabled_skill_paths;
@@ -45,7 +43,6 @@ use std::process::Command;
 use std::sync::Arc;
 use tempfile::TempDir;
 use tracing::warn;
-use toml::Value as TomlValue;
 
 const DEFAULT_SKILLS_DIR_NAME: &str = "skills";
 const DEFAULT_HOOKS_CONFIG_FILE: &str = "hooks/hooks.json";
@@ -115,7 +112,6 @@ pub async fn load_plugins_from_layer_stack(
     extra_plugins: HashMap<String, PluginConfig>,
     store: &PluginStore,
     restriction_product: Option<Product>,
-    plugin_hooks_enabled: bool,
 ) -> PluginLoadOutcome<McpServerConfig> {
     let skill_config_rules = skill_config_rules_from_stack(config_layer_stack);
     let mut configured_plugins = configured_plugins_from_stack(config_layer_stack);
@@ -132,7 +128,6 @@ pub async fn load_plugins_from_layer_stack(
             store,
             restriction_product,
             &skill_config_rules,
-            plugin_hooks_enabled,
         )
         .await;
         for name in loaded_plugin.mcp_servers.keys() {
@@ -381,7 +376,10 @@ fn refresh_non_curated_plugin_cache_with_mode(
 fn configured_plugins_from_stack(
     config_layer_stack: &ConfigLayerStack,
 ) -> HashMap<String, PluginConfig> {
-    configured_plugins_from_user_config_value(&config_layer_stack.effective_config())
+    let Some(user_config) = config_layer_stack.effective_user_config() else {
+        return HashMap::new();
+    };
+    configured_plugins_from_user_config_value(&user_config)
 }
 
 fn is_full_git_sha(value: &str) -> bool {
@@ -408,11 +406,33 @@ fn configured_plugins_from_codex_home(
     read_error_message: &str,
     parse_error_message: &str,
 ) -> HashMap<String, PluginConfig> {
-    let Some(config) = merged_home_config_toml(codex_home, read_error_message, parse_error_message)
-    else {
-        return HashMap::new();
+    let config_path = codex_home.join(CONFIG_TOML_FILE);
+    let user_config = match fs::read_to_string(&config_path) {
+        Ok(user_config) => user_config,
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => return HashMap::new(),
+        Err(err) => {
+            warn!(
+                path = %config_path.display(),
+                error = %err,
+                "{read_error_message}"
+            );
+            return HashMap::new();
+        }
     };
-    configured_plugins_from_user_config_value(&config)
+
+    let user_config = match toml::from_str::<toml::Value>(&user_config) {
+        Ok(user_config) => user_config,
+        Err(err) => {
+            warn!(
+                path = %config_path.display(),
+                error = %err,
+                "{parse_error_message}"
+            );
+            return HashMap::new();
+        }
+    };
+
+    configured_plugins_from_user_config_value(&user_config)
 }
 
 fn configured_plugin_ids(
@@ -471,62 +491,12 @@ pub fn configured_curated_plugin_ids_from_codex_home(codex_home: &Path) -> Vec<P
     ))
 }
 
-pub(crate) fn merged_home_config_toml(
-    codex_home: &Path,
-    read_error_message: &str,
-    parse_error_message: &str,
-) -> Option<TomlValue> {
-    let mut merged = TomlValue::Table(toml::map::Map::new());
-    let mut loaded_any = false;
-
-    let mut config_paths = Vec::new();
-    if let Some(host_path) = host_codex_path(Path::new(CONFIG_TOML_FILE))
-        && host_path != codex_home.join(CONFIG_TOML_FILE)
-    {
-        config_paths.push(host_path);
-    }
-    config_paths.push(codex_home.join(CONFIG_TOML_FILE));
-
-    for config_path in config_paths {
-        let raw_config = match fs::read_to_string(&config_path) {
-            Ok(raw_config) => raw_config,
-            Err(err) if err.kind() == std::io::ErrorKind::NotFound => continue,
-            Err(err) => {
-                warn!(
-                    path = %config_path.display(),
-                    error = %err,
-                    "{read_error_message}"
-                );
-                continue;
-            }
-        };
-
-        let parsed = match toml::from_str::<TomlValue>(&raw_config) {
-            Ok(config) => config,
-            Err(err) => {
-                warn!(
-                    path = %config_path.display(),
-                    error = %err,
-                    "{parse_error_message}"
-                );
-                continue;
-            }
-        };
-
-        merge_toml_values(&mut merged, &parsed);
-        loaded_any = true;
-    }
-
-    loaded_any.then_some(merged)
-}
-
 async fn load_plugin(
     config_name: String,
     plugin: &PluginConfig,
     store: &PluginStore,
     restriction_product: Option<Product>,
     skill_config_rules: &SkillConfigRules,
-    plugin_hooks_enabled: bool,
 ) -> LoadedPlugin<McpServerConfig> {
     let plugin_id = PluginId::parse(&config_name);
     let active_plugin_root = plugin_id
@@ -624,16 +594,14 @@ async fn load_plugin(
     }
     loaded_plugin.mcp_servers = mcp_servers;
     loaded_plugin.apps = load_plugin_apps(plugin_root.as_path()).await;
-    if plugin_hooks_enabled {
-        let (hook_sources, hook_load_warnings) = load_plugin_hooks(
-            &plugin_root,
-            &loaded_plugin_id,
-            &store.plugin_data_root(&loaded_plugin_id),
-            manifest_paths,
-        );
-        loaded_plugin.hook_sources = hook_sources;
-        loaded_plugin.hook_load_warnings = hook_load_warnings;
-    }
+    let (hook_sources, hook_load_warnings) = load_plugin_hooks(
+        &plugin_root,
+        &loaded_plugin_id,
+        &store.plugin_data_root(&loaded_plugin_id),
+        manifest_paths,
+    );
+    loaded_plugin.hook_sources = hook_sources;
+    loaded_plugin.hook_load_warnings = hook_load_warnings;
     loaded_plugin
 }
 
@@ -687,6 +655,7 @@ pub async fn load_plugin_skills(
             scope: SkillScope::User,
             file_system: Arc::clone(&LOCAL_FS),
             plugin_id: Some(plugin_id.as_key()),
+            plugin_root: Some(plugin_root.clone()),
         })
         .collect::<Vec<_>>();
     let outcome = load_skills_from_roots(roots).await;
@@ -1080,13 +1049,21 @@ fn normalize_plugin_mcp_server_value(
         }
     }
 
-    if let Some(JsonValue::Object(oauth)) = object.remove("oauth")
-        && oauth.contains_key("callbackPort")
-    {
-        warn!(
-            plugin = %plugin_root.display(),
-            "plugin MCP server OAuth callbackPort is ignored; Codex uses global MCP OAuth callback settings"
-        );
+    if let Some(JsonValue::Object(mut oauth)) = object.remove("oauth") {
+        if oauth.remove("callbackPort").is_some() {
+            warn!(
+                plugin = %plugin_root.display(),
+                "plugin MCP server OAuth callbackPort is ignored; Codex uses global MCP OAuth callback settings"
+            );
+        }
+
+        if let Some(client_id) = oauth.remove("clientId") {
+            oauth.entry("client_id".to_string()).or_insert(client_id);
+        }
+
+        if !oauth.is_empty() {
+            object.insert("oauth".to_string(), JsonValue::Object(oauth));
+        }
     }
 
     if let Some(JsonValue::String(cwd)) = object.get("cwd")

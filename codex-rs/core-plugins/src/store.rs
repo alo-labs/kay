@@ -4,8 +4,10 @@ use codex_plugin::PluginId;
 use codex_plugin::validate_plugin_segment;
 use codex_utils_absolute_path::AbsolutePathBuf;
 use codex_utils_plugins::find_plugin_manifest_path;
+use semver::Version;
 use serde::Deserialize;
 use serde_json::Value as JsonValue;
+use std::cmp::Ordering;
 use std::fs;
 use std::io;
 use std::path::Path;
@@ -26,7 +28,6 @@ pub struct PluginInstallResult {
 pub struct PluginStore {
     root: AbsolutePathBuf,
     data_root: AbsolutePathBuf,
-    overlay_roots: Vec<AbsolutePathBuf>,
 }
 
 impl PluginStore {
@@ -42,22 +43,7 @@ impl PluginStore {
             AbsolutePathBuf::from_absolute_path_checked(codex_home.join(PLUGINS_DATA_DIR))
                 .map_err(|err| PluginStoreError::io("failed to resolve plugin data root", err))?;
 
-        Ok(Self {
-            root,
-            data_root,
-            overlay_roots: Vec::new(),
-        })
-    }
-
-    pub fn with_overlay_roots(mut self, overlay_roots: Vec<PathBuf>) -> Self {
-        self.overlay_roots = overlay_roots
-            .into_iter()
-            .filter_map(|path| AbsolutePathBuf::try_from(path).ok())
-            .filter(|path| path.as_path() != self.root.as_path())
-            .collect();
-        self.overlay_roots.sort_unstable();
-        self.overlay_roots.dedup();
-        self
+        Ok(Self { root, data_root })
     }
 
     pub fn root(&self) -> &AbsolutePathBuf {
@@ -70,16 +56,8 @@ impl PluginStore {
             .join(&plugin_id.plugin_name)
     }
 
-    fn plugin_base_root_in(root: &Path, plugin_id: &PluginId) -> PathBuf {
-        root.join(&plugin_id.marketplace_name).join(&plugin_id.plugin_name)
-    }
-
     pub fn plugin_root(&self, plugin_id: &PluginId, plugin_version: &str) -> AbsolutePathBuf {
         self.plugin_base_root(plugin_id).join(plugin_version)
-    }
-
-    fn plugin_root_in(root: &Path, plugin_id: &PluginId, plugin_version: &str) -> PathBuf {
-        Self::plugin_base_root_in(root, plugin_id).join(plugin_version)
     }
 
     pub fn plugin_data_root(&self, plugin_id: &PluginId) -> AbsolutePathBuf {
@@ -90,34 +68,7 @@ impl PluginStore {
     }
 
     pub fn active_plugin_version(&self, plugin_id: &PluginId) -> Option<String> {
-        self.active_plugin_location(plugin_id)
-            .map(|(_, version)| version)
-    }
-
-    pub fn active_plugin_root(&self, plugin_id: &PluginId) -> Option<AbsolutePathBuf> {
-        self.active_plugin_location(plugin_id)
-            .map(|(root, _)| root)
-    }
-
-    pub fn is_installed(&self, plugin_id: &PluginId) -> bool {
-        self.active_plugin_version(plugin_id).is_some()
-    }
-
-    fn active_plugin_location(&self, plugin_id: &PluginId) -> Option<(AbsolutePathBuf, String)> {
-        self.active_plugin_location_in_root(self.root.as_path(), plugin_id).or_else(|| {
-            self.overlay_roots
-                .iter()
-                .find_map(|root| self.active_plugin_location_in_root(root.as_path(), plugin_id))
-        })
-    }
-
-    fn active_plugin_location_in_root(
-        &self,
-        root: &Path,
-        plugin_id: &PluginId,
-    ) -> Option<(AbsolutePathBuf, String)> {
-        let plugin_base_root = Self::plugin_base_root_in(root, plugin_id);
-        let mut discovered_versions = fs::read_dir(&plugin_base_root)
+        let mut discovered_versions = fs::read_dir(self.plugin_base_root(plugin_id).as_path())
             .ok()?
             .filter_map(Result::ok)
             .filter_map(|entry| {
@@ -126,8 +77,8 @@ impl PluginStore {
             })
             .filter(|version| validate_plugin_version_segment(version).is_ok())
             .collect::<Vec<_>>();
-        discovered_versions.sort_unstable();
-        let plugin_version = if discovered_versions.is_empty() {
+        discovered_versions.sort_unstable_by(|left, right| compare_plugin_versions(left, right));
+        if discovered_versions.is_empty() {
             None
         } else if discovered_versions
             .iter()
@@ -136,8 +87,16 @@ impl PluginStore {
             Some(DEFAULT_PLUGIN_VERSION.to_string())
         } else {
             discovered_versions.pop()
-        }?;
-        Some((AbsolutePathBuf::try_from(Self::plugin_root_in(root, plugin_id, &plugin_version)).ok()?, plugin_version))
+        }
+    }
+
+    pub fn active_plugin_root(&self, plugin_id: &PluginId) -> Option<AbsolutePathBuf> {
+        self.active_plugin_version(plugin_id)
+            .map(|plugin_version| self.plugin_root(plugin_id, &plugin_version))
+    }
+
+    pub fn is_installed(&self, plugin_id: &PluginId) -> bool {
+        self.active_plugin_version(plugin_id).is_some()
     }
 
     pub fn install(
@@ -329,6 +288,15 @@ fn replace_plugin_root_atomically(
     let staged_version_root = staged_root.join(plugin_version);
     copy_dir_recursive(source, &staged_version_root)?;
 
+    let target_version_root = target_root.join(plugin_version);
+    if target_root.exists() && !target_version_root.exists() {
+        fs::rename(&staged_version_root, &target_version_root).map_err(|err| {
+            PluginStoreError::io("failed to activate updated plugin cache version", err)
+        })?;
+        remove_old_plugin_versions(target_root, plugin_version)?;
+        return Ok(());
+    }
+
     if target_root.exists() {
         let backup_dir = tempfile::Builder::new()
             .prefix("plugin-backup-")
@@ -363,6 +331,52 @@ fn replace_plugin_root_atomically(
     }
 
     Ok(())
+}
+
+fn remove_old_plugin_versions(
+    target_root: &Path,
+    plugin_version: &str,
+) -> Result<(), PluginStoreError> {
+    let Ok(entries) = fs::read_dir(target_root) else {
+        return Ok(());
+    };
+
+    for entry in entries.filter_map(Result::ok) {
+        let Ok(file_type) = entry.file_type() else {
+            continue;
+        };
+        if !file_type.is_dir() {
+            continue;
+        }
+        let Ok(version) = entry.file_name().into_string() else {
+            continue;
+        };
+        if version == plugin_version || validate_plugin_version_segment(&version).is_err() {
+            continue;
+        }
+
+        if fs::remove_dir_all(entry.path()).is_err()
+            && old_plugin_version_would_stay_active(&version, plugin_version)
+        {
+            return Err(PluginStoreError::Invalid(format!(
+                "failed to activate updated plugin cache version `{plugin_version}` while `{version}` remains active"
+            )));
+        }
+    }
+
+    Ok(())
+}
+
+fn old_plugin_version_would_stay_active(old_version: &str, new_version: &str) -> bool {
+    old_version == DEFAULT_PLUGIN_VERSION
+        || compare_plugin_versions(old_version, new_version).is_gt()
+}
+
+fn compare_plugin_versions(left: &str, right: &str) -> Ordering {
+    match (Version::parse(left), Version::parse(right)) {
+        (Ok(left), Ok(right)) => left.cmp(&right),
+        _ => left.cmp(right),
+    }
 }
 
 fn copy_dir_recursive(source: &Path, target: &Path) -> Result<(), PluginStoreError> {
