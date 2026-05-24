@@ -9,6 +9,7 @@ This file is the canonical home for test strategy and verification guidance.
 - Treat warnings as failures and fix them before completion
 - For provider-registration and resume-compatibility changes, add a focused regression check for the built-in provider path before closing
 - For runtime model observability changes, add focused TUI coverage that proves `/model` shows the latest response model and warns when the response model differs from the request model
+- For upstream merge strategy or release-monitoring documentation changes, validate the edited Markdown plus structured checklist files directly; only run the full build gate when code, scripts, packaging, workflows, dependencies, or generated artifacts changed
 
 ## Reliability Grade
 
@@ -154,6 +155,10 @@ The upstream merge workflow is the place to triage OSS Codex drift. Keep the fol
 - upstream triage answers "what should we pull forward next?"
 
 That means high-risk upstream changes should be logged, classified, and resolved in the merge workflow, but they should not stop a release unless they also introduce a Kay-side regression or a missing required validation.
+
+After a release workflow succeeds on `main`, release verification also includes
+checking the Google Chat announcement job or running the manual announcement
+workflow for the released tag before calling the release complete.
 
 ## Notes
 

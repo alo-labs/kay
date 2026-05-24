@@ -25,6 +25,11 @@ const GPT_5_1_INSTRUCTIONS: &str = include_str!("../gpt_5_1_prompt.md");
 const GPT_5_2_INSTRUCTIONS: &str = include_str!("../gpt_5_2_prompt.md");
 const GPT_5_1_CODEX_MAX_INSTRUCTIONS: &str = include_str!("../gpt-5.1-codex-max_prompt.md");
 const GPT_5_2_CODEX_INSTRUCTIONS: &str = include_str!("../gpt-5.2-codex_prompt.md");
+const MIMO_SYNTHESIS_CHECKPOINT_INSTRUCTIONS: &str = r#"MiMo investigation discipline:
+- Consolidate findings before ending an investigation turn.
+- If you have read or searched the same files repeatedly, stop rereading and summarize what is already known.
+- Before taking another exploratory tool action, state the current hypothesis, the evidence for it, and the single next observation that would change it.
+- When enough evidence has been gathered, provide the diagnosis or next concrete code change instead of another preamble."#;
 const DEFAULT_PERSONALITY_HEADER: &str = "You are Codex, a coding agent based on GPT-5. You and the user share the same workspace and collaborate to achieve the user's goals.";
 const LOCAL_FRIENDLY_TEMPLATE: &str =
     "You optimize for team morale and being a supportive teammate as much as code quality.";
@@ -400,6 +405,19 @@ fn apply_upstream_model_overrides(mut family: ModelFamily) -> ModelFamily {
     family
 }
 
+fn with_mimo_synthesis_checkpoint(mut family: ModelFamily) -> ModelFamily {
+    if !family
+        .base_instructions
+        .contains("Consolidate findings before ending an investigation turn")
+    {
+        family.base_instructions.push_str("\n\n");
+        family
+            .base_instructions
+            .push_str(MIMO_SYNTHESIS_CHECKPOINT_INSTRUCTIONS);
+    }
+    family
+}
+
 /// Returns a `ModelFamily` for the given model slug, or `None` if the slug
 /// does not match any known model family.
 pub fn find_family_for_model(slug: &str) -> Option<ModelFamily> {
@@ -633,6 +651,7 @@ pub fn find_family_for_model(slug: &str) -> Option<ModelFamily> {
             slug, "mimo",
             needs_special_apply_patch_instructions: false,
         )
+        .map(with_mimo_synthesis_checkpoint)
     } else if slug.starts_with("minimax-m2.7") {
         model_family!(
             slug, "minimax-m2.7",
@@ -803,6 +822,19 @@ mod tests {
         assert_eq!(minimax.slug, "opencode-go/minimax-m2.7");
         assert_eq!(minimax.family, "minimax-m2.7");
         assert_eq!(minimax.context_window, Some(204_800));
+    }
+
+    #[test]
+    fn mimo_family_includes_synthesis_checkpoint_instructions() {
+        let family = find_family_for_model("opencode-go/mimo-v2.5-pro")
+            .expect("known MiMo model");
+
+        assert!(
+            family
+                .base_instructions
+                .contains("Consolidate findings before ending an investigation turn"),
+            "MiMo models need explicit anti-loop synthesis guidance"
+        );
     }
 
     #[test]

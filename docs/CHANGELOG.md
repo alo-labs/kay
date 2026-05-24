@@ -2,6 +2,12 @@
 
 Rolling task log for the documentation and workflow surface.
 
+## 2026-05-24
+
+- Added a MiMo-specific synthesis checkpoint so `opencode-go/mimo-v2.5-pro`
+  gets explicit anti-loop investigation guidance during multi-file debugging
+  turns.
+
 ## [0.9.0] — 2026-05-13
 
 - Added the isolated `~/.kay` runtime and stopped Kay from inheriting a local Codex environment by default.
