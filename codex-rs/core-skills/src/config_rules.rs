@@ -35,9 +35,7 @@ pub fn skill_config_rules_from_stack(config_layer_stack: &ConfigLayerStack) -> S
     ) {
         if !matches!(
             layer.name,
-            ConfigLayerSource::System { .. }
-                | ConfigLayerSource::User { .. }
-                | ConfigLayerSource::SessionFlags
+            ConfigLayerSource::User { .. } | ConfigLayerSource::SessionFlags
         ) {
             continue;
         }
