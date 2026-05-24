@@ -277,7 +277,7 @@ const AGENT_MODEL_SPECS: &[AgentModelSpec] = &[
         cli: "qwen",
         read_only_args: QWEN_3_CODER_READ_ONLY,
         write_args: QWEN_3_CODER_WRITE,
-        model_args: &["-m", "qwen-3-coder"],
+        model_args: &["-m", "qwen3-coder-plus"],
         description: "Fast and capable alternative; useful as a second opinion or for cross-checking.",
         enabled_by_default: true,
         aliases: &["qwen", "qwen3"],
@@ -733,6 +733,12 @@ mod tests {
 
         let mid_upgrade = agent_model_spec("code-gpt-5.2").expect("mid upgrade alias present");
         assert_eq!(mid_upgrade.slug, "code-gpt-5.4");
+    }
+
+    #[test]
+    fn qwen_uses_dashscope_model_id() {
+        let qwen = agent_model_spec("qwen-3-coder").expect("qwen spec present");
+        assert_eq!(qwen.model_args, &["-m", "qwen3-coder-plus"]);
     }
 
     #[test]

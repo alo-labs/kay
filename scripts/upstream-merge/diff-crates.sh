@@ -58,19 +58,20 @@ diff_crate() {
     local crate_name="$1"
     local codex_path="codex-rs/${crate_name}"
     local kay_path="kay-rs/${crate_name}"
+    local output_file="${OUTPUT_DIR}/${crate_name}.diff"
 
     # Check if both directories exist
     if [[ ! -d "$codex_path" ]]; then
         echo "⚠️  Warning: $codex_path does not exist"
-        return 1
+        printf 'Missing upstream crate: %s\n' "$codex_path" > "$output_file"
+        return 0
     fi
 
     if [[ ! -d "$kay_path" ]]; then
         echo "⚠️  Warning: $kay_path does not exist (fork-only crate)"
-        return 1
+        printf 'Missing Kay crate: %s\n' "$kay_path" > "$output_file"
+        return 0
     fi
-
-    local output_file="${OUTPUT_DIR}/${crate_name}.diff"
 
     echo "📊 Comparing ${crate_name}..."
 
@@ -151,8 +152,10 @@ HEADER
             echo "" >> "$summary_file"
 
             # Extract added/removed line counts
-            local added=$(grep -cE '^\+[^+]' "$diff_file" || echo "0")
-            local removed=$(grep -cE '^-[^-]' "$diff_file" || echo "0")
+            local added
+            local removed
+            added=$(grep -cE '^\+[^+]' "$diff_file" || true)
+            removed=$(grep -cE '^-[^-]' "$diff_file" || true)
             echo "- Lines added: ${added}" >> "$summary_file"
             echo "- Lines removed: ${removed}" >> "$summary_file"
             echo "" >> "$summary_file"
