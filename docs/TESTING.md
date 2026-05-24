@@ -4,7 +4,8 @@ This file is the canonical home for test strategy and verification guidance.
 
 ## Required Gate
 
-- Run `./build-fast.sh` from the repo root before finishing work; it now performs the mandatory transient-artifact cleanup step on success
+- Run `./build-fast.sh` from the repo root before finishing code, build, script, packaging, workflow, dependency, or generated-artifact changes; it now performs the mandatory transient-artifact cleanup step on success
+- Documentation-only changes are exempt from `./build-fast.sh`; validate them with targeted checks such as `git diff --check`, structured-file syntax checks for edited JSON/YAML, and Markdown review where useful
 - Treat warnings as failures and fix them before completion
 - For provider-registration and resume-compatibility changes, add a focused regression check for the built-in provider path before closing
 - For runtime model observability changes, add focused TUI coverage that proves `/model` shows the latest response model and warns when the response model differs from the request model

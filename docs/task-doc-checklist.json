@@ -1,7 +1,7 @@
 {
-  "task_id": "v0.9.15-kay-rs-workspace-rename",
+  "task_id": "upstream-merge-strategy",
   "task_granularity": 2,
-  "updated_at": "2026-05-22T17:10:04Z",
+  "updated_at": "2026-05-24T03:56:44Z",
   "_notes": [
     "Added Kay brand renaming policy and inventory docs in the current session.",
     "Refreshed during the Kay reliability-grade policy update in the current session.",
@@ -18,12 +18,14 @@
     "Refreshed during MiniMax/runtime-isolation fixes for GitHub issues #12 and #15-#19.",
     "Reconciled the docs governance contract so doc-scheme files are updated only when governance changes, matching this hook remediation.",
     "Refreshed for runtime model observability: session JSONL records request model, /model shows last response/request/selected model, and focused TUI coverage verifies matching and mismatch warnings.",
-    "Refreshed during the v0.9.15 kay-rs workspace path migration so active docs, repo instructions, and path references describe kay-rs as the active Rust workspace."
+    "Refreshed during the v0.9.15 kay-rs workspace path migration so active docs, repo instructions, and path references describe kay-rs as the active Rust workspace.",
+    "Added docs/upstream-merge-strategy.md to capture Kay's Every Code-first merge strategy plus the mandatory direct OSS Codex review pass.",
+    "Clarified that documentation-only changes are exempt from the ./build-fast.sh completion gate and should use targeted doc validation instead."
   ],
   "docs": {
     "docs/ARCHITECTURE.md": "updated",
     "docs/CHANGELOG.md": "not-needed: changelog unchanged in this session",
-    "docs/TESTING.md": "not-needed: test policy unchanged for workspace path migration",
+    "docs/TESTING.md": "updated",
     "docs/advanced.md": "not-needed: unchanged by workspace path migration",
     "docs/agents.md": "not-needed: unchanged by workspace path migration",
     "docs/authentication.md": "not-needed: unchanged by workspace path migration",
@@ -61,6 +63,7 @@
     "docs/tui-stream-chunking-review.md": "not-needed: unchanged in this session",
     "docs/tui-stream-chunking-tuning.md": "not-needed: unchanged in this session",
     "docs/tui-stream-chunking-validation.md": "not-needed: unchanged in this session",
+    "docs/upstream-merge-strategy.md": "updated",
     "docs/workflows/devops-cycle.md": "not-needed: no workflow changes in this task",
     "docs/workflows/full-dev-cycle.md": "not-needed: no workflow changes in this task",
     "README.md": "updated",
@@ -104,10 +107,16 @@
       "Repository Governance": "not-needed: docs navigation unchanged for workspace path migration"
     },
     "docs/TESTING.md": {
-      "Required Gate": "not-needed: testing policy unchanged for workspace path migration",
+      "Required Gate": "updated",
       "Reliability Grade": "not-needed: testing policy unchanged for workspace path migration",
       "Recommended Checks": "not-needed: testing policy unchanged for workspace path migration",
       "Upstream Sync Policy": "not-needed: testing policy unchanged for workspace path migration"
+    },
+    "docs/upstream-merge-strategy.md": {
+      "Current Upstream Layout": "updated",
+      "Why Every Code Comes First": "updated",
+      "Why OSS Codex Still Gets A Separate Pass": "updated",
+      "Recommended Next Step": "updated"
     },
     "docs/kay-brand-renaming-inventory.md": {
       "Legend": "not-needed: unchanged by workspace path migration",
