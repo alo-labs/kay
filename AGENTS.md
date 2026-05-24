@@ -25,7 +25,8 @@ In the `kay-rs` folder where the active Kay Rust code lives:
 
 Completion/build step
 
-- Always validate using `./build-fast.sh` from the repo root. This is the single required check and must pass cleanly.
+- Validate code, build, script, packaging, workflow, dependency, or generated-artifact changes using `./build-fast.sh` from the repo root. This is the single required code/build check and must pass cleanly.
+- Documentation-only changes are exempt from `./build-fast.sh`; validate them with targeted checks such as `git diff --check`, JSON/YAML syntax checks for edited structured docs, and review of the rendered Markdown where useful.
 - `./build-fast.sh` can take 20+min to run from a cold cache!!! Please use long timeout when running `./build-fast.sh` or waiting for it to complete.
 - Policy: All errors AND all warnings must be fixed before you’re done. Treat any compiler warning as a failure and address it (rename unused vars with `_`, remove `mut`, delete dead code, etc.).
 - Do not run additional format/lint/test commands on completion (e.g., `just fmt`, `just fix`, `cargo test`) unless explicitly requested for a specific task.
