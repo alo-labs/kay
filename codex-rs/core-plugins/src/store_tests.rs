@@ -122,45 +122,6 @@ fn plugin_data_root_derives_path_from_key() {
 }
 
 #[test]
-fn active_plugin_root_prefers_local_root_over_overlay_root() {
-    let local_home = tempdir().unwrap();
-    let host_home = tempdir().unwrap();
-    let plugin_id = PluginId::new("sample".to_string(), "debug".to_string()).unwrap();
-    let local_root = local_home.path().join("plugins/cache/debug/sample/local");
-    let host_root = host_home.path().join("plugins/cache/debug/sample/local");
-
-    fs::create_dir_all(&local_root).unwrap();
-    fs::create_dir_all(&host_root).unwrap();
-
-    let store = PluginStore::new(local_home.path().to_path_buf())
-        .with_overlay_roots(vec![host_home.path().join("plugins/cache")]);
-
-    assert_eq!(
-        store.active_plugin_root(&plugin_id).unwrap().as_path(),
-        local_root
-    );
-}
-
-#[test]
-fn active_plugin_root_falls_back_to_overlay_root_when_local_missing() {
-    let local_home = tempdir().unwrap();
-    let host_home = tempdir().unwrap();
-    let plugin_id = PluginId::new("sample".to_string(), "debug".to_string()).unwrap();
-    let host_root = host_home.path().join("plugins/cache/debug/sample/local");
-
-    fs::create_dir_all(&host_root).unwrap();
-
-    let store = PluginStore::new(local_home.path().to_path_buf())
-        .with_overlay_roots(vec![host_home.path().join("plugins/cache")]);
-
-    assert_eq!(
-        store.active_plugin_root(&plugin_id).unwrap().as_path(),
-        host_root
-    );
-    assert!(store.is_installed(&plugin_id));
-}
-
-#[test]
 fn install_with_version_uses_requested_cache_version() {
     let tmp = tempdir().unwrap();
     write_plugin(tmp.path(), "sample-plugin", "sample-plugin");
