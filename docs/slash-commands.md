@@ -135,6 +135,9 @@ Implementation Notes
   The end-user install and release docs should stay aligned with the shipped
   assets in GitHub Releases, not with the presence or absence of npm registry
   publication.
+  Release-monitoring instructions should stay aligned with
+  `docs/upstream-merge-strategy.md` and `AGENTS.md`, including the required
+  Google Chat announcement check after successful `main` releases.
   When no `[[agents]]` are configured, the orchestrator advertises the
   following model slugs to the LLM for multi-agent runs: `code-gpt-5.4`,
   `code-gpt-5.3-codex`, `claude-opus-4.6`, `gemini-3-pro`,
