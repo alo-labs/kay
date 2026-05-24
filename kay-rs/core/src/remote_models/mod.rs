@@ -528,6 +528,7 @@ mod tests {
             priority: 0,
             additional_speed_tiers: Vec::new(),
             service_tiers: Vec::new(),
+            default_service_tier: None,
             availability_nux: None,
             upgrade: None,
             base_instructions: String::new(),
