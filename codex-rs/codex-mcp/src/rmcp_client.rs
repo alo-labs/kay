@@ -73,7 +73,6 @@ pub(crate) const MCP_TOOLS_FETCH_UNCACHED_DURATION_METRIC: &str =
     "codex.mcp.tools.fetch_uncached.duration_ms";
 pub(crate) const DEFAULT_STARTUP_TIMEOUT: Duration = Duration::from_secs(30);
 pub(crate) const DEFAULT_TOOL_TIMEOUT: Duration = Duration::from_secs(120);
-const LIST_TOOLS_PENDING_STARTUP_WAIT: Duration = Duration::from_millis(250);
 
 const UNTRUSTED_CONNECTOR_META_KEYS: &[&str] = &[
     "connector_id",
@@ -301,15 +300,6 @@ impl AsyncManagedClient {
         // Keep cache payloads raw; plugin provenance is resolved per-session at read time.
         let tools = if let Some(startup_tools) = self.startup_snapshot_while_initializing() {
             Some(startup_tools)
-        } else if !self.startup_complete.load(Ordering::Acquire) {
-            // If startup has not completed and we do not have a snapshot, wait a
-            // short bounded interval for startup to finish, then continue without
-            // blocking the entire turn on a hung/slow optional server.
-            match tokio::time::timeout(LIST_TOOLS_PENDING_STARTUP_WAIT, self.client()).await {
-                Ok(Ok(client)) => Some(client.listed_tools()),
-                Ok(Err(_)) => self.startup_snapshot.clone(),
-                Err(_) => None,
-            }
         } else {
             match self.client().await {
                 Ok(client) => Some(client.listed_tools()),
