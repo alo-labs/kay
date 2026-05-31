@@ -2495,6 +2495,8 @@ async fn run_agent(
     // Continue with our fork's history and input handling.
 
     let is_review_mode = turn_context.is_review_mode;
+    let repairs_final_output_contracts =
+        turn_context.client.get_model_family().family.as_str() == "mimo";
     let mut review_history: Vec<ResponseItem> = Vec::new();
     let mut review_messages: Vec<String> = Vec::new();
     let mut review_exit_emitted = false;
@@ -2543,6 +2545,7 @@ async fn run_agent(
     }
 
     let mut last_task_message: Option<String> = None;
+    let mut final_output_schema_repair_attempts = 0usize;
     // Although from the perspective of codex.rs, TurnDiffTracker has the lifecycle of a Agent which contains
     // many turns, from the perspective of the user, it is a single turn.
     let mut turn_diff_tracker = TurnDiffTracker::new();
@@ -2898,6 +2901,23 @@ async fn run_agent(
                 }
 
                 if responses.is_empty() {
+                    if !is_review_mode
+                        && repairs_final_output_contracts
+                        && final_output_schema_repair_attempts < 2
+                        && let Some(schema) = turn_context.final_output_json_schema.as_ref()
+                        && !final_output_message_satisfies_json_schema(
+                            last_task_message.as_deref(),
+                            schema,
+                        )
+                    {
+                        final_output_schema_repair_attempts += 1;
+                        sess.add_pending_input(final_output_schema_repair_input(
+                            schema,
+                            final_output_schema_repair_attempts,
+                        ));
+                        continue;
+                    }
+
                     debug!("Turn completed");
                     if let Some(m) = last_task_message.as_ref() {
                         tracing::info!("core.turn completed: last_assistant_message.len={}", m.len());
@@ -8396,9 +8416,210 @@ fn autonomous_runtime_failure_message(error: &CodexErr) -> String {
     )
 }
 
+fn final_output_schema_repair_input(
+    schema: &serde_json::Value,
+    attempt: usize,
+) -> ResponseInputItem {
+    let schema_json = serde_json::to_string(schema).unwrap_or_else(|_| schema.to_string());
+    let text = format!(
+        "Final output schema repair attempt {attempt}: the previous assistant message did not satisfy the final output contract. Do not continue in normal prose. If file or tool work is incomplete, continue with tool calls now. If the work is complete, reply with exactly one JSON object matching this schema and no markdown fences or prose. Schema: {schema_json}"
+    );
+    ResponseInputItem::Message {
+        role: "developer".to_string(),
+        content: vec![ContentItem::InputText { text }],
+    }
+}
+
+fn final_output_message_satisfies_json_schema(
+    message: Option<&str>,
+    schema: &serde_json::Value,
+) -> bool {
+    let Some(message) = message else {
+        return false;
+    };
+    let Some(value) = parse_json_value_from_final_message(message) else {
+        return false;
+    };
+
+    json_value_satisfies_schema(&value, schema)
+}
+
+fn parse_json_value_from_final_message(message: &str) -> Option<serde_json::Value> {
+    let trimmed = message.trim();
+    if let Ok(value) = serde_json::from_str::<serde_json::Value>(trimmed) {
+        return Some(value);
+    }
+
+    let fence_starts = trimmed
+        .match_indices("```")
+        .map(|(idx, _)| idx)
+        .collect::<Vec<_>>();
+    for start in fence_starts.into_iter().rev() {
+        let after_fence = &trimmed[start + "```".len()..];
+        let Some(language_end) = after_fence.find('\n') else {
+            continue;
+        };
+        if after_fence[..language_end].trim().to_ascii_lowercase() != "json" {
+            continue;
+        }
+        let body = &after_fence[language_end + 1..];
+        if let Some(end_rel) = body.find("```")
+            && let Ok(value) = serde_json::from_str::<serde_json::Value>(body[..end_rel].trim())
+        {
+            return Some(value);
+        }
+    }
+
+    for (start, ch) in trimmed.char_indices().rev() {
+        if !matches!(ch, '{' | '[') {
+            continue;
+        }
+        if let Ok(value) = serde_json::from_str::<serde_json::Value>(trimmed[start..].trim()) {
+            return Some(value);
+        }
+    }
+
+    None
+}
+
+fn json_value_satisfies_schema(
+    value: &serde_json::Value,
+    schema: &serde_json::Value,
+) -> bool {
+    if let Some(schema_type) = schema.get("type")
+        && !json_value_matches_schema_type(value, schema_type)
+    {
+        return false;
+    }
+
+    if let Some(enum_values) = schema.get("enum").and_then(serde_json::Value::as_array)
+        && !enum_values.iter().any(|enum_value| enum_value == value)
+    {
+        return false;
+    }
+
+    if let Some(const_value) = schema.get("const")
+        && const_value != value
+    {
+        return false;
+    }
+
+    if schema_applies_object_rules(schema) {
+        let Some(object) = value.as_object() else {
+            return false;
+        };
+        if let Some(required) = schema.get("required").and_then(serde_json::Value::as_array) {
+            for required_property in required {
+                let Some(name) = required_property.as_str() else {
+                    continue;
+                };
+                if !object.contains_key(name) {
+                    return false;
+                }
+            }
+        }
+
+        let properties = schema.get("properties").and_then(serde_json::Value::as_object);
+        if schema
+            .get("additionalProperties")
+            .and_then(serde_json::Value::as_bool)
+            == Some(false)
+            && let Some(properties) = properties
+        {
+            for key in object.keys() {
+                if !properties.contains_key(key) {
+                    return false;
+                }
+            }
+        }
+
+        if let Some(properties) = properties {
+            for (key, property_schema) in properties {
+                if let Some(property_value) = object.get(key)
+                    && !json_value_satisfies_schema(property_value, property_schema)
+                {
+                    return false;
+                }
+            }
+        }
+    }
+
+    if schema_applies_array_rules(schema) {
+        let Some(array) = value.as_array() else {
+            return false;
+        };
+        if let Some(items_schema) = schema.get("items") {
+            for item in array {
+                if !json_value_satisfies_schema(item, items_schema) {
+                    return false;
+                }
+            }
+        }
+    }
+
+    true
+}
+
+fn schema_applies_object_rules(schema: &serde_json::Value) -> bool {
+    schema_type_includes(schema, "object")
+        || (!schema_has_declared_type(schema)
+            && (schema.get("properties").is_some()
+                || schema.get("required").is_some()
+                || schema.get("additionalProperties").is_some()))
+}
+
+fn schema_applies_array_rules(schema: &serde_json::Value) -> bool {
+    schema_type_includes(schema, "array")
+        || (!schema_has_declared_type(schema) && schema.get("items").is_some())
+}
+
+fn schema_has_declared_type(schema: &serde_json::Value) -> bool {
+    schema.get("type").is_some()
+}
+
+fn schema_type_includes(schema: &serde_json::Value, expected: &str) -> bool {
+    match schema.get("type") {
+        Some(serde_json::Value::String(schema_type)) => schema_type == expected,
+        Some(serde_json::Value::Array(schema_types)) => schema_types
+            .iter()
+            .any(|schema_type| schema_type.as_str() == Some(expected)),
+        _ => false,
+    }
+}
+
+fn json_value_matches_schema_type(
+    value: &serde_json::Value,
+    schema_type: &serde_json::Value,
+) -> bool {
+    match schema_type {
+        serde_json::Value::String(schema_type) => json_value_matches_type_name(value, schema_type),
+        serde_json::Value::Array(schema_types) => schema_types.iter().any(|schema_type| {
+            schema_type
+                .as_str()
+                .is_some_and(|schema_type| json_value_matches_type_name(value, schema_type))
+        }),
+        _ => true,
+    }
+}
+
+fn json_value_matches_type_name(value: &serde_json::Value, schema_type: &str) -> bool {
+    match schema_type {
+        "array" => value.is_array(),
+        "boolean" => value.is_boolean(),
+        "integer" => value.as_i64().is_some() || value.as_u64().is_some(),
+        "null" => value.is_null(),
+        "number" => value.is_number(),
+        "object" => value.is_object(),
+        "string" => value.is_string(),
+        _ => true,
+    }
+}
+
 #[cfg(test)]
 mod kay_runtime_regression_tests {
     use super::autonomous_runtime_failure_message;
+    use super::final_output_message_satisfies_json_schema;
+    use super::final_output_schema_repair_input;
     use super::remember_last_task_message_from_turn;
     use super::normalize_exec_command_argv;
     use super::parse_shell_tool_call_params_values;
@@ -8408,6 +8629,7 @@ mod kay_runtime_regression_tests {
     use crate::error::CodexErr;
     use crate::error::UnexpectedResponseError;
     use code_protocol::models::SandboxPermissions;
+    use code_protocol::models::ResponseInputItem;
     use code_protocol::models::ShellToolCallParams;
     use reqwest::StatusCode;
 
@@ -8561,6 +8783,56 @@ mod kay_runtime_regression_tests {
     }
 
     #[test]
+    fn final_output_schema_accepts_trailing_json_contract() {
+        let schema = notes_schema();
+        let message = "All edits are complete.\n{\"summary\":\"done\",\"touched_files\":[\"src/public/index.html\",\"src/public/notes-ui.js\"]}";
+
+        assert!(final_output_message_satisfies_json_schema(
+            Some(message),
+            &schema
+        ));
+    }
+
+    #[test]
+    fn final_output_schema_rejects_progress_prose() {
+        let schema = notes_schema();
+
+        assert!(!final_output_message_satisfies_json_schema(
+            Some("The misplaced duplicate disable went to the wrong spot. Let me check the full file again:"),
+            &schema
+        ));
+    }
+
+    #[test]
+    fn final_output_schema_rejects_unknown_fields() {
+        let schema = notes_schema();
+        let message = r#"{"summary":"done","touched_files":[],"extra":true}"#;
+
+        assert!(!final_output_message_satisfies_json_schema(
+            Some(message),
+            &schema
+        ));
+    }
+
+    #[test]
+    fn final_output_schema_repair_input_preserves_tool_work_path() {
+        let schema = notes_schema();
+        let ResponseInputItem::Message { role, content } =
+            final_output_schema_repair_input(&schema, 1)
+        else {
+            panic!("repair input should be a developer message");
+        };
+        let ContentItem::InputText { text } = &content[0] else {
+            panic!("repair input should contain text");
+        };
+
+        assert_eq!(role, "developer");
+        assert!(text.contains("continue with tool calls"));
+        assert!(text.contains("exactly one JSON object"));
+        assert!(text.contains("touched_files"));
+    }
+
+    #[test]
     fn last_task_message_survives_later_iterations_without_messages() {
         let mut last_task_message = None;
 
@@ -8590,6 +8862,21 @@ mod kay_runtime_regression_tests {
             end_turn: None,
             phase: None,
         }
+    }
+
+    fn notes_schema() -> serde_json::Value {
+        serde_json::json!({
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["summary", "touched_files"],
+            "properties": {
+                "summary": { "type": "string" },
+                "touched_files": {
+                    "type": "array",
+                    "items": { "type": "string" }
+                }
+            }
+        })
     }
 }
 

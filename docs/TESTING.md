@@ -132,13 +132,20 @@ or a final trailing JSON object after MiMo prose, but still fails if the real
 file edits are missing or drift outside the two expected UI files. It also
 checks that the duplicate workflow function is callable from the installed event
 handlers, not merely nested in another function while remaining syntactically
-valid JavaScript.
+valid JavaScript, and accepts the common `typing`/`isTyping` guard shapes that
+prevent the duplicate shortcut from firing inside text inputs.
 
 For Chat Completions providers, `kay exec --output-schema` is forwarded into the
 turn context. The chat wire layer sends `response_format: json_schema` only when
 the request has no tools available; tool-capable turns instead carry a bounded
 final-output contract as system guidance because Xiaomi MiMo can otherwise
 satisfy the schema before performing required edits.
+
+For MiMo-family tool workflows, Kay also validates the final assistant message
+against the requested schema before completing the turn. If MiMo emits a normal
+progress message instead of final JSON, Kay adds a developer repair message and
+continues the same turn so the model can either keep using tools or produce the
+contracted JSON.
 
 The same path intentionally keeps shell-tool argument recovery provider-neutral:
 if a MiMo-family chat response concatenates multiple JSON tool-argument objects
