@@ -28,6 +28,10 @@ const GPT_5_1_CODEX_MAX_INSTRUCTIONS: &str = include_str!("../gpt-5.1-codex-max_
 const GPT_5_2_CODEX_INSTRUCTIONS: &str = include_str!("../gpt-5.2-codex_prompt.md");
 const MIMO_SYNTHESIS_CHECKPOINT_INSTRUCTIONS: &str = r#"MiMo investigation discipline:
 - Do not stay in private reasoning when the next step is obvious. If the user names files to inspect, call the shell tool immediately and read those files in one bounded command.
+- When calling a tool, emit exactly one JSON object for that tool call. Do not concatenate multiple JSON objects into a single tool arguments string.
+- For `apply_patch`, use either a bare `@@` hunk marker or a single descriptive hunk header without a trailing `@@`; include exact unchanged context lines from the file around every edit.
+- When the user gives a strict output contract or JSON schema, use assistant messages only for the final contracted output after tool work is complete.
+- In tool workflows, do not use assistant messages for progress updates; continue with tool calls until you are ready to provide the final answer.
 - Keep the first investigation action small and concrete; gather the minimum evidence needed before thinking further.
 - Consolidate findings before ending an investigation turn.
 - If you have read or searched the same files repeatedly, stop rereading and summarize what is already known.
@@ -656,7 +660,8 @@ pub fn find_family_for_model(slug: &str) -> Option<ModelFamily> {
     } else if slug.starts_with("mimo") {
         model_family!(
             slug, "mimo",
-            needs_special_apply_patch_instructions: false,
+            needs_special_apply_patch_instructions: true,
+            base_instructions: BASE_INSTRUCTIONS_WITH_APPLY_PATCH.to_string(),
         )
         .map(with_mimo_synthesis_checkpoint)
     } else if slug.starts_with("minimax-m2.7") {
@@ -849,6 +854,57 @@ mod tests {
                 .contains("call the shell tool immediately"),
             "MiMo models need explicit pre-tool stall guidance"
         );
+    }
+
+    #[test]
+    fn mimo_family_profile_is_shared_across_provider_namespaces() {
+        for suffix in ["mimo-v2.5", "mimo-v2.5-pro"] {
+            let opencode = find_family_for_model(&format!("opencode-go/{suffix}"))
+                .expect("known OpenCode Go MiMo model");
+            let xiaomi = find_family_for_model(&format!("xiaomi/{suffix}"))
+                .expect("known Xiaomi MiMo model");
+
+            assert_eq!(opencode.family, "mimo");
+            assert_eq!(xiaomi.family, "mimo");
+            assert_eq!(
+                opencode.chat_completions_role_strategy,
+                xiaomi.chat_completions_role_strategy
+            );
+            assert_eq!(
+                opencode.chat_completions_reasoning_strategy,
+                xiaomi.chat_completions_reasoning_strategy
+            );
+            assert_eq!(
+                opencode.needs_special_apply_patch_instructions,
+                xiaomi.needs_special_apply_patch_instructions
+            );
+            assert!(
+                xiaomi.needs_special_apply_patch_instructions,
+                "MiMo models need the detailed apply_patch grammar"
+            );
+            assert!(
+                xiaomi.base_instructions.contains("## `apply_patch`"),
+                "MiMo models should share the detailed apply_patch instructions"
+            );
+            assert!(
+                xiaomi
+                    .base_instructions
+                    .contains("MiMo investigation discipline")
+            );
+        }
+
+        assert!(response_model_matches_request(
+            "xiaomi/mimo-v2.5-pro",
+            "xiaomi/mimo-v2.5-pro-20260422"
+        ));
+        assert!(response_model_matches_request(
+            "xiaomi/mimo-v2.5",
+            "xiaomi/mimo-v2.5-20260422"
+        ));
+        assert!(!response_model_matches_request(
+            "xiaomi/mimo-v2.5",
+            "xiaomi/mimo-v2.5-pro-20260422"
+        ));
     }
 
     #[test]
