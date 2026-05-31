@@ -752,6 +752,10 @@ mod tests {
                 expects_apply_patch_instructions: true,
             },
             InstructionsTestCase {
+                slug: "xiaomi/mimo-v2.5-pro",
+                expects_apply_patch_instructions: true,
+            },
+            InstructionsTestCase {
                 slug: "gpt-oss:120b",
                 expects_apply_patch_instructions: false,
             },

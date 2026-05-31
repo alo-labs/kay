@@ -1832,6 +1832,108 @@ data: [DONE]
     }
 
     #[tokio::test]
+    async fn chat_sse_accepts_xiaomi_mimo_content_and_reasoning_deltas() {
+        let (tx, mut rx) = mpsc::channel::<Result<ResponseEvent>>(8);
+        let bytes = Bytes::from_static(
+            br#"data: {"id":"cmpl-xiaomi","model":"xiaomi/mimo-v2.5-pro-20260422","choices":[{"delta":{"reasoning_content":"thinking","content":"OK"},"finish_reason":"stop"}]}
+
+data: [DONE]
+
+"#,
+        );
+        let debug_logger = Arc::new(Mutex::new(DebugLogger::new(false).unwrap()));
+
+        process_chat_sse(
+            stream::iter(vec![Ok(bytes)]),
+            tx,
+            Duration::from_secs(1),
+            debug_logger,
+            "test-request".to_string(),
+            None,
+        )
+        .await;
+
+        let mut saw_model = false;
+        let mut saw_reasoning = false;
+        let mut saw_text = false;
+        let mut saw_completed = false;
+        while let Some(event) = rx.recv().await {
+            match event.expect("event should parse") {
+                ResponseEvent::Created { response_model, .. } => {
+                    saw_model =
+                        response_model.as_deref() == Some("xiaomi/mimo-v2.5-pro-20260422");
+                }
+                ResponseEvent::ReasoningContentDelta { delta, .. } => {
+                    saw_reasoning = delta == "thinking";
+                }
+                ResponseEvent::OutputTextDelta { delta, .. } => {
+                    saw_text = delta == "OK";
+                }
+                ResponseEvent::Completed { .. } => {
+                    saw_completed = true;
+                }
+                _ => {}
+            }
+        }
+
+        assert!(saw_model, "Xiaomi MiMo response model should be preserved");
+        assert!(saw_reasoning, "Xiaomi MiMo reasoning_content should parse");
+        assert!(saw_text, "Xiaomi MiMo assistant content should parse");
+        assert!(saw_completed, "Xiaomi MiMo stream should complete");
+    }
+
+    #[tokio::test]
+    async fn chat_sse_accepts_xiaomi_mimo_tool_call_deltas() {
+        let (tx, mut rx) = mpsc::channel::<Result<ResponseEvent>>(8);
+        let bytes = Bytes::from_static(
+            br#"data: {"id":"cmpl-tool","model":"xiaomi/mimo-v2.5","choices":[{"delta":{"tool_calls":[{"id":"call_1","type":"function","function":{"name":"apply_patch","arguments":"{\"patch\":\""}}]},"finish_reason":null}]}
+
+data: {"id":"cmpl-tool","model":"xiaomi/mimo-v2.5","choices":[{"delta":{"tool_calls":[{"index":0,"function":{"arguments":"ok\"}"}}]},"finish_reason":"tool_calls"}]}
+
+data: [DONE]
+
+"#,
+        );
+        let debug_logger = Arc::new(Mutex::new(DebugLogger::new(false).unwrap()));
+
+        process_chat_sse(
+            stream::iter(vec![Ok(bytes)]),
+            tx,
+            Duration::from_secs(1),
+            debug_logger,
+            "test-request".to_string(),
+            None,
+        )
+        .await;
+
+        let mut tool_call = None;
+        while let Some(event) = rx.recv().await {
+            if let ResponseEvent::OutputItemDone {
+                item:
+                    ResponseItem::FunctionCall {
+                        name,
+                        arguments,
+                        call_id,
+                        ..
+                    },
+                ..
+            } = event.expect("event should parse")
+            {
+                tool_call = Some((name, arguments, call_id));
+            }
+        }
+
+        assert_eq!(
+            tool_call,
+            Some((
+                "apply_patch".to_string(),
+                r#"{"patch":"ok"}"#.to_string(),
+                "call_1".to_string(),
+            ))
+        );
+    }
+
+    #[tokio::test]
     async fn aggregate_suppresses_raw_final_assistant_item_after_deltas() {
         let events = stream::iter(vec![
             Ok(ResponseEvent::OutputTextDelta {
