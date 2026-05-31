@@ -20,12 +20,16 @@ Rolling task log for the documentation and workflow surface.
 - Normalized MiMo-style `apply_patch` hunk labels with trailing `@@` markers in
   the shared shell-tool path and made the MiMo family instructions explicitly
   reject that malformed header shape.
+- Added MiMo-family final-output schema repair so an early non-JSON assistant
+  progress message during a tool workflow is treated as a recoverable turn
+  error instead of completing `kay exec` with an invalid final message.
 - Hardened shared MiMo model-family tool guidance so OpenCode Go and direct
   Xiaomi MiMo models use the same apply-patch grammar, tool-call, and final
   output contract behavior.
 - Extended the live notes-app harness for direct Xiaomi MiMo runs to validate
   real tracked file edits, duplicate-note behavior markers, and JavaScript
-  syntax instead of accepting deterministic fallback patches.
+  syntax instead of accepting deterministic fallback patches, including common
+  inline typing guards for the duplicate keyboard shortcut.
 
 ## 2026-05-24
 
