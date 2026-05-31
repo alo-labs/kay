@@ -1,13 +1,11 @@
 ---
 source: tui/tests/vt100_chatwidget_snapshot.rs
-assertion_line: 2654
+assertion_line: 2815
 expression: "frames.join(\"\\n---FRAME---\\n\")"
 ---
  +------------------------------------------------------------------------------------------------+
  |                                               Kay                                              |
  +------------------------------------------------------------------------------------------------+
-
-
  ★   /code - perform a coding task (multiple agents)
 
 
@@ -22,10 +20,12 @@ expression: "frames.join(\"\\n---FRAME---\\n\")"
    - Running commands
 
 
+
  +--------------------------------------- Manage Providers ---------------------------------------+
  | Supported Providers                                                                            |
  |                                                                                                |
- | › OpenCode Go (configured)  Set OPENCODE_GO_API_KEY or run `kay login --provider opencode-go   |
+ | › Xiaomi (missing)  Set XIAOMI_API_KEY or run `kay login --provider xiaomi --with-api-key`.    |
+ | OpenCode Go (configured)  Set OPENCODE_GO_API_KEY or run `kay login --provider opencode-go     |
  | --with-api-key`.                                                                               |
  | MiniMax (missing)  Set MINIMAX_API_KEY or run `kay login --provider minimax --with-api-key`.   |
  | OpenAI (configured)                                                                            |
@@ -37,6 +37,7 @@ expression: "frames.join(\"\\n---FRAME---\\n\")"
  +------------------------------------------------------------------------------------------------+
 
 
+
  ★   /code - perform a coding task (multiple agents)
 
 
@@ -51,49 +52,47 @@ expression: "frames.join(\"\\n---FRAME---\\n\")"
    - Running commands
 
 
+ +---------------------------------------- Add Xiaomi Key ----------------------------------------+
+ | Editing Xiaomi provider key                                                                    |
+ |                                                                                                |
+ | Set XIAOMI_API_KEY or run `kay login --provider xiaomi --with-api-key`.                        |
+ |                                                                                                |
+ | Paste the API key below and press Enter to save.                                               |
+ +------------------------------------------------------------------------------------------------+
+
+---FRAME---
+ +------------------------------------------------------------------------------------------------+
+ |                                               Kay                                              |
+ +------------------------------------------------------------------------------------------------+
+ ★   /code - perform a coding task (multiple agents)
+
+
+ • Hello! How can I help you today?
+
+
+
+ • I can help with various tasks including:
+
+   - Writing code
+   - Reading files
+   - Running commands
+
+
+
  +------------------------------------ Update OpenCode Go Key ------------------------------------+
+ | Cancelled Xiaomi                                                                               |
+ |                                                                                                |
  | Editing OpenCode Go provider key                                                               |
  |                                                                                                |
  | Set OPENCODE_GO_API_KEY or run `kay login --provider opencode-go --with-api-key`.              |
  |                                                                                                |
  | Paste the API key below and press Enter to save.                                               |
- | _                                                                                              |
  +------------------------------------------------------------------------------------------------+
 
 ---FRAME---
  +------------------------------------------------------------------------------------------------+
  |                                               Kay                                              |
  +------------------------------------------------------------------------------------------------+
- ★   /code - perform a coding task (multiple agents)
-
-
- • Hello! How can I help you today?
-
-
-
- • I can help with various tasks including:
-
-   - Writing code
-   - Reading files
-   - Running commands
-
-
-
- +--------------------------------------- Add MiniMax Key ----------------------------------------+
- | Cancelled OpenCode Go                                                                          |
- |                                                                                                |
- | Editing MiniMax provider key                                                                   |
- |                                                                                                |
- | Set MINIMAX_API_KEY or run `kay login --provider minimax --with-api-key`.                      |
- |                                                                                                |
- | Paste the API key below and press Enter to save.                                               |
- +------------------------------------------------------------------------------------------------+
-
----FRAME---
- +------------------------------------------------------------------------------------------------+
- |                                               Kay                                              |
- +------------------------------------------------------------------------------------------------+
- • Hello! How can I help you today?
 
 
 
@@ -105,11 +104,12 @@ expression: "frames.join(\"\\n---FRAME---\\n\")"
 
 
  +-------------------------------------- Remove OpenAI Key ---------------------------------------+
- | Cancelled MiniMax                                                                              |
+ | Cancelled OpenCode Go                                                                          |
  |                                                                                                |
  |                                                                                                |
  | Remove OpenAI provider credential?                                                             |
  | Press Enter to delete or Esc to cancel.                                                        |
+ |                                                                                                |
  |                                                                                                |
  |                                                                                                |
  |                                                                                                |

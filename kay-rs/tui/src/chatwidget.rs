@@ -67,7 +67,7 @@ use code_core::account_usage::{
     StoredUsageSummary,
     TokenTotals,
 };
-use code_core::{MINIMAX_PROVIDER_ID, OPENCODE_GO_PROVIDER_ID};
+use code_core::{MINIMAX_PROVIDER_ID, OPENCODE_GO_PROVIDER_ID, XIAOMI_PROVIDER_ID};
 use code_core::auth_accounts::{self, StoredAccount};
 use code_login::AuthManager;
 use code_login::AuthMode;
@@ -23610,6 +23610,7 @@ Have we met every part of this goal and is there no further work to do?"#
     fn visible_provider_for_provider_id(provider_id: &str) -> Option<VisibleProvider> {
         let provider_id = provider_id.trim().to_ascii_lowercase();
         match provider_id.as_str() {
+            XIAOMI_PROVIDER_ID => Some(VisibleProvider::Xiaomi),
             OPENCODE_GO_PROVIDER_ID => Some(VisibleProvider::OpenCodeGo),
             MINIMAX_PROVIDER_ID => Some(VisibleProvider::MiniMax),
             "openai" => Some(VisibleProvider::OpenAI),
@@ -23623,6 +23624,7 @@ Have we met every part of this goal and is there no further work to do?"#
 
     fn provider_default_model_for(&self, provider: VisibleProvider) -> Option<(String, ReasoningEffort)> {
         let provider_id = match provider {
+            VisibleProvider::Xiaomi => XIAOMI_PROVIDER_ID,
             VisibleProvider::OpenCodeGo => OPENCODE_GO_PROVIDER_ID,
             VisibleProvider::MiniMax => MINIMAX_PROVIDER_ID,
             VisibleProvider::OpenAI => "openai",
@@ -31663,6 +31665,8 @@ use code_core::protocol::OrderMeta;
         let code_home = tempdir().expect("temp code home");
         auth::login_with_api_key(code_home.path(), "sk-openai")
             .expect("openai login should write auth");
+        auth::save_provider_api_key(code_home.path(), XIAOMI_PROVIDER_ID, "sk-xiaomi")
+            .expect("xiaomi provider key should be saved");
         auth::save_provider_api_key(code_home.path(), OPENCODE_GO_PROVIDER_ID, "sk-opencode-go")
             .expect("opencode provider key should be saved");
         auth::save_provider_api_key(code_home.path(), "minimax", "sk-minimax")
@@ -31671,6 +31675,7 @@ use code_core::protocol::OrderMeta;
         let remote_presets = vec![
             preset("foo/bar"),
             preset("MiniMax-M2.7"),
+            preset("xiaomi/mimo-v2.5-pro"),
             preset("gpt-5.4"),
             preset("opencode-go/kimi-k2.6"),
             preset("gpt-5.5"),
@@ -31703,6 +31708,7 @@ use code_core::protocol::OrderMeta;
             assert_eq!(
                 models,
                 vec![
+                    "xiaomi/mimo-v2.5-pro".to_string(),
                     "opencode-go/kimi-k2.6".to_string(),
                     "MiniMax-M2.7".to_string(),
                     "gpt-5.5".to_string(),

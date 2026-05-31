@@ -148,7 +148,7 @@ impl SlashCommand {
             SlashCommand::Demo => "populate history with demo cells (dev/perf only)",
             SlashCommand::Login => "manage Kay sign-ins (add/select/disconnect)",
             SlashCommand::Provider => {
-                "manage provider API keys (OpenCode Go, MiniMax, OpenAI)"
+                "manage provider API keys (Xiaomi, OpenCode Go, MiniMax, OpenAI)"
             },
             SlashCommand::Logout => "log out of Kay",
             #[cfg(debug_assertions)]

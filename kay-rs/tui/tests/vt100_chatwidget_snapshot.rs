@@ -30,7 +30,7 @@ use code_core::auth;
 use code_core::config_types::{ReasoningEffort, TextVerbosity};
 use code_common::model_presets::{ModelPreset, ReasoningEffortPreset};
 use code_login::AuthMode;
-use code_core::OPENCODE_GO_PROVIDER_ID;
+use code_core::{OPENCODE_GO_PROVIDER_ID, XIAOMI_PROVIDER_ID};
 use code_tui::test_helpers::{
     force_scroll_offset as harness_force_scroll_offset,
     layout_metrics as harness_layout_metrics,
@@ -2647,10 +2647,18 @@ fn model_selection_visibility() {
     let _env = EnvGuard::new(&[
         "OPENAI_API_KEY",
         "CODEX_API_KEY",
+        "XIAOMI_API_KEY",
         "OPENCODE_GO_API_KEY",
         "MINIMAX_API_KEY",
     ]);
     let seeded_presets = vec![
+        make_model_preset(
+            "xiaomi/mimo-v2.5-pro",
+            "xiaomi/mimo-v2.5-pro",
+            "Xiaomi MiMo V2.5 Pro",
+            "Xiaomi model",
+            vec![(ReasoningEffort::Low, "xiaomi low reasoning")],
+        ),
         make_model_preset(
             "opencode-go/kimi-k2.6",
             "opencode-go/kimi-k2.6",
@@ -2683,6 +2691,8 @@ fn model_selection_visibility() {
     let credentialed_home = TempDir::new().expect("credentialed code home");
     auth::login_with_api_key(credentialed_home.path(), "sk-openai")
         .expect("openai login should write auth");
+    auth::save_provider_api_key(credentialed_home.path(), XIAOMI_PROVIDER_ID, "sk-xiaomi")
+        .expect("xiaomi provider key should be saved");
     auth::save_provider_api_key(
         credentialed_home.path(),
         OPENCODE_GO_PROVIDER_ID,
@@ -2708,21 +2718,27 @@ fn model_selection_visibility() {
     let credentialed_frame =
         normalize_output(render_chat_widget_to_vt100(&mut credentialed_harness, 100, 80));
     let credentialed_visible = credentialed_frame.clone();
-    let opencode_idx = credentialed_visible
-        .find("OpenCode Go")
+    let credentialed_visible_lower = credentialed_visible.to_ascii_lowercase();
+    let xiaomi_idx = credentialed_visible_lower
+        .find("xiaomi")
+        .expect("Xiaomi header");
+    let opencode_idx = credentialed_visible_lower
+        .find("opencode go")
         .expect("OpenCode Go header");
-    let minimax_idx = credentialed_visible
-        .find("MiniMax")
+    let minimax_idx = credentialed_visible_lower
+        .find("minimax")
         .expect("MiniMax header");
-    let openai_idx = credentialed_visible
-        .find("OpenAI")
+    let openai_idx = credentialed_visible_lower
+        .find("openai")
         .expect("OpenAI header");
 
     assert!(
-        opencode_idx < minimax_idx && minimax_idx < openai_idx,
+        xiaomi_idx < opencode_idx && opencode_idx < minimax_idx && minimax_idx < openai_idx,
         "provider headers should stay in locked order:\n{}",
         credentialed_visible
     );
+    assert!(credentialed_visible.contains("MIMO-V2.5-Pro"));
+    assert!(credentialed_visible.contains("xiaomi low reasoning"));
     assert!(credentialed_visible.contains("KIMI-K2.6"));
     assert!(credentialed_visible.contains("opencode high reasoning"));
     assert!(credentialed_visible.contains("opencode low reasoning"));
@@ -2791,6 +2807,7 @@ fn provider_management_states_cover_list_update_add_and_delete() {
     frames.push(normalize_output(render_chat_widget_to_vt100(&mut harness, 100, 28)));
 
     harness.send_key(make_key(KeyCode::Esc, KeyModifiers::NONE));
+    harness.send_key(make_key(KeyCode::Down, KeyModifiers::NONE));
     harness.send_key(make_key(KeyCode::Down, KeyModifiers::NONE));
     harness.send_key(make_key(KeyCode::Char('d'), KeyModifiers::NONE));
     frames.push(normalize_output(render_chat_widget_to_vt100(&mut harness, 100, 28)));

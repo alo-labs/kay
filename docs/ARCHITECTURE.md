@@ -8,7 +8,7 @@ This file captures the durable architecture view for the repo. The codebase is a
 - Kay's practical upstream lineage is Every Code first, with OSS Codex reviewed directly afterward; local comparisons treat `codex-rs/` as a read-only mirror and `kay-rs/` as the active product tree
 - Root-level docs explain user-facing behavior and workflow guidance
 - GSD and Silver Bullet metadata live outside the product code, under `.planning/` and `~/.claude/.silver-bullet/`
-- Built-in model providers include `opencode-go`; matching provider-local model slugs are normalized on the Responses/compact wire paths before request dispatch
+- Built-in model providers include `xiaomi` and `opencode-go`; matching provider-local model slugs are normalized on the Responses/compact wire paths before request dispatch
 - Each model turn records the provider-normalized request model in the session JSONL `turn_context`, and the TUI keeps the latest response model observed from provider metadata for user-visible routing checks
 
 ## Data Flow

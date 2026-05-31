@@ -57,12 +57,17 @@ PY
 }
 
 use_alias_if_present OPENCODE_GO_LIVE_API_KEY OPENCODE_GO_API_KEY
+use_alias_if_present XIAOMI_LIVE_API_KEY XIAOMI_API_KEY
 
 load_provider_key_from_auth_json OPENCODE_GO_LIVE_API_KEY opencode-go
+load_provider_key_from_auth_json XIAOMI_LIVE_API_KEY xiaomi
 
 missing=()
 if [[ -z "${OPENCODE_GO_LIVE_API_KEY:-}" ]]; then
   missing+=("OPENCODE_GO_LIVE_API_KEY, OPENCODE_GO_API_KEY, or provider_credentials.opencode-go.api_key in $AUTH_FILE")
+fi
+if [[ -z "${XIAOMI_LIVE_API_KEY:-}" ]]; then
+  missing+=("XIAOMI_LIVE_API_KEY, XIAOMI_API_KEY, or provider_credentials.xiaomi.api_key in $AUTH_FILE")
 fi
 
 if (( ${#missing[@]} > 0 )); then
@@ -81,3 +86,7 @@ live_env=(
 )
 
 env "${live_env[@]}" cargo test -p code-cli --test onboarding_provider_notes_app_live_smoke -- --nocapture
+
+echo "[pre-release/live-provider-gate] running Xiaomi provider acceptance"
+env XIAOMI_LIVE_API_KEY="$XIAOMI_LIVE_API_KEY" \
+  cargo test -p code-cli --test provider_model_acceptance xiaomi_provider_model_acceptance_matrix -- --nocapture

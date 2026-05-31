@@ -91,6 +91,7 @@ fn built_in_opencode_go_provider_uses_chat_completions_and_provider_credentials(
         Some(OPENCODE_GO_PROVIDER_ID)
     );
     assert_eq!(opencode_go.wire_api, WireApi::Chat);
+    assert_eq!(opencode_go.stream_idle_timeout_ms, Some(60_000));
     assert!(!opencode_go.requires_openai_auth);
 }
 

@@ -67,7 +67,8 @@ mod validation;
 use defaults::{default_responses_originator, default_review_model, default_true_local};
 
 const OPENAI_BASE_URL_ENV_VAR: &str = "OPENAI_BASE_URL";
-const RESERVED_MODEL_PROVIDER_IDS: [&str; 4] = ["openai", "oss", "minimax", "opencode-go"];
+const RESERVED_MODEL_PROVIDER_IDS: [&str; 5] =
+    ["openai", "oss", "minimax", "xiaomi", "opencode-go"];
 
 fn validate_reserved_model_provider_ids(
     model_providers: &HashMap<String, ModelProviderInfo>,
