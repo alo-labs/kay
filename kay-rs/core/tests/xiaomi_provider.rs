@@ -12,6 +12,7 @@ use code_core::{
     built_in_model_providers, ChatCompletionsFormat, CodexAuth, ConversationManager, WireApi,
 };
 use serial_test::serial;
+use std::time::Duration;
 use tempfile::TempDir;
 use wiremock::matchers::{method, path_regex};
 use wiremock::{Mock, MockServer, ResponseTemplate};
@@ -33,7 +34,8 @@ fn built_in_xiaomi_provider_uses_openai_chat_completions_and_provider_credential
     assert_eq!(xiaomi.credential_ref.as_deref(), Some(XIAOMI_PROVIDER_ID));
     assert_eq!(xiaomi.wire_api, WireApi::Chat);
     assert_eq!(xiaomi.chat_completions_format, ChatCompletionsFormat::OpenAi);
-    assert_eq!(xiaomi.stream_idle_timeout_ms, Some(60_000));
+    assert_eq!(xiaomi.stream_idle_timeout_ms, Some(300_000));
+    assert_eq!(xiaomi.stream_idle_timeout(), Duration::from_millis(300_000));
     assert!(!xiaomi.requires_openai_auth);
 }
 

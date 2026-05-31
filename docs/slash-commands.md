@@ -132,6 +132,9 @@ Implementation Notes
   Provider credential CRUD lives in `/provider`, which is the shared entry
   point for adding, updating, or removing Xiaomi, OpenCode Go, MiniMax, and
   OpenAI API keys.
+  Provider/model compatibility fixes should update the provider, model-family,
+  and testing docs; only update this slash-command surface when the visible
+  command behavior changes.
   The end-user install and release docs should stay aligned with the shipped
   assets in GitHub Releases, not with the presence or absence of npm registry
   publication.
