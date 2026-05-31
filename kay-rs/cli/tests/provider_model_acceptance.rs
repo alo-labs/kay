@@ -28,6 +28,8 @@ const OPENCODE_GO_MODELS: &[&str] = &[
 
 const MINIMAX_MODELS: &[&str] = &["MiniMax-M2.7"];
 
+const XIAOMI_MODELS: &[&str] = &["xiaomi/mimo-v2.5-pro", "xiaomi/mimo-v2.5"];
+
 const OPENCODE_GO_SPEC: ProviderAcceptanceSpec = ProviderAcceptanceSpec {
     provider_id: "opencode-go",
     api_key_env: "OPENCODE_GO_LIVE_API_KEY",
@@ -38,6 +40,12 @@ const MINIMAX_SPEC: ProviderAcceptanceSpec = ProviderAcceptanceSpec {
     provider_id: "minimax",
     api_key_env: "MINIMAX_LIVE_API_KEY",
     models: MINIMAX_MODELS,
+};
+
+const XIAOMI_SPEC: ProviderAcceptanceSpec = ProviderAcceptanceSpec {
+    provider_id: "xiaomi",
+    api_key_env: "XIAOMI_LIVE_API_KEY",
+    models: XIAOMI_MODELS,
 };
 
 fn live_key(env_var: &str) -> Option<String> {
@@ -325,4 +333,9 @@ fn opencode_go_provider_model_acceptance_matrix() {
 #[test]
 fn minimax_provider_model_acceptance_matrix() {
     assert_provider_acceptance(&MINIMAX_SPEC);
+}
+
+#[test]
+fn xiaomi_provider_model_acceptance_matrix() {
+    assert_provider_acceptance(&XIAOMI_SPEC);
 }

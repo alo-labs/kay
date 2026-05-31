@@ -4,6 +4,7 @@ mod macos;
 use crate::config::CONFIG_TOML_FILE;
 use crate::model_provider_info::MINIMAX_DEFAULT_BASE_URL;
 use crate::model_provider_info::OPENCODE_GO_DEFAULT_BASE_URL;
+use crate::model_provider_info::XIAOMI_DEFAULT_BASE_URL;
 use config_requirements::ConfigRequirements;
 use config_requirements::ConfigRequirementsToml;
 use config_requirements::LegacyManagedConfigToml;
@@ -296,6 +297,9 @@ fn infer_legacy_provider_id(
         if normalized_model.starts_with("opencode-go/") {
             return Some("opencode-go".to_string());
         }
+        if normalized_model.starts_with("xiaomi/") {
+            return Some("xiaomi".to_string());
+        }
         if normalized_model.contains("minimax") {
             return Some("minimax".to_string());
         }
@@ -396,6 +400,7 @@ fn maybe_insert_legacy_model_provider(
 fn legacy_provider_name(provider_id: &str) -> &str {
     match provider_id {
         "minimax" => "MiniMax",
+        "xiaomi" => "Xiaomi",
         "opencode-go" => "OpenCode Go",
         _ => provider_id,
     }
@@ -409,6 +414,7 @@ fn legacy_provider_base_url(provider_id: &str, provider_config: &TomlTable) -> O
         .and_then(normalize_legacy_provider_endpoint)
         .or_else(|| match provider_id {
             "minimax" => Some(MINIMAX_DEFAULT_BASE_URL.to_string()),
+            "xiaomi" => Some(XIAOMI_DEFAULT_BASE_URL.to_string()),
             "opencode-go" => Some(OPENCODE_GO_DEFAULT_BASE_URL.to_string()),
             _ => None,
         })
@@ -449,6 +455,16 @@ fn insert_known_provider_auth_fields(provider: &mut TomlTable, provider_id: &str
             provider.insert(
                 "credential_ref".to_string(),
                 TomlValue::String("opencode-go".to_string()),
+            );
+        }
+        "xiaomi" => {
+            provider.insert(
+                "env_key".to_string(),
+                TomlValue::String("XIAOMI_API_KEY".to_string()),
+            );
+            provider.insert(
+                "credential_ref".to_string(),
+                TomlValue::String("xiaomi".to_string()),
             );
         }
         _ => {}

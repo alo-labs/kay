@@ -37,7 +37,11 @@ pub(crate) async fn get_user_instructions(
     config: &Config,
     skills: Option<&[SkillMetadata]>,
 ) -> Option<String> {
-    let skills_section = skills.and_then(render_skills_section);
+    let skills_section = if should_omit_skills_section(config.model.as_str()) {
+        None
+    } else {
+        skills.and_then(render_skills_section)
+    };
 
     let project_doc_parts = match read_project_doc_parts(config).await {
         Ok(Some(parts)) => parts,
@@ -86,6 +90,15 @@ pub(crate) async fn get_user_instructions(
             Some(format!("{base}{PROJECT_DOC_SEPARATOR}{docs}"))
         }
     }
+}
+
+fn should_omit_skills_section(model: &str) -> bool {
+    let slug = model
+        .split_once('/')
+        .map(|(_, suffix)| suffix)
+        .unwrap_or(model)
+        .to_ascii_lowercase();
+    slug.starts_with("mimo")
 }
 
 /// Read project documentation files as separate parts while respecting the
@@ -269,7 +282,9 @@ mod tests {
     use super::*;
     use crate::config::ConfigOverrides;
     use crate::config::ConfigToml;
+    use crate::skills::model::SkillScope;
     use std::fs;
+    use std::path::PathBuf;
     use tempfile::TempDir;
 
     /// Helper that returns a `Config` pointing at `root` and using `limit` as
@@ -467,6 +482,29 @@ mod tests {
         let res = get_user_instructions(&make_config(&tmp, 4096, Some(INSTRUCTIONS)), None).await;
 
         assert_eq!(res, Some(INSTRUCTIONS.to_string()));
+    }
+
+    #[tokio::test]
+    async fn omits_skills_section_for_mimo_models() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        fs::write(tmp.path().join("AGENTS.md"), "project doc").unwrap();
+
+        let mut cfg = make_config(&tmp, 4096, None);
+        cfg.model = "opencode-go/mimo-v2.5-pro".to_string();
+        let skills = vec![SkillMetadata {
+            name: "demo".to_string(),
+            description: "demo skill".to_string(),
+            path: PathBuf::from("skills/demo/SKILL.md"),
+            scope: SkillScope::User,
+            content: String::new(),
+        }];
+
+        let res = get_user_instructions(&cfg, Some(&skills))
+            .await
+            .expect("project doc expected");
+
+        assert_eq!(res, "project doc");
+        assert!(!res.contains("## Skills"));
     }
 
     /// When both the repository root and the working directory contain

@@ -4,9 +4,16 @@ Rolling task log for the documentation and workflow surface.
 
 ## 2026-05-24
 
+- Added Xiaomi as a built-in provider with `xiaomi/mimo-v2.5-pro` and
+  `xiaomi/mimo-v2.5`, including config, picker, preset, and live acceptance
+  coverage.
 - Added a MiMo-specific synthesis checkpoint so `opencode-go/mimo-v2.5-pro`
   gets explicit anti-loop investigation guidance during multi-file debugging
   turns.
+- Reduced OpenCode Go stream-idle tolerance so dead provider streams retry
+  inside the live-turn window instead of leaving MiMo stuck on `Thinking...`.
+- Omitted the discoverable skills catalog from MiMo prompts to keep live
+  investigation turns focused on project instructions and immediate evidence.
 
 ## [0.9.0] — 2026-05-13
 

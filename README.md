@@ -90,11 +90,12 @@ Expand-Archive .\kay-x86_64-pc-windows-msvc.exe.zip
    ```
 
 2. Set up a provider from inside the TUI with `/provider`.
-   - Add the provider API key for OpenCode Go, MiniMax, or OpenAI.
+   - Add the provider API key for Xiaomi, OpenCode Go, MiniMax, or OpenAI.
    - For OpenAI, `kay login` can also use ChatGPT sign-in when that is the auth mode you want.
    - If you prefer to avoid the TUI flow, you can provide the key from the CLI instead:
 
    ```bash
+   kay login --provider xiaomi --api-key <KEY>
    kay login --provider opencode-go --api-key <KEY>
    kay login --provider minimax --api-key <KEY>
    kay login --provider openai --api-key <KEY>
@@ -103,6 +104,7 @@ Expand-Archive .\kay-x86_64-pc-windows-msvc.exe.zip
    If you want stdin-safe entry:
 
    ```bash
+   printenv XIAOMI_API_KEY | kay login --provider xiaomi --with-api-key
    printenv OPENCODE_GO_API_KEY | kay login --provider opencode-go --with-api-key
    printenv MINIMAX_API_KEY | kay login --provider minimax --with-api-key
    printenv OPENAI_API_KEY | kay login --provider openai --with-api-key
@@ -115,6 +117,7 @@ Expand-Archive .\kay-x86_64-pc-windows-msvc.exe.zip
 
 3. Pick a model with `/model`.
    - Kay shows the models available for the providers you have configured.
+   - For Xiaomi, that is `xiaomi/mimo-v2.5-pro` and `xiaomi/mimo-v2.5`.
    - For OpenCode Go, that is the OpenCode Go model list we already support.
    - For MiniMax, that is MiniMax M2.7.
    - For OpenAI, that is the upstream OpenAI model set supported by Codex.
@@ -310,7 +313,7 @@ model_reasoning_effort = "high"
 model_reasoning_summary = "detailed"
 ```
 
-Kay supports custom model providers that expose OpenAI-compatible Chat Completions or Responses APIs. The built-in provider set includes OpenAI, OpenCode Go, and MiniMax, and you can extend it in `config.toml` with additional providers if needed.
+Kay supports custom model providers that expose OpenAI-compatible Chat Completions or Responses APIs. The built-in provider set includes OpenAI, Xiaomi, OpenCode Go, and MiniMax, and you can extend it in `config.toml` with additional providers if needed.
 
 ### Environment variables
 
@@ -318,6 +321,7 @@ Kay supports custom model providers that expose OpenAI-compatible Chat Completio
 - `OPENAI_API_KEY`: Use API key instead of ChatGPT auth
 - `OPENAI_BASE_URL`: Use OpenAI-compatible API endpoints (chat or responses)
 - `OPENAI_WIRE_API`: Force the built-in OpenAI provider to use `chat` or `responses` wiring
+- `XIAOMI_API_KEY`: API key for the built-in Xiaomi provider
 - `OPENCODE_GO_API_KEY`: API key for the built-in OpenCode Go provider
 - `MINIMAX_API_KEY`: API key for the built-in MiniMax provider
 
@@ -391,7 +395,7 @@ The `pre-push` hook runs `./pre-release.sh` automatically when pushing to `main`
 
 ### Your responsibilities
 
-Using OpenAI, Anthropic, Google, MiniMax, OpenCode Go, or other provider services through Kay means you agree to their terms and policies. In particular:
+Using OpenAI, Anthropic, Google, Xiaomi, MiniMax, OpenCode Go, or other provider services through Kay means you agree to their terms and policies. In particular:
 
 - Do not programmatically scrape or extract content outside intended flows.
 - Do not bypass or interfere with rate limits, quotas, or safety mitigations.

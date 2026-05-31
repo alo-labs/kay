@@ -2,6 +2,7 @@ use crate::auth::AuthManager;
 use crate::model_family::provider_model_slug;
 use crate::MINIMAX_PROVIDER_ID;
 use crate::OPENCODE_GO_PROVIDER_ID;
+use crate::XIAOMI_PROVIDER_ID;
 
 const OPENCODE_GO_SUPPORTED_MODELS: &[&str] = &[
     "glm-5.1",
@@ -16,20 +17,29 @@ const OPENCODE_GO_SUPPORTED_MODELS: &[&str] = &[
 
 const MINIMAX_SUPPORTED_MODELS: &[&str] = &["MiniMax-M2.7"];
 
+const XIAOMI_SUPPORTED_MODELS: &[&str] = &["mimo-v2.5-pro", "mimo-v2.5"];
+
 /// Provider buckets are intentionally locked so the picker can render them in
 /// a predictable order.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum VisibleProvider {
+    Xiaomi,
     OpenCodeGo,
     MiniMax,
     OpenAI,
 }
 
 impl VisibleProvider {
-    pub const ORDER: [Self; 3] = [Self::OpenCodeGo, Self::MiniMax, Self::OpenAI];
+    pub const ORDER: [Self; 4] = [
+        Self::Xiaomi,
+        Self::OpenCodeGo,
+        Self::MiniMax,
+        Self::OpenAI,
+    ];
 
     pub fn label(self) -> &'static str {
         match self {
+            Self::Xiaomi => "Xiaomi",
             Self::OpenCodeGo => "OpenCode Go",
             Self::MiniMax => "MiniMax",
             Self::OpenAI => "OpenAI",
@@ -63,11 +73,19 @@ where
     let opencode_go_visible =
         provider_credential_visible(auth, OPENCODE_GO_PROVIDER_ID, "OPENCODE_GO_API_KEY");
     let minimax_visible = provider_credential_visible(auth, MINIMAX_PROVIDER_ID, "MINIMAX_API_KEY");
+    let xiaomi_visible = provider_credential_visible(auth, XIAOMI_PROVIDER_ID, "XIAOMI_API_KEY");
 
     VisibleProvider::ORDER
         .into_iter()
         .filter_map(|provider| {
             let provider_presets = match provider {
+                VisibleProvider::Xiaomi => presets
+                    .iter()
+                    .filter(|preset| {
+                        is_visible_to_xiaomi(auth_snapshot.as_ref(), xiaomi_visible, *preset)
+                    })
+                    .cloned()
+                    .collect::<Vec<_>>(),
                 VisibleProvider::OpenCodeGo => presets
                     .iter()
                     .filter(|preset| {
@@ -144,6 +162,19 @@ fn matches_opencode_go_supported_model(model: &str) -> bool {
         .any(|supported| slug.as_ref().trim().eq_ignore_ascii_case(supported))
 }
 
+fn matches_xiaomi_supported_model(model: &str) -> bool {
+    let Some((namespace, _)) = model.trim().split_once('/') else {
+        return false;
+    };
+    if !namespace.eq_ignore_ascii_case(XIAOMI_PROVIDER_ID) {
+        return false;
+    }
+    let slug = provider_model_slug(XIAOMI_PROVIDER_ID, model);
+    XIAOMI_SUPPORTED_MODELS
+        .iter()
+        .any(|supported| slug.as_ref().trim().eq_ignore_ascii_case(supported))
+}
+
 fn is_visible_to_openai<P>(auth: Option<&crate::auth::CodexAuth>, preset: &P) -> bool
 where
     P: VisibleModelPreset,
@@ -186,6 +217,19 @@ where
     provider_key_visible
         && preset.visibility_show_in_picker()
         && matches_minimax_model(preset.visibility_model())
+}
+
+fn is_visible_to_xiaomi<P>(
+    _auth: Option<&crate::auth::CodexAuth>,
+    provider_key_visible: bool,
+    preset: &P,
+) -> bool
+where
+    P: VisibleModelPreset,
+{
+    provider_key_visible
+        && preset.visibility_show_in_picker()
+        && matches_xiaomi_supported_model(preset.visibility_model())
 }
 
 #[cfg(test)]

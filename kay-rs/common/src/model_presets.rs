@@ -61,6 +61,19 @@ static PRESETS: Lazy<Vec<ModelPreset>> = Lazy::new(|| {
         pro_only: false,
         show_in_picker: true,
     };
+    let xiaomi_preset = |model: &str, display_name: &str| ModelPreset {
+        id: model.to_string(),
+        model: model.to_string(),
+        display_name: display_name.to_string(),
+        description: "Xiaomi MiMo coding model.".to_string(),
+        default_reasoning_effort: ReasoningEffort::Medium,
+        supported_reasoning_efforts: Vec::new(),
+        supported_text_verbosity: &[TextVerbosityConfig::Medium],
+        is_default: false,
+        upgrade: None,
+        pro_only: false,
+        show_in_picker: true,
+    };
 
     vec![
         ModelPreset {
@@ -167,6 +180,8 @@ static PRESETS: Lazy<Vec<ModelPreset>> = Lazy::new(|| {
             pro_only: false,
             show_in_picker: true,
         },
+        xiaomi_preset("xiaomi/mimo-v2.5-pro", "Xiaomi MiMo V2.5 Pro"),
+        xiaomi_preset("xiaomi/mimo-v2.5", "Xiaomi MiMo V2.5"),
         opencode_go_preset("opencode-go/glm-5.1", "OpenCode Go GLM 5.1"),
         opencode_go_preset("opencode-go/kimi-k2.6", "OpenCode Go Kimi K2.6"),
         opencode_go_preset("opencode-go/mimo-v2.5-pro", "OpenCode Go MiMo V2.5 Pro"),
@@ -761,10 +776,27 @@ mod tests {
     }
 
     #[test]
+    fn xiaomi_models_available_for_api_key_auth() {
+        let presets = builtin_model_presets(Some(AuthMode::ApiKey), false);
+        assert!(
+            presets
+                .iter()
+                .any(|preset| preset.id == "xiaomi/mimo-v2.5-pro")
+        );
+        assert!(
+            presets
+                .iter()
+                .any(|preset| preset.id == "xiaomi/mimo-v2.5")
+        );
+    }
+
+    #[test]
     fn third_party_presets_do_not_advertise_openai_reasoning_effort() {
         let presets = builtin_model_presets(Some(AuthMode::ApiKey), false);
         for model in [
             "MiniMax-M2.7",
+            "xiaomi/mimo-v2.5-pro",
+            "xiaomi/mimo-v2.5",
             "opencode-go/glm-5.1",
             "opencode-go/kimi-k2.6",
             "opencode-go/deepseek-v4-flash",

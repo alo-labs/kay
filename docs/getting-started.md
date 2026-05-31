@@ -44,13 +44,15 @@ Inside the TUI, open:
 
 Use that screen to add, update, or remove credentials for the supported providers:
 
-1. OpenCode Go
-2. MiniMax
-3. OpenAI
+1. Xiaomi
+2. OpenCode Go
+3. MiniMax
+4. OpenAI
 
 You can also provide a key from the CLI instead of typing it into the TUI:
 
 ```bash
+kay login --provider xiaomi --api-key <KEY>
 kay login --provider opencode-go --api-key <KEY>
 kay login --provider minimax --api-key <KEY>
 kay login --provider openai --api-key <KEY>
@@ -59,6 +61,7 @@ kay login --provider openai --api-key <KEY>
 If you prefer stdin-safe entry:
 
 ```bash
+printenv XIAOMI_API_KEY | kay login --provider xiaomi --with-api-key
 printenv OPENCODE_GO_API_KEY | kay login --provider opencode-go --with-api-key
 printenv MINIMAX_API_KEY | kay login --provider minimax --with-api-key
 printenv OPENAI_API_KEY | kay login --provider openai --with-api-key
@@ -78,6 +81,7 @@ Model availability currently looks like this:
 
 | Provider | Models shown in `/model` |
 | --- | --- |
+| Xiaomi | `xiaomi/mimo-v2.5-pro`, `xiaomi/mimo-v2.5` |
 | OpenCode Go | `opencode-go/glm-5.1`, `opencode-go/kimi-k2.6`, `opencode-go/mimo-v2.5-pro`, `opencode-go/mimo-v2.5`, `opencode-go/minimax-m2.7`, `opencode-go/qwen3.6-plus`, `opencode-go/deepseek-v4-pro`, `opencode-go/deepseek-v4-flash` |
 | MiniMax | `minimax-m2.7` |
 | OpenAI | The OpenAI models supported by the upstream model list |

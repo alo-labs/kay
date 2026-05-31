@@ -6,7 +6,54 @@ use code_core::model_visibility::{
     visible_model_groups, visible_model_presets, VisibleModelPreset, VisibleProvider,
 };
 use pretty_assertions::assert_eq;
+use serial_test::serial;
 use tempfile::TempDir;
+
+const PROVIDER_ENV_KEYS: &[&str] = &[
+    "CODEX_API_KEY",
+    "OPENAI_API_KEY",
+    "XIAOMI_API_KEY",
+    "OPENCODE_GO_API_KEY",
+    "MINIMAX_API_KEY",
+];
+
+struct EnvGuard {
+    previous: Vec<(&'static str, Option<String>)>,
+}
+
+impl EnvGuard {
+    fn unset(keys: &[&'static str]) -> Self {
+        let previous = keys
+            .iter()
+            .map(|key| {
+                let value = std::env::var(key).ok();
+                // SAFETY: tests using this guard are marked `#[serial]`, so
+                // environment mutations do not race with other tests here.
+                unsafe { std::env::remove_var(key) };
+                (*key, value)
+            })
+            .collect();
+        Self { previous }
+    }
+}
+
+impl Drop for EnvGuard {
+    fn drop(&mut self) {
+        for (key, value) in &self.previous {
+            // SAFETY: see `EnvGuard::unset`.
+            unsafe {
+                match value {
+                    Some(value) => std::env::set_var(key, value),
+                    None => std::env::remove_var(key),
+                }
+            }
+        }
+    }
+}
+
+fn clear_provider_env() -> EnvGuard {
+    EnvGuard::unset(PROVIDER_ENV_KEYS)
+}
 
 #[derive(Clone)]
 struct TestPreset {
@@ -63,7 +110,9 @@ fn visible_models(presets: &[TestPreset], auth: &AuthManager) -> Vec<&'static st
 }
 
 #[test]
+#[serial]
 fn opencode_go_visibility_is_credential_driven_and_whitelist_based() {
+    let _env = clear_provider_env();
     let code_home = TempDir::new().unwrap();
     let presets = vec![
         TestPreset::new("opencode-go/kimi-k2.6"),
@@ -97,7 +146,9 @@ fn opencode_go_visibility_is_credential_driven_and_whitelist_based() {
 }
 
 #[test]
+#[serial]
 fn minimax_visibility_is_credential_driven_and_exact() {
+    let _env = clear_provider_env();
     let code_home = TempDir::new().unwrap();
     let presets = vec![
         TestPreset::new("MiniMax-M2.7"),
@@ -127,7 +178,44 @@ fn minimax_visibility_is_credential_driven_and_exact() {
 }
 
 #[test]
+#[serial]
+fn xiaomi_visibility_is_credential_driven_and_whitelist_based() {
+    let _env = clear_provider_env();
+    let code_home = TempDir::new().unwrap();
+    let presets = vec![
+        TestPreset::new("xiaomi/mimo-v2.5-pro"),
+        TestPreset::new("xiaomi/mimo-v2.5"),
+        TestPreset::new("xiaomi/unsupported-model"),
+        TestPreset::new("opencode-go/mimo-v2.5"),
+    ];
+
+    let auth = load_auth_manager(&code_home);
+    assert!(visible_model_groups(&auth, &presets).is_empty());
+
+    save_provider_api_key(code_home.path(), "xiaomi", "sk-xiaomi")
+        .expect("xiaomi key should be saved");
+    let auth = load_auth_manager(&code_home);
+    assert_eq!(
+        visible_model_groups(&auth, &presets)
+            .iter()
+            .map(|group| group.provider)
+            .collect::<Vec<_>>(),
+        vec![VisibleProvider::Xiaomi]
+    );
+    assert_eq!(
+        visible_models(&presets, &auth),
+        vec!["xiaomi/mimo-v2.5-pro", "xiaomi/mimo-v2.5"]
+    );
+
+    remove_provider_api_key(code_home.path(), "xiaomi").expect("xiaomi key should be removed");
+    let auth = load_auth_manager(&code_home);
+    assert!(visible_model_groups(&auth, &presets).is_empty());
+}
+
+#[test]
+#[serial]
 fn openai_remains_visible_through_the_existing_openai_auth_path() {
+    let _env = clear_provider_env();
     let code_home = TempDir::new().unwrap();
     let presets = vec![
         TestPreset::new("gpt-5.4"),
@@ -152,9 +240,13 @@ fn openai_remains_visible_through_the_existing_openai_auth_path() {
 }
 
 #[test]
-fn provider_order_is_locked_open_code_go_then_minimax_then_openai() {
+#[serial]
+fn provider_order_is_locked_xiaomi_then_open_code_go_then_minimax_then_openai() {
+    let _env = clear_provider_env();
     let code_home = TempDir::new().unwrap();
     login_with_api_key(code_home.path(), "sk-openai").expect("openai key should be saved");
+    save_provider_api_key(code_home.path(), "xiaomi", "sk-xiaomi")
+        .expect("xiaomi key should be saved");
     save_provider_api_key(code_home.path(), "opencode-go", "sk-opencode")
         .expect("opencode key should be saved");
     save_provider_api_key(code_home.path(), "minimax", "sk-minimax")
@@ -162,6 +254,7 @@ fn provider_order_is_locked_open_code_go_then_minimax_then_openai() {
 
     let auth = load_auth_manager(&code_home);
     let presets = vec![
+        TestPreset::new("xiaomi/mimo-v2.5-pro"),
         TestPreset::new("MiniMax-M2.7"),
         TestPreset::new("opencode-go/kimi-k2.6"),
         TestPreset::new("gpt-5.4"),
@@ -171,6 +264,7 @@ fn provider_order_is_locked_open_code_go_then_minimax_then_openai() {
     assert_eq!(
         groups.iter().map(|group| group.provider).collect::<Vec<_>>(),
         vec![
+            VisibleProvider::Xiaomi,
             VisibleProvider::OpenCodeGo,
             VisibleProvider::MiniMax,
             VisibleProvider::OpenAI,
@@ -181,6 +275,11 @@ fn provider_order_is_locked_open_code_go_then_minimax_then_openai() {
             .iter()
             .map(|preset| preset.model)
             .collect::<Vec<_>>(),
-        vec!["opencode-go/kimi-k2.6", "MiniMax-M2.7", "gpt-5.4"]
+        vec![
+            "xiaomi/mimo-v2.5-pro",
+            "opencode-go/kimi-k2.6",
+            "MiniMax-M2.7",
+            "gpt-5.4"
+        ]
     );
 }

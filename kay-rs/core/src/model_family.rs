@@ -4,6 +4,7 @@ use crate::config_types::ReasoningEffort;
 use crate::config_types::ReasoningSummary;
 use crate::MINIMAX_PROVIDER_ID;
 use crate::OPENCODE_GO_PROVIDER_ID;
+use crate::XIAOMI_PROVIDER_ID;
 use crate::tool_apply_patch::ApplyPatchToolType;
 use code_protocol::openai_models::ConfigShellToolType;
 use code_protocol::openai_models::InputModality;
@@ -26,6 +27,8 @@ const GPT_5_2_INSTRUCTIONS: &str = include_str!("../gpt_5_2_prompt.md");
 const GPT_5_1_CODEX_MAX_INSTRUCTIONS: &str = include_str!("../gpt-5.1-codex-max_prompt.md");
 const GPT_5_2_CODEX_INSTRUCTIONS: &str = include_str!("../gpt-5.2-codex_prompt.md");
 const MIMO_SYNTHESIS_CHECKPOINT_INSTRUCTIONS: &str = r#"MiMo investigation discipline:
+- Do not stay in private reasoning when the next step is obvious. If the user names files to inspect, call the shell tool immediately and read those files in one bounded command.
+- Keep the first investigation action small and concrete; gather the minimum evidence needed before thinking further.
 - Consolidate findings before ending an investigation turn.
 - If you have read or searched the same files repeatedly, stop rereading and summarize what is already known.
 - Before taking another exploratory tool action, state the current hypothesis, the evidence for it, and the single next observation that would change it.
@@ -117,6 +120,10 @@ pub fn infer_model_provider_id(model: &str) -> Option<&'static str> {
 
     if provider_model_slug(OPENCODE_GO_PROVIDER_ID, model).as_ref() != model {
         return Some(OPENCODE_GO_PROVIDER_ID);
+    }
+
+    if provider_model_slug(XIAOMI_PROVIDER_ID, model).as_ref() != model {
+        return Some(XIAOMI_PROVIDER_ID);
     }
 
     let normalized = provider_model_slug("openai", model)
@@ -730,6 +737,7 @@ mod tests {
     use super::supports_extended_context;
     use super::MINIMAX_PROVIDER_ID;
     use super::OPENCODE_GO_PROVIDER_ID;
+    use super::XIAOMI_PROVIDER_ID;
 
     #[test]
     fn image_generation_support_tracks_image_input_modality() {
@@ -834,6 +842,12 @@ mod tests {
                 .base_instructions
                 .contains("Consolidate findings before ending an investigation turn"),
             "MiMo models need explicit anti-loop synthesis guidance"
+        );
+        assert!(
+            family
+                .base_instructions
+                .contains("call the shell tool immediately"),
+            "MiMo models need explicit pre-tool stall guidance"
         );
     }
 
@@ -994,6 +1008,10 @@ mod tests {
             infer_model_provider_id("opencode-go/kimi-k2.6"),
             Some(OPENCODE_GO_PROVIDER_ID)
         );
+        assert_eq!(
+            infer_model_provider_id("xiaomi/mimo-v2.5-pro"),
+            Some(XIAOMI_PROVIDER_ID)
+        );
         assert_eq!(infer_model_provider_id("gpt-5.4"), Some("openai"));
         assert_eq!(infer_model_provider_id("custom-model"), None);
     }
@@ -1031,8 +1049,8 @@ pub const fn default_auto_compact_limit_for_context_window(context_window: u64) 
     ((context_window as i64) * 9) / 10
 }
 
-fn normalized_opencode_go_model(model: &str) -> Cow<'_, str> {
-    provider_model_slug(OPENCODE_GO_PROVIDER_ID, model)
+fn normalized_third_party_model<'a>(provider_id: &str, model: &'a str) -> Cow<'a, str> {
+    provider_model_slug(provider_id, model)
 }
 
 pub fn model_supports_fast_mode(model: &str) -> bool {
@@ -1076,12 +1094,17 @@ pub fn supports_extended_context(model: &str) -> bool {
         return true;
     }
 
-    if !matches!(infer_model_provider_id(model), Some(OPENCODE_GO_PROVIDER_ID)) {
+    let Some(provider_id @ (OPENCODE_GO_PROVIDER_ID | XIAOMI_PROVIDER_ID)) =
+        infer_model_provider_id(model)
+    else {
         return false;
-    }
+    };
 
     matches!(
-        normalized_opencode_go_model(model).as_ref().to_ascii_lowercase().as_str(),
+        normalized_third_party_model(provider_id, model)
+            .as_ref()
+            .to_ascii_lowercase()
+            .as_str(),
         "deepseek-v4-pro" | "deepseek-v4-flash" | "mimo-v2.5" | "mimo-v2.5-pro"
     )
 }
