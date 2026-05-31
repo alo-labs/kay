@@ -61,7 +61,9 @@ For OpenCode Go specifically, the live matrix should prove:
 
 For Xiaomi specifically, the live matrix should prove both built-in models
 (`xiaomi/mimo-v2.5-pro` and `xiaomi/mimo-v2.5`) can authenticate, accept
-developer and non-developer traffic, and satisfy structured-output requests.
+developer and non-developer traffic, satisfy structured-output requests, and
+complete a tool-backed real-project edit without relying on provider-reported
+file names alone.
 
 The live matrix is a capability smoke, not a ranking benchmark. If a provider adapts model behavior internally, prefer assertion styles that validate the CLI contract and final response shape instead of a brittle exact wording check.
 
@@ -124,9 +126,34 @@ cargo test -p code-cli --test test_notes_app_live_e2e xiaomi_notes_app_live_feat
 
 The live harness runs `kay exec` with workspace-write access against a temporary
 clone, then validates the tracked notes UI diffs, expected duplicate-note
-behavior markers, and `node --check` syntax. It uses the model's contracted JSON
-when available, but still fails if the real file edits are missing or drift
-outside the two expected UI files.
+behavior markers, and `node --check` syntax. It requires a parseable contracted
+JSON object from the final model message, including JSON fenced by MiMo models,
+or a final trailing JSON object after MiMo prose, but still fails if the real
+file edits are missing or drift outside the two expected UI files. It also
+checks that the duplicate workflow function is callable from the installed event
+handlers, not merely nested in another function while remaining syntactically
+valid JavaScript.
+
+For Chat Completions providers, `kay exec --output-schema` is forwarded into the
+turn context. The chat wire layer sends `response_format: json_schema` only when
+the request has no tools available; tool-capable turns instead carry a bounded
+final-output contract as system guidance because Xiaomi MiMo can otherwise
+satisfy the schema before performing required edits.
+
+The same path intentionally keeps shell-tool argument recovery provider-neutral:
+if a MiMo-family chat response concatenates multiple JSON tool-argument objects
+into one shell call, Kay parses those objects and runs the commands as one
+quoted script. This normalization also accepts MiMo's observed string-form
+`command` values and converts them through the same argv/script path. The
+notes-app live matrix has exposed both shapes in real `xiaomi/mimo-v2.5` runs.
+The shell-tool parser also normalizes MiMo-style `apply_patch` hunk headers that
+end in a second `@@`, because live runs showed the base model repeatedly using
+that malformed patch shape after reading exact context lines.
+
+Direct Xiaomi also uses the normal five-minute streaming idle window. The
+provider can take longer than OpenCode Go's shorter idle window before the first
+SSE token on `mimo-v2.5`, and the live matrix should not reset the turn while
+the provider is still working.
 
 This target is intended to expose real edit/review behavior, transcript
 provenance, and UX rough edges that simple prompt smokes cannot catch.

@@ -99,6 +99,7 @@ use code_core::timeboxed_exec_guidance::{
 /// How long exec waits after task completion before sending Shutdown when Auto Review
 /// may be about to start. Guarded so sub-agents are not delayed.
 const AUTO_REVIEW_SHUTDOWN_GRACE_MS: u64 = 1_500;
+const OUTPUT_SCHEMA_MAX_BYTES: u64 = 8 * 1024;
 const REVIEW_SCOPE_MAX_LISTED_PATHS: usize = 120;
 const REVIEW_SCOPE_EXCLUDED_PREFIXES: [&str; 5] = [
     "codex-rs/",
@@ -227,7 +228,7 @@ pub async fn run_main(cli: Cli, code_linux_sandbox_exe: Option<PathBuf>) -> anyh
     };
     let mut review_request: Option<ReviewRequest> = None;
 
-    let _output_schema = load_output_schema(output_schema_path);
+    let output_schema = load_output_schema(output_schema_path);
 
     let (stdout_with_ansi, stderr_with_ansi) = match color {
         cli::Color::Always => (true, true),
@@ -745,7 +746,7 @@ pub async fn run_main(cli: Cli, code_linux_sandbox_exe: Option<PathBuf>) -> anyh
         let event_id = conversation
             .submit(Op::UserInput {
                 items,
-                final_output_json_schema: None,
+                final_output_json_schema: output_schema.clone(),
             })
             .await?;
         info!("Sent prompt with event ID: {event_id}");
@@ -2620,6 +2621,11 @@ async fn submit_and_wait(
 fn load_output_schema(path: Option<PathBuf>) -> Option<Value> {
     let path = path?;
 
+    if let Err(err) = validate_output_schema_size(&path) {
+        eprintln!("{err}");
+        std::process::exit(1);
+    }
+
     let schema_str = match std::fs::read_to_string(&path) {
         Ok(contents) => contents,
         Err(err) => {
@@ -2643,6 +2649,23 @@ fn load_output_schema(path: Option<PathBuf>) -> Option<Value> {
     }
 }
 
+fn validate_output_schema_size(path: &Path) -> Result<(), String> {
+    let metadata = std::fs::metadata(path).map_err(|err| {
+        format!(
+            "Failed to read output schema metadata for {}: {err}",
+            path.display()
+        )
+    })?;
+    let len = metadata.len();
+    if len > OUTPUT_SCHEMA_MAX_BYTES {
+        return Err(format!(
+            "Output schema file {} is too large: {len} bytes exceeds {OUTPUT_SCHEMA_MAX_BYTES} byte limit",
+            path.display()
+        ));
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2660,6 +2683,29 @@ mod tests {
 	    use filetime::{set_file_mtime, FileTime};
 	    use tempfile::TempDir;
 	    use uuid::Uuid;
+
+	    #[test]
+	    fn output_schema_size_limit_accepts_small_schema() {
+	        let dir = TempDir::new().unwrap();
+	        let path = dir.path().join("schema.json");
+	        std::fs::write(&path, r#"{"type":"object"}"#).unwrap();
+
+	        validate_output_schema_size(&path).expect("small schema should be accepted");
+	    }
+
+	    #[test]
+	    fn output_schema_size_limit_rejects_large_schema() {
+	        let dir = TempDir::new().unwrap();
+	        let path = dir.path().join("schema.json");
+	        std::fs::write(&path, "x".repeat(OUTPUT_SCHEMA_MAX_BYTES as usize + 1)).unwrap();
+
+	        let err = validate_output_schema_size(&path)
+	            .expect_err("oversized schema should be rejected");
+	        assert!(
+	            err.contains("exceeds"),
+	            "error should mention the size limit: {err}"
+	        );
+	    }
 
 	    #[test]
 	    fn shutdown_state_schedules_grace_on_first_request() {

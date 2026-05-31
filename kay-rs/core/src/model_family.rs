@@ -29,7 +29,8 @@ const GPT_5_2_CODEX_INSTRUCTIONS: &str = include_str!("../gpt-5.2-codex_prompt.m
 const MIMO_SYNTHESIS_CHECKPOINT_INSTRUCTIONS: &str = r#"MiMo investigation discipline:
 - Do not stay in private reasoning when the next step is obvious. If the user names files to inspect, call the shell tool immediately and read those files in one bounded command.
 - When calling a tool, emit exactly one JSON object for that tool call. Do not concatenate multiple JSON objects into a single tool arguments string.
-- For `apply_patch`, use either a bare `@@` hunk marker or a single descriptive hunk header without a trailing `@@`; include exact unchanged context lines from the file around every edit.
+- For `apply_patch`, use either a bare `@@` hunk marker or a single descriptive hunk header without a trailing `@@`. Never write hunk labels like `@@ hint paragraph @@`; the trailing `@@` becomes bad context. Include exact unchanged context lines from the file around every edit.
+- If two `apply_patch` attempts fail on the same file because context does not match, stop retrying that patch shape. Re-read the target lines once, then use a smaller patch with exact nearby context or a bounded script that rewrites only the required file. After a third patch failure on the same file, do not call `apply_patch` again for that file.
 - When the user gives a strict output contract or JSON schema, use assistant messages only for the final contracted output after tool work is complete.
 - In tool workflows, do not use assistant messages for progress updates; continue with tool calls until you are ready to provide the final answer.
 - Keep the first investigation action small and concrete; gather the minimum evidence needed before thinking further.
@@ -853,6 +854,18 @@ mod tests {
                 .base_instructions
                 .contains("call the shell tool immediately"),
             "MiMo models need explicit pre-tool stall guidance"
+        );
+        assert!(
+            family
+                .base_instructions
+                .contains("If two `apply_patch` attempts fail"),
+            "MiMo models need explicit patch failure recovery guidance"
+        );
+        assert!(
+            family
+                .base_instructions
+                .contains("Never write hunk labels like `@@ hint paragraph @@`"),
+            "MiMo models need explicit apply_patch hunk header guidance"
         );
     }
 

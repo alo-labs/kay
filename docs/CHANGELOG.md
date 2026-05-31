@@ -4,6 +4,22 @@ Rolling task log for the documentation and workflow surface.
 
 ## 2026-05-31
 
+- Wired `kay exec --output-schema` into the user-turn schema path and taught
+  OpenAI-compatible Chat Completions requests to use `response_format` for
+  no-tool structured-output turns while deferring it during tool-capable turns
+  so MiMo does not skip required file edits.
+- Taught the shared shell-tool parser to recover MiMo's observed concatenated
+  JSON tool-argument objects, including string-form commands, by executing the
+  commands as one quoted shell script instead of trapping the turn in repeated
+  parse-error retries.
+- Gave the direct Xiaomi provider the standard five-minute streaming idle window
+  so slower first-token MiMo turns are not reset every 60 seconds.
+- Added MiMo model-family recovery guidance for repeated `apply_patch` context
+  failures so models switch to a smaller exact patch or bounded file rewrite
+  instead of stalling on the same failed hunk.
+- Normalized MiMo-style `apply_patch` hunk labels with trailing `@@` markers in
+  the shared shell-tool path and made the MiMo family instructions explicitly
+  reject that malformed header shape.
 - Hardened shared MiMo model-family tool guidance so OpenCode Go and direct
   Xiaomi MiMo models use the same apply-patch grammar, tool-call, and final
   output contract behavior.

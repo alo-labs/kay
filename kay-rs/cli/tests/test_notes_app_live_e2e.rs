@@ -204,7 +204,7 @@ fn run_notes_feature_turn(
     save_stdout_transcript(repo_dir, model, &stdout_transcript);
 
     let raw_message = fs::read_to_string(last_message_path).expect("read last message file");
-    notes_response_from_last_message(repo_dir, &raw_message)
+    notes_response_from_last_message(&raw_message)
 }
 
 fn build_notes_feature_prompt(repo_root: &Path) -> String {
@@ -299,47 +299,61 @@ fn is_expected_notes_file(path: &str) -> bool {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct NotesWorkResponse {
     summary: String,
     touched_files: Vec<String>,
 }
 
 fn parse_notes_work_response(input: &str) -> Option<NotesWorkResponse> {
-    if let Some(start) = input.rfind("```json") {
-        let after_fence = &input[start + "```json".len()..];
-        if let Some(end_rel) = after_fence.find("```") {
-            if let Ok(response) = serde_json::from_str::<NotesWorkResponse>(after_fence[..end_rel].trim()) {
-                return Some(response);
-            }
-        }
+    let trimmed = input.trim();
+    if let Ok(response) = serde_json::from_str::<NotesWorkResponse>(trimmed) {
+        return Some(response);
     }
 
-    for (start, _) in input.match_indices('{').rev() {
-        if let Ok(response) = serde_json::from_str::<NotesWorkResponse>(input[start..].trim()) {
+    let fence_starts = trimmed
+        .match_indices("```")
+        .map(|(idx, _)| idx)
+        .collect::<Vec<_>>();
+    for start in fence_starts.into_iter().rev() {
+        let after_fence = &trimmed[start + "```".len()..];
+        let Some(language_end) = after_fence.find('\n') else {
+            continue;
+        };
+        if after_fence[..language_end].trim().to_ascii_lowercase() != "json" {
+            continue;
+        }
+        let body = &after_fence[language_end + 1..];
+        if let Some(end_rel) = body.find("```")
+            && let Ok(response) = serde_json::from_str::<NotesWorkResponse>(body[..end_rel].trim())
+        {
             return Some(response);
         }
     }
+
+    parse_trailing_notes_work_response(trimmed)
+}
+
+fn parse_trailing_notes_work_response(input: &str) -> Option<NotesWorkResponse> {
+    for (start, ch) in input.char_indices().rev() {
+        if ch != '{' {
+            continue;
+        }
+        let candidate = input[start..].trim();
+        if let Ok(response) = serde_json::from_str::<NotesWorkResponse>(candidate) {
+            return Some(response);
+        }
+    }
+
     None
 }
 
-fn notes_response_from_last_message(repo_dir: &Path, raw_message: &str) -> NotesWorkResponse {
+fn notes_response_from_last_message(raw_message: &str) -> NotesWorkResponse {
     if let Some(response) = parse_notes_work_response(raw_message) {
         return response;
     }
 
-    let touched_files: Vec<String> = git_diff_names(repo_dir)
-        .into_iter()
-        .filter(|name| is_expected_notes_file(name))
-        .collect();
-    assert!(
-        !touched_files.is_empty(),
-        "expected trailing JSON output or tracked notes UI edits from kay exec, got:\n{raw_message}"
-    );
-
-    NotesWorkResponse {
-        summary: raw_message.trim().to_string(),
-        touched_files,
-    }
+    panic!("expected JSON output from kay exec, got:\n{raw_message}");
 }
 
 fn latest_session_jsonl(kay_home: &Path) -> Option<PathBuf> {
@@ -433,6 +447,160 @@ fn contains_any(haystack: &str, needles: &[&str]) -> bool {
     needles.iter().any(|needle| haystack.contains(needle))
 }
 
+fn function_body<'a>(source: &'a str, function_name: &str) -> Option<&'a str> {
+    let signatures = [
+        format!("function {function_name}"),
+        format!("const {function_name}"),
+        format!("let {function_name}"),
+        format!("var {function_name}"),
+    ];
+    let signature_start = signatures
+        .iter()
+        .filter_map(|signature| source.find(signature))
+        .min()?;
+    let body_start = source[signature_start..].find('{')? + signature_start;
+    let mut depth = 0usize;
+    let mut body_end = None;
+
+    for (offset, ch) in source[body_start..].char_indices() {
+        match ch {
+            '{' => depth += 1,
+            '}' => {
+                depth = depth.saturating_sub(1);
+                if depth == 0 {
+                    body_end = Some(body_start + offset);
+                    break;
+                }
+            }
+            _ => {}
+        }
+    }
+
+    body_end.map(|end| &source[body_start + 1..end])
+}
+
+fn branch_after_key_line(source: &str) -> &str {
+    let after_first_line = source
+        .find('\n')
+        .map(|idx| &source[idx + 1..])
+        .unwrap_or_default();
+    let end = after_first_line
+        .find("\n    } else")
+        .or_else(|| after_first_line.find("\n  } else"))
+        .or_else(|| after_first_line.find("\n    }"))
+        .or_else(|| after_first_line.find("\n  }"))
+        .unwrap_or(after_first_line.len());
+    &after_first_line[..end]
+}
+
+fn line_has_typing_return_guard(line: &str) -> bool {
+    let lower = line.to_ascii_lowercase();
+    lower.trim_start().starts_with("if")
+        && lower.contains("return")
+        && [
+            "typing",
+            "editing",
+            "input",
+            "textarea",
+            "contenteditable",
+            "activeelement",
+            "target",
+        ]
+        .iter()
+        .any(|needle| lower.contains(needle))
+}
+
+fn text_has_typing_return_guard(text: &str) -> bool {
+    let lower = text.to_ascii_lowercase();
+    lower.contains("if")
+        && lower.contains("return")
+        && [
+            "typing",
+            "editing",
+            "input",
+            "textarea",
+            "contenteditable",
+            "activeelement",
+            "target",
+        ]
+        .iter()
+        .any(|needle| lower.contains(needle))
+}
+
+fn assert_duplicate_shortcut_respects_typing_guard(source: &str) {
+    let keydown_start = source
+        .find("keydown")
+        .expect("notes UI should install a keydown handler");
+    let after_keydown = &source[keydown_start..];
+    let duplicate_key_index = [
+        "event.key === 'd'",
+        "event.key === \"d\"",
+        "event.key.toLowerCase() === 'd'",
+        "event.key.toLowerCase() === \"d\"",
+    ]
+    .iter()
+    .filter_map(|needle| after_keydown.find(needle))
+    .min()
+    .expect("notes UI should handle the d duplicate shortcut");
+    let before_duplicate_key = &after_keydown[..duplicate_key_index];
+    let duplicate_key_line = after_keydown[duplicate_key_index..]
+        .lines()
+        .next()
+        .unwrap_or_default();
+    let guarded_by_top_level_return = before_duplicate_key
+        .lines()
+        .any(line_has_typing_return_guard)
+        || text_has_typing_return_guard(before_duplicate_key);
+    let duplicate_key_line_lower = duplicate_key_line.to_ascii_lowercase();
+    let duplicate_branch = branch_after_key_line(&after_keydown[duplicate_key_index..]);
+    let guarded_inside_duplicate_branch = duplicate_branch
+        .lines()
+        .any(line_has_typing_return_guard)
+        || text_has_typing_return_guard(duplicate_branch);
+
+    assert!(
+        guarded_by_top_level_return
+            || guarded_inside_duplicate_branch
+            || duplicate_key_line_lower.contains("!istyping")
+            || duplicate_key_line_lower.contains("!isediting")
+            || duplicate_key_line_lower.contains("!isinput")
+            || duplicate_key_line_lower.contains("!istextinput"),
+        "duplicate shortcut should be gated so it does not fire while typing"
+    );
+}
+
+fn definition_brace_depth(source: &str, markers: &[&str]) -> Option<usize> {
+    let definition_start = markers
+        .iter()
+        .filter_map(|marker| source.find(marker))
+        .min()?;
+    let mut depth = 0usize;
+    for ch in source[..definition_start].chars() {
+        match ch {
+            '{' => depth = depth.saturating_add(1),
+            '}' => depth = depth.saturating_sub(1),
+            _ => {}
+        }
+    }
+    Some(depth)
+}
+
+fn assert_duplicate_function_is_callable_from_event_handlers(source: &str) {
+    let depth = definition_brace_depth(source, &[
+        "async function duplicateSelectedNote",
+        "function duplicateSelectedNote",
+        "const duplicateSelectedNote",
+        "let duplicateSelectedNote",
+        "var duplicateSelectedNote",
+    ])
+    .expect("duplicateSelectedNote should be defined");
+
+    assert_eq!(
+        depth, 1,
+        "duplicateSelectedNote should be defined at the top level of the notes UI module, not nested inside another function"
+    );
+}
+
 fn assert_notes_feature_behavior(repo_dir: &Path) {
     let index_html = fs::read_to_string(repo_dir.join("src/public/index.html"))
         .expect("read src/public/index.html");
@@ -482,6 +650,9 @@ fn assert_notes_feature_behavior(repo_dir: &Path) {
         notes_ui_js.contains("duplicateSelectedNote"),
         "duplicateSelectedNote should be implemented"
     );
+    assert_duplicate_function_is_callable_from_event_handlers(&notes_ui_js);
+    let duplicate_body = function_body(&notes_ui_js, "duplicateSelectedNote")
+        .expect("duplicateSelectedNote should be a function body");
     assert!(
         notes_ui_js.contains("els.duplicateButton.disabled = true")
             && notes_ui_js.contains("els.duplicateButton.disabled = false"),
@@ -489,7 +660,7 @@ fn assert_notes_feature_behavior(repo_dir: &Path) {
     );
     assert!(
         contains_any(
-            &notes_ui_js,
+            duplicate_body,
             &["method: 'POST'", "method: \"POST\"", "method: 'post'", "method: \"post\""],
         ),
         "duplicateSelectedNote should create a fresh note via POST"
@@ -506,7 +677,7 @@ fn assert_notes_feature_behavior(repo_dir: &Path) {
         "els.noteTitle.focus()",
     ] {
         assert!(
-            notes_ui_js.contains(expected),
+            duplicate_body.contains(expected),
             "notes UI should preserve duplicate workflow detail: {expected}"
         );
     }
@@ -533,19 +704,7 @@ fn assert_notes_feature_behavior(repo_dir: &Path) {
         ),
         "notes UI should handle the d duplicate shortcut"
     );
-    assert!(
-        contains_any(
-            &notes_ui_js,
-            &[
-                "isTyping()",
-                "const isTyping",
-                "let isTyping",
-                "document.activeElement",
-                "event.target",
-            ],
-        ),
-        "duplicate shortcut should avoid firing while typing"
-    );
+    assert_duplicate_shortcut_respects_typing_guard(&notes_ui_js);
     assert!(
         !contains_any(
             &notes_ui_js,
@@ -650,6 +809,49 @@ fn run_notes_app_live_feature_workflow(spec: &ProviderSpec) {
             transcript_path.display()
         );
     }
+}
+
+#[test]
+fn notes_response_parser_accepts_trailing_contracted_json() {
+    let response = parse_notes_work_response(
+        "All edits are complete.\n\n{\"summary\":\"done\",\"touched_files\":[\"src/public/index.html\",\"src/public/notes-ui.js\"]}",
+    )
+    .expect("MiMo may return prose before the final contracted JSON object");
+
+    assert_eq!(response.summary, "done");
+    assert_eq!(
+        response.touched_files,
+        vec!["src/public/index.html", "src/public/notes-ui.js"]
+    );
+}
+
+#[test]
+fn notes_response_parser_rejects_unknown_trailing_json_fields() {
+    assert!(
+        parse_notes_work_response(
+            "Done.\n{\"summary\":\"done\",\"touched_files\":[],\"extra\":true}"
+        )
+        .is_none(),
+        "trailing JSON extraction should still enforce the exact contract"
+    );
+}
+
+#[test]
+fn duplicate_function_scope_check_rejects_nested_function() {
+    let source = r#"
+      (function () {
+        function selectNote(id) {
+          async function duplicateSelectedNote() {}
+        }
+        els.duplicateButton.addEventListener('click', duplicateSelectedNote);
+      })();
+    "#;
+
+    assert_ne!(
+        definition_brace_depth(source, &["async function duplicateSelectedNote"]),
+        Some(1),
+        "nested duplicateSelectedNote should not look module-callable"
+    );
 }
 
 #[test]
