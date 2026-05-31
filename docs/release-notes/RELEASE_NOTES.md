@@ -1,3 +1,33 @@
+## @alo-labs/kay v0.9.17
+
+This release adds Xiaomi MiMo as a first-class Kay provider and hardens the
+MiMo runtime path used by both Xiaomi and OpenCode Go models.
+
+### Changes
+
+- Providers: add the built-in Xiaomi provider with `xiaomi/mimo-v2.5-pro` and
+  `xiaomi/mimo-v2.5` model presets, provider inference, credential storage, and
+  `/provider` management support.
+- TUI/CLI: surface Xiaomi in onboarding, login guidance, model selection,
+  provider status, and credential edit flows.
+- Runtime: add MiMo-specific synthesis guidance so MiMo V2.5 sessions are less
+  likely to loop on repeated reads and more likely to produce a grounded
+  multi-file synthesis before acting.
+- Tests: add Xiaomi provider unit coverage, model visibility regressions,
+  provider-model CLI acceptance coverage, VT100/provider snapshots, and Xiaomi
+  entries in the live provider release gate.
+- Release hygiene: keep the TypeScript SDK ESLint config clean while
+  reconciling the v0.9.16 release metadata merge.
+
+### Install
+
+```bash
+npm install -g @alo-labs/kay@latest
+kay
+```
+
+Compare: https://github.com/alo-labs/kay/compare/v0.9.16...v0.9.17
+
 ## @alo-labs/kay v0.9.3
 
 This patch hardens Kay's MiniMax and autonomous runtime paths after the `kay`

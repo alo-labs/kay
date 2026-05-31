@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.9.17] — 2026-05-31
+
+### Features
+
+- Added Xiaomi as a built-in provider with `xiaomi/mimo-v2.5-pro` and
+  `xiaomi/mimo-v2.5`, including model presets, provider inference, credential
+  handling, picker visibility, and `/provider` management support. (9011cf69a2)
+- Extended the Xiaomi/OpenCode Go MiMo model path through config docs,
+  onboarding copy, model visibility, provider status UI, and live acceptance
+  coverage. (9011cf69a2)
+
+### Reliability
+
+- Added a MiMo-specific synthesis checkpoint so MiMo V2.5 and V2.5 Pro sessions
+  get explicit anti-loop investigation guidance during multi-file debugging
+  turns. (dcc83ef4d4)
+- Included Xiaomi MiMo models in the live provider release gate and model
+  acceptance coverage alongside the existing OpenCode Go MiMo matrix.
+  (9011cf69a2)
+
+### Release Hygiene
+
+- Reconciled the v0.9.16 release metadata merge while keeping the TypeScript SDK
+  ESLint config clean of the suspicious obfuscated payload seen in the incoming
+  remote state. (7248507b5c)
+
+---
+
 ## [0.8.0] — 2026-05-12
 
 ## Features
