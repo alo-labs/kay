@@ -119,7 +119,7 @@ impl AuthModeWidget {
             Line::from(vec![
                 Span::raw("  "),
                 Span::styled(
-                    "or connect provider API keys for OpenCode Go, MiniMax, or OpenAI",
+                    "or connect provider API keys for Xiaomi, OpenCode Go, MiniMax, or OpenAI",
                     Style::default().add_modifier(Modifier::BOLD),
                 ),
             ]),
@@ -206,7 +206,7 @@ impl AuthModeWidget {
             1,
             AuthMode::ApiKey,
             api_key_label,
-            "OpenCode Go, MiniMax, or OpenAI",
+            "Xiaomi, OpenCode Go, MiniMax, or OpenAI",
         ));
         lines.push(Line::from(""));
         lines.push(
@@ -461,7 +461,7 @@ mod tests {
 
         let rendered = buffer_to_string(&buf, area);
         assert!(rendered.contains("Connect provider API keys"));
-        assert!(rendered.contains("OpenCode Go, MiniMax, or OpenAI"));
+        assert!(rendered.contains("Xiaomi, OpenCode Go, MiniMax, or OpenAI"));
     }
 
     fn test_widget() -> AuthModeWidget {

@@ -29,6 +29,8 @@ Built-in provider IDs:
 - `openai`: default OpenAI provider.
 - `oss`: local OpenAI-compatible OSS provider, usually Ollama.
 - `minimax`: MiniMax Chat Completions provider, default base URL `https://api.minimax.io/v1`.
+- `xiaomi`: Xiaomi MiMo Chat Completions provider, default base URL `https://token-plan-sgp.xiaomimimo.com/v1`.
+- `opencode-go`: OpenCode Go Chat Completions provider, default base URL `https://opencode.ai/zen/go/v1`.
 
 The built-in `minimax` provider reads credentials from `~/.kay/auth.json` under
 `provider_credentials.minimax.api_key`, with `MINIMAX_API_KEY` as an environment
@@ -43,6 +45,21 @@ To use MiniMax M2.7:
 ```toml
 model_provider = "minimax"
 model = "MiniMax-M2.7"
+```
+
+The built-in `xiaomi` provider reads credentials from `~/.kay/auth.json` under
+`provider_credentials.xiaomi.api_key`, with `XIAOMI_API_KEY` as an environment
+fallback. To store the key persistently:
+
+```bash
+printenv XIAOMI_API_KEY | kay login --provider xiaomi --with-api-key
+```
+
+To use Xiaomi MiMo:
+
+```toml
+model_provider = "xiaomi"
+model = "xiaomi/mimo-v2.5-pro"
 ```
 
 For example, if you wanted to add a provider that uses the OpenAI 4o model via the chat completions API, then you could add the following configuration:
@@ -151,7 +168,7 @@ How long Codex will wait for activity on a streaming response before treating th
 
 ## model_provider
 
-Identifies which provider to use from the `model_providers` map. Defaults to `"openai"`. Built-in provider IDs include `"openai"`, `"oss"`, and `"minimax"`. You can override the `base_url` for the built-in `openai` provider via the `OPENAI_BASE_URL` environment variable and force the wire protocol (`"responses"` or `"chat"`) with `OPENAI_WIRE_API`.
+Identifies which provider to use from the `model_providers` map. Defaults to `"openai"`. Built-in provider IDs include `"openai"`, `"xiaomi"`, `"opencode-go"`, `"minimax"`, and `"oss"`. You can override the `base_url` for the built-in `openai` provider via the `OPENAI_BASE_URL` environment variable and force the wire protocol (`"responses"` or `"chat"`) with `OPENAI_WIRE_API`.
 
 Note that if you override `model_provider`, then you likely want to override
 `model`, as well. For example, if you are running ollama with Mistral locally,

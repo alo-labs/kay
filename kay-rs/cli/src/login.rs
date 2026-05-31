@@ -80,7 +80,7 @@ pub fn read_api_key_from_stdin() -> String {
 
     if stdin.is_terminal() {
         eprintln!(
-            "--with-api-key expects the API key on stdin. Try piping it, e.g. `printenv OPENAI_API_KEY | kay login --with-api-key`, `printenv MINIMAX_API_KEY | kay login --provider minimax --with-api-key`, or `printenv OPENCODE_GO_API_KEY | kay login --provider opencode-go --with-api-key`. If you want to pass the key directly, use `kay login --api-key <KEY>`."
+            "--with-api-key expects the API key on stdin. Try piping it, e.g. `printenv OPENAI_API_KEY | kay login --with-api-key`, `printenv XIAOMI_API_KEY | kay login --provider xiaomi --with-api-key`, `printenv MINIMAX_API_KEY | kay login --provider minimax --with-api-key`, or `printenv OPENCODE_GO_API_KEY | kay login --provider opencode-go --with-api-key`. If you want to pass the key directly, use `kay login --api-key <KEY>`."
         );
         std::process::exit(1);
     }

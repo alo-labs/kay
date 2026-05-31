@@ -15,6 +15,7 @@ use code_core::{
     built_in_model_providers,
     MINIMAX_PROVIDER_ID,
     OPENCODE_GO_PROVIDER_ID,
+    XIAOMI_PROVIDER_ID,
 };
 use code_login::AuthMode;
 
@@ -157,7 +158,8 @@ impl ProviderCredentialsState {
             }
         };
 
-        const PROVIDER_ORDER: [&str; 3] = [
+        const PROVIDER_ORDER: [&str; 4] = [
+            XIAOMI_PROVIDER_ID,
             OPENCODE_GO_PROVIDER_ID,
             MINIMAX_PROVIDER_ID,
             "openai",
@@ -542,6 +544,17 @@ impl ProviderCredentialsState {
         let Some(provider) = self.providers.get(self.selected).cloned() else {
             return;
         };
+
+        if !provider.is_configured {
+            self.feedback = Some(Feedback {
+                message: format!(
+                    "No {provider_label} provider key is saved",
+                    provider_label = provider.label
+                ),
+                is_error: true,
+            });
+            return;
+        }
 
         self.mode = ViewMode::DeleteConfirm {
             provider_ref: provider.provider_ref,

@@ -256,6 +256,7 @@ experimental_use_freeform_apply_patch = false
 
 # Built-ins include:
 # - openai (Responses API; requires login or OPENAI_API_KEY via auth flow)
+# - xiaomi (Chat Completions API; requires login or XIAOMI_API_KEY via auth flow)
 # - opencode-go (Chat Completions API; requires login or OPENCODE_GO_API_KEY via auth flow)
 # - oss (Chat Completions API; defaults to http://localhost:11434/v1)
 
@@ -279,6 +280,14 @@ experimental_use_freeform_apply_patch = false
 # name = "OpenCode Go"
 # base_url = "https://opencode.ai/zen/go/v1"
 # env_key = "OPENCODE_GO_API_KEY"
+# wire_api = "chat"
+# # requires_openai_auth = false
+
+# --- Example: Xiaomi MiMo (OpenAI-compatible chat completions) ---
+# [model_providers.xiaomi]
+# name = "Xiaomi"
+# base_url = "https://token-plan-sgp.xiaomimimo.com/v1"
+# env_key = "XIAOMI_API_KEY"
 # wire_api = "chat"
 # # requires_openai_auth = false
 

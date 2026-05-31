@@ -68,6 +68,20 @@ requires_openai_auth = false
 OpenCode Go model ids use the `opencode-go/<model-id>` format, for example
 `opencode-go/kimi-k2.6`.
 
+Xiaomi is available as a built-in provider using the `xiaomi` id:
+
+```toml
+[model_providers.xiaomi]
+name = "Xiaomi"
+base_url = "https://token-plan-sgp.xiaomimimo.com/v1"
+env_key = "XIAOMI_API_KEY"
+wire_api = "chat"
+requires_openai_auth = false
+```
+
+Xiaomi model ids use the `xiaomi/<model-id>` format. The built-in Xiaomi
+models are `xiaomi/mimo-v2.5-pro` and `xiaomi/mimo-v2.5`.
+
 Note this makes it possible to use the Kay CLI with non-OpenAI models, so long as they use a wire API that is compatible with the OpenAI chat completions API. For example, you could define the following provider to use Kay CLI with Ollama running locally:
 
 ```toml
@@ -162,7 +176,7 @@ How long Kay will wait for activity on a streaming response before treating the 
 
 ## model_provider
 
-Identifies which provider to use from the `model_providers` map. Defaults to `"openai"`. You can override the `base_url` for the built-in `openai` provider via the `OPENAI_BASE_URL` environment variable and force the wire protocol (`"responses"` or `"chat"`) with `OPENAI_WIRE_API`.
+Identifies which provider to use from the `model_providers` map. Defaults to `"openai"`. Built-in provider IDs include `"openai"`, `"xiaomi"`, `"opencode-go"`, `"minimax"`, and `"oss"`. You can override the `base_url` for the built-in `openai` provider via the `OPENAI_BASE_URL` environment variable and force the wire protocol (`"responses"` or `"chat"`) with `OPENAI_WIRE_API`.
 
 Note that if you override `model_provider`, then you likely want to override
 `model`, as well. For example, if you are running ollama with Mistral locally,

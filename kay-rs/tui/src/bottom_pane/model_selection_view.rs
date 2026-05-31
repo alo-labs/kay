@@ -14,7 +14,7 @@ use code_core::model_family::supports_extended_context;
 use code_core::model_family::provider_model_slug;
 use code_core::model_family::response_model_matches_request;
 use code_core::model_visibility::VisibleProvider;
-use code_core::{MINIMAX_PROVIDER_ID, OPENCODE_GO_PROVIDER_ID};
+use code_core::{MINIMAX_PROVIDER_ID, OPENCODE_GO_PROVIDER_ID, XIAOMI_PROVIDER_ID};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use std::cell::Cell;
 use ratatui::buffer::Buffer;
@@ -79,6 +79,7 @@ impl FlatPreset {
 
     fn provider_for_model(model: &str) -> VisibleProvider {
         match infer_model_provider_id(model) {
+            Some(XIAOMI_PROVIDER_ID) => VisibleProvider::Xiaomi,
             Some(OPENCODE_GO_PROVIDER_ID) => VisibleProvider::OpenCodeGo,
             Some(MINIMAX_PROVIDER_ID) => VisibleProvider::MiniMax,
             _ => VisibleProvider::OpenAI,
@@ -464,6 +465,7 @@ impl ModelSelectionView {
 
     fn normalized_model_slug(provider: VisibleProvider, model: &str) -> String {
         let slug = match provider {
+            VisibleProvider::Xiaomi => provider_model_slug(XIAOMI_PROVIDER_ID, model),
             VisibleProvider::OpenCodeGo => provider_model_slug(OPENCODE_GO_PROVIDER_ID, model),
             VisibleProvider::MiniMax => provider_model_slug(MINIMAX_PROVIDER_ID, model),
             VisibleProvider::OpenAI => provider_model_slug("openai", model),
@@ -614,7 +616,7 @@ impl ModelSelectionView {
             },
             ModelLine {
                 line: Line::from(vec![Span::styled(
-                    "Add provider credentials with /provider to unlock OpenCode Go, MiniMax, and OpenAI models.",
+                    "Add provider credentials with /provider to unlock Xiaomi, OpenCode Go, MiniMax, and OpenAI models.",
                     desc_style,
                 )]),
                 is_selected: false,
@@ -1716,6 +1718,12 @@ mod tests {
     fn model_selection_groups_provider_buckets_and_hides_unconfigurable_reasoning() {
         let presets = vec![
             make_preset_with_efforts(
+                "xiaomi/mimo-v2.5-pro",
+                "Xiaomi MiMo V2.5 Pro",
+                "Xiaomi model",
+                vec![],
+            ),
+            make_preset_with_efforts(
                 "opencode-go/kimi-k2.6",
                 "OpenCode Go Kimi K2.6",
                 "OpenCode Go model",
@@ -1768,6 +1776,10 @@ mod tests {
 
         let lines = buffer_body_lines(&buf, width, height);
         let visible = lines.join("\n");
+        let xiaomi_idx = lines
+            .iter()
+            .position(|line| line.trim() == "Xiaomi")
+            .expect("Xiaomi header");
         let opencode_idx = lines
             .iter()
             .position(|line| line.trim() == "OpenCode Go")
@@ -1782,14 +1794,16 @@ mod tests {
             .expect("OpenAI header");
 
         assert!(
-            opencode_idx < minimax_idx && minimax_idx < openai_idx,
+            xiaomi_idx < opencode_idx && opencode_idx < minimax_idx && minimax_idx < openai_idx,
             "provider headers should stay in locked order:\n{}",
             visible
         );
+        assert!(visible.contains("MIMO-V2.5-Pro"));
         assert!(visible.contains("KIMI-K2.6"));
         assert!(visible.contains("MINIMAX-M2.7"));
         assert!(visible.contains("GPT-5.4"));
         assert!(visible.contains("Use model (current)"));
+        assert!(visible.contains("Xiaomi model"));
         assert!(visible.contains("OpenCode Go model"));
         assert!(visible.contains("MiniMax model"));
         assert!(!visible.contains("opencode low reasoning"));

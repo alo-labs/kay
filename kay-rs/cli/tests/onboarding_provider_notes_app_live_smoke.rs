@@ -472,10 +472,11 @@ fn start_onboarding_provider_setup(
     harness.write_key(b"\r");
     harness.wait_for(
         keys,
-        &["Manage Providers", "OpenCode Go", "MiniMax", "OpenAI"],
+        &["Manage Providers", "Xiaomi", "OpenCode Go", "MiniMax", "OpenAI"],
         ONBOARDING_TIMEOUT,
     );
 
+    harness.write_key(b"\x1b[B");
     harness.write_key(b"\r");
     harness.wait_for(
         keys,

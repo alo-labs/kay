@@ -330,7 +330,7 @@ struct LoginCommand {
 
     #[arg(
         long = "with-api-key",
-        help = "Read the API key from stdin for shell-safe use (e.g. `printenv OPENAI_API_KEY | kay login --with-api-key`, `printenv MINIMAX_API_KEY | kay login --provider minimax --with-api-key`, or `printenv OPENCODE_GO_API_KEY | kay login --provider opencode-go --with-api-key`)"
+        help = "Read the API key from stdin for shell-safe use (e.g. `printenv OPENAI_API_KEY | kay login --with-api-key`, `printenv XIAOMI_API_KEY | kay login --provider xiaomi --with-api-key`, `printenv MINIMAX_API_KEY | kay login --provider minimax --with-api-key`, or `printenv OPENCODE_GO_API_KEY | kay login --provider opencode-go --with-api-key`)"
     )]
     with_api_key: bool,
 

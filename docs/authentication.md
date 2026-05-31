@@ -16,9 +16,10 @@ kay login --api-key <KEY>
 printenv OPENAI_API_KEY | kay login --with-api-key
 ```
 
-If you are saving a provider-specific key, add `--provider minimax` or `--provider opencode-go` to either form, for example:
+If you are saving a provider-specific key, add `--provider xiaomi`, `--provider minimax`, or `--provider opencode-go` to either form, for example:
 
 ```bash
+kay login --provider xiaomi --api-key <KEY>
 kay login --provider minimax --api-key <KEY>
 ```
 

@@ -783,8 +783,11 @@ const DEFAULT_OLLAMA_PORT: u32 = 11434;
 pub const BUILT_IN_OSS_MODEL_PROVIDER_ID: &str = "oss";
 pub const MINIMAX_PROVIDER_ID: &str = "minimax";
 pub const MINIMAX_DEFAULT_BASE_URL: &str = "https://api.minimax.io/v1";
+pub const XIAOMI_PROVIDER_ID: &str = "xiaomi";
+pub const XIAOMI_DEFAULT_BASE_URL: &str = "https://token-plan-sgp.xiaomimimo.com/v1";
 pub const OPENCODE_GO_PROVIDER_ID: &str = "opencode-go";
 pub const OPENCODE_GO_DEFAULT_BASE_URL: &str = "https://opencode.ai/zen/go/v1";
+const OPENCODE_GO_STREAM_IDLE_TIMEOUT_MS: u64 = 60_000;
 
 /// Built-in default provider list.
 fn wire_api_override_from_env(env_key: &str) -> Option<WireApi> {
@@ -857,6 +860,7 @@ pub fn built_in_model_providers(
             },
         ),
         (MINIMAX_PROVIDER_ID, create_minimax_provider()),
+        (XIAOMI_PROVIDER_ID, create_xiaomi_provider()),
         (OPENCODE_GO_PROVIDER_ID, create_opencode_go_provider()),
         (BUILT_IN_OSS_MODEL_PROVIDER_ID, create_oss_provider()),
     ]
@@ -897,6 +901,38 @@ pub fn create_minimax_provider() -> ModelProviderInfo {
     }
 }
 
+pub fn create_xiaomi_provider() -> ModelProviderInfo {
+    let base_url = std::env::var("XIAOMI_BASE_URL")
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| XIAOMI_DEFAULT_BASE_URL.to_string());
+
+    ModelProviderInfo {
+        name: "Xiaomi".into(),
+        base_url: Some(base_url),
+        env_key: Some("XIAOMI_API_KEY".into()),
+        env_key_instructions: Some(
+            "Set XIAOMI_API_KEY or run `kay login --provider xiaomi --with-api-key`."
+                .to_string(),
+        ),
+        experimental_bearer_token: None,
+        auth: None,
+        credential_ref: Some(XIAOMI_PROVIDER_ID.to_string()),
+        wire_api: WireApi::Chat,
+        chat_completions_format: ChatCompletionsFormat::OpenAi,
+        query_params: None,
+        http_headers: None,
+        env_http_headers: None,
+        request_max_retries: None,
+        stream_max_retries: None,
+        stream_idle_timeout_ms: Some(OPENCODE_GO_STREAM_IDLE_TIMEOUT_MS),
+        websocket_connect_timeout_ms: None,
+        requires_openai_auth: false,
+        openrouter: None,
+    }
+}
+
 pub fn create_opencode_go_provider() -> ModelProviderInfo {
     ModelProviderInfo {
         name: "OpenCode Go".into(),
@@ -916,7 +952,7 @@ pub fn create_opencode_go_provider() -> ModelProviderInfo {
         env_http_headers: None,
         request_max_retries: None,
         stream_max_retries: None,
-        stream_idle_timeout_ms: None,
+        stream_idle_timeout_ms: Some(OPENCODE_GO_STREAM_IDLE_TIMEOUT_MS),
         websocket_connect_timeout_ms: None,
         requires_openai_auth: false,
         openrouter: None,

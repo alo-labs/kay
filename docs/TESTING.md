@@ -59,6 +59,10 @@ For OpenCode Go specifically, the live matrix should prove:
 - focused model-specific tests cover the stricter JSON/role edge cases
 - shared compatibility profiles like the qwen/deepseek collapsed-role profile are asserted at the model-family and payload layers
 
+For Xiaomi specifically, the live matrix should prove both built-in models
+(`xiaomi/mimo-v2.5-pro` and `xiaomi/mimo-v2.5`) can authenticate, accept
+developer and non-developer traffic, and satisfy structured-output requests.
+
 The live matrix is a capability smoke, not a ranking benchmark. If a provider adapts model behavior internally, prefer assertion styles that validate the CLI contract and final response shape instead of a brittle exact wording check.
 
 ## Release Smoke Checklist
@@ -134,12 +138,23 @@ from the release gate; MiniMax M2.7 coverage runs through OpenCode Go. The model
 response is only used to prove live work completed; model/provider identity is
 verified from Kay-side metadata, not from model self-reporting.
 
+Xiaomi direct-provider release coverage runs through
+`provider_model_acceptance`:
+
+```bash
+XIAOMI_LIVE_API_KEY=... \
+cargo test -p code-cli --test provider_model_acceptance xiaomi_provider_model_acceptance_matrix -- --nocapture
+```
+
 This smoke is a required pre-release gate. `./pre-release.sh` runs it after the
 dev-fast build, CLI smokes, and workspace nextest suite. The release gate uses
-only the curated OpenCode Go matrix above. It accepts credentials from
+the curated OpenCode Go matrix above plus Xiaomi direct-provider acceptance. It
+accepts credentials from
 `OPENCODE_GO_LIVE_API_KEY`, falls back to the normal `OPENCODE_GO_API_KEY` env
 var, and finally falls back to `provider_credentials.opencode-go.api_key` in
-`$KAY_HOME/auth.json`.
+`$KAY_HOME/auth.json`. Xiaomi accepts `XIAOMI_LIVE_API_KEY`, falls back to
+`XIAOMI_API_KEY`, and finally falls back to
+`provider_credentials.xiaomi.api_key` in `$KAY_HOME/auth.json`.
 
 For focused debugging, set `KAY_ONBOARDING_LIVE_SMOKE_MODEL_FILTER` to a comma
 separated subset of exact provider ids or model ids, such as
