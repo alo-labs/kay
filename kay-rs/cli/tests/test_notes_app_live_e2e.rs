@@ -562,6 +562,7 @@ fn assert_duplicate_shortcut_respects_typing_guard(source: &str) {
         guarded_by_top_level_return
             || guarded_inside_duplicate_branch
             || duplicate_key_line_lower.contains("!istyping")
+            || duplicate_key_line_lower.contains("!typing")
             || duplicate_key_line_lower.contains("!isediting")
             || duplicate_key_line_lower.contains("!isinput")
             || duplicate_key_line_lower.contains("!istextinput"),
@@ -852,6 +853,22 @@ fn duplicate_function_scope_check_rejects_nested_function() {
         Some(1),
         "nested duplicateSelectedNote should not look module-callable"
     );
+}
+
+#[test]
+fn duplicate_shortcut_guard_accepts_inline_typing_flag() {
+    let source = r#"
+      document.addEventListener('keydown', (event) => {
+        const tag = document.activeElement.tagName;
+        const typing = tag === 'INPUT' || tag === 'TEXTAREA';
+        if (event.key === 'd' && !typing) {
+          event.preventDefault();
+          duplicateSelectedNote();
+        }
+      });
+    "#;
+
+    assert_duplicate_shortcut_respects_typing_guard(source);
 }
 
 #[test]

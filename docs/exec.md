@@ -89,6 +89,11 @@ native `response_format` only for no-tool turns; tool-capable turns receive the
 same bounded final-output contract as system guidance so the model can inspect
 and edit files before producing the final JSON.
 
+MiMo-family tool turns also get a final-output repair pass. If a MiMo model
+emits a progress assistant message where the schema requires JSON, Kay prompts
+the model to continue with tools or return the contracted JSON instead of
+treating that progress message as successful completion.
+
 ### Git repository requirement
 
 Kay requires a Git repository to avoid destructive changes. To disable this check, use `kay exec --skip-git-repo-check`.
