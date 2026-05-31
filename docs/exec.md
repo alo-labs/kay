@@ -57,6 +57,8 @@ Sample output:
 By default, the agent responds with natural language. Use `--output-schema` to provide a JSON Schema that defines the expected JSON output.
 
 The JSON Schema must follow the [strict schema rules](https://platform.openai.com/docs/guides/structured-outputs).
+Schema files are capped at 8 KiB so a large schema cannot crowd out the rest of
+the model-visible turn context.
 
 Sample schema:
 
@@ -80,6 +82,12 @@ kay exec "Extract details of the project" --output-schema ~/schema.json
 ```
 
 Combine `--output-schema` with `-o` to only print the final JSON output. You can also pass a file path to `-o` to save the JSON output to a file.
+
+Provider behavior varies by wire protocol. Responses API models receive native
+structured-output settings. OpenAI-compatible Chat Completions providers use
+native `response_format` only for no-tool turns; tool-capable turns receive the
+same bounded final-output contract as system guidance so the model can inspect
+and edit files before producing the final JSON.
 
 ### Git repository requirement
 

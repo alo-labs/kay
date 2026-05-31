@@ -8017,7 +8017,7 @@ fn to_exec_params(params: ShellToolCallParams, sess: &Session) -> ExecParams {
         .sandbox_permissions
         .and_then(|p| p.requires_escalated_permissions().then_some(true));
     ExecParams {
-        command: normalize_exec_command_argv(params.command),
+        command: normalize_shell_tool_command(params.command),
         shell_script: None,
         cwd: sess.resolve_path(params.workdir.clone()),
         timeout_ms,
@@ -8025,6 +8025,50 @@ fn to_exec_params(params: ShellToolCallParams, sess: &Session) -> ExecParams {
         with_escalated_permissions,
         justification: params.justification,
     }
+}
+
+fn normalize_shell_tool_command(command: Vec<String>) -> Vec<String> {
+    normalize_exec_command_argv(normalize_apply_patch_hunk_headers(command))
+}
+
+fn normalize_apply_patch_hunk_headers(mut command: Vec<String>) -> Vec<String> {
+    let Some(program) = command.first().map(String::as_str) else {
+        return command;
+    };
+    if program != "apply_patch" {
+        return command;
+    }
+    let Some(patch) = command.get_mut(1) else {
+        return command;
+    };
+    *patch = normalize_apply_patch_hunk_header_text(patch);
+    command
+}
+
+fn normalize_apply_patch_hunk_header_text(patch: &str) -> String {
+    let mut normalized = String::with_capacity(patch.len());
+
+    for line in patch.split_inclusive('\n') {
+        let (line_without_newline, newline) = line
+            .strip_suffix('\n')
+            .map(|line| (line, "\n"))
+            .unwrap_or((line, ""));
+        let trailing_ws_len = line_without_newline.len()
+            - line_without_newline.trim_end_matches([' ', '\t']).len();
+        let trimmed_end = &line_without_newline[..line_without_newline.len() - trailing_ws_len];
+        if trimmed_end.starts_with("@@ ")
+            && trimmed_end.ends_with(" @@")
+            && trimmed_end.len() > "@@  @@".len()
+        {
+            normalized.push_str(&trimmed_end[..trimmed_end.len() - " @@".len()]);
+            normalized.push_str(&line_without_newline[trimmed_end.len()..]);
+        } else {
+            normalized.push_str(line_without_newline);
+        }
+        normalized.push_str(newline);
+    }
+
+    normalized
 }
 
 fn normalize_exec_command_argv(command: Vec<String>) -> Vec<String> {
@@ -8167,28 +8211,10 @@ fn parse_container_exec_arguments(
     sess: &Session,
     call_id: &str,
 ) -> Result<ExecParams, Box<ResponseInputItem>> {
-    // Parse command.
-    //
-    // Newer prompts use `sandbox_permissions` ("use_default" |
-    // "with_additional_permissions" | "require_escalated");
-    // older ones used `with_escalated_permissions: bool`. Accept both.
-    let parsed: std::result::Result<serde_json::Value, serde_json::Error> =
-        serde_json::from_str(&arguments);
-
-    match parsed
-        .and_then(|mut value| {
-            if value.get("sandbox_permissions").is_none() {
-                let needs_escalated = value
-                    .get("with_escalated_permissions")
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(false);
-                if needs_escalated {
-                    value["sandbox_permissions"] = serde_json::json!(SandboxPermissions::RequireEscalated);
-                }
-            }
-            serde_json::from_value::<ShellToolCallParams>(value)
-        }) {
-        Ok(shell_tool_call_params) => Ok(to_exec_params(shell_tool_call_params, sess)),
+    match parse_shell_tool_call_params_values(&arguments)
+        .and_then(|params| to_exec_params_from_shell_tool_call_params(params, sess))
+    {
+        Ok(params) => Ok(params),
         Err(e) => {
             // allow model to re-sample
             let output = ResponseInputItem::FunctionCallOutput {
@@ -8200,6 +8226,146 @@ fn parse_container_exec_arguments(
             Err(Box::new(output))
         }
     }
+}
+
+fn parse_shell_tool_call_params_values(
+    arguments: &str,
+) -> Result<Vec<ShellToolCallParams>, String> {
+    let strict = serde_json::from_str::<serde_json::Value>(arguments)
+        .map_err(|err| err.to_string())
+        .and_then(shell_tool_call_params_from_value);
+    match strict {
+        Ok(params) => return Ok(vec![params]),
+        Err(strict_err) => {
+            let stream_params = parse_concatenated_shell_tool_call_params(arguments)?;
+            if stream_params.len() > 1 {
+                return Ok(stream_params);
+            }
+            Err(strict_err)
+        }
+    }
+}
+
+fn parse_concatenated_shell_tool_call_params(
+    arguments: &str,
+) -> Result<Vec<ShellToolCallParams>, String> {
+    let stream = serde_json::Deserializer::from_str(arguments).into_iter::<serde_json::Value>();
+    let mut params = Vec::new();
+
+    for value in stream {
+        params.push(shell_tool_call_params_from_value(value.map_err(|err| err.to_string())?)?);
+    }
+
+    Ok(params)
+}
+
+fn shell_tool_call_params_from_value(
+    mut value: serde_json::Value,
+) -> Result<ShellToolCallParams, String> {
+    // Newer prompts use `sandbox_permissions` ("use_default" |
+    // "with_additional_permissions" | "require_escalated");
+    // older ones used `with_escalated_permissions: bool`. Accept both.
+    if let Some(object) = value.as_object_mut()
+        && !object.contains_key("sandbox_permissions")
+    {
+        let needs_escalated = object
+            .get("with_escalated_permissions")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+        if needs_escalated {
+            object.insert(
+                "sandbox_permissions".to_string(),
+                serde_json::json!(SandboxPermissions::RequireEscalated),
+            );
+        }
+    }
+    if let Some(object) = value.as_object_mut()
+        && let Some(command) = object.get("command").and_then(|v| v.as_str())
+    {
+        object.insert(
+            "command".to_string(),
+            serde_json::json!(vec![command.to_string()]),
+        );
+    }
+
+    let mut params =
+        serde_json::from_value::<ShellToolCallParams>(value).map_err(|err| err.to_string())?;
+    params.command = normalize_shell_tool_command(params.command);
+    Ok(params)
+}
+
+fn to_exec_params_from_shell_tool_call_params(
+    params: Vec<ShellToolCallParams>,
+    sess: &Session,
+) -> Result<ExecParams, String> {
+    match params.as_slice() {
+        [] => Err("empty shell tool arguments".to_string()),
+        [single] => Ok(to_exec_params(single.clone(), sess)),
+        multiple => to_exec_params_from_concatenated_shell_tool_call_params(multiple, sess),
+    }
+}
+
+fn to_exec_params_from_concatenated_shell_tool_call_params(
+    params: &[ShellToolCallParams],
+    sess: &Session,
+) -> Result<ExecParams, String> {
+    let first = params
+        .first()
+        .ok_or_else(|| "empty shell tool arguments".to_string())?;
+    let workdir = first.workdir.clone();
+    if params.iter().any(|params| params.workdir != workdir) {
+        return Err(
+            "concatenated shell tool arguments must use the same workdir".to_string()
+        );
+    }
+
+    let script = shell_tool_call_params_to_script(params)?;
+    let timeout_ms = params
+        .iter()
+        .filter_map(|params| params.timeout_ms)
+        .max()
+        .map(|ms| ms.max(MIN_SHELL_TIMEOUT_MS));
+    let with_escalated_permissions = params
+        .iter()
+        .filter_map(|params| params.sandbox_permissions)
+        .any(SandboxPermissions::requires_escalated_permissions)
+        .then_some(true);
+
+    Ok(ExecParams {
+        command: vec![script.clone()],
+        shell_script: Some(crate::exec::DeferredShellScript {
+            command: script,
+            use_login_shell: false,
+        }),
+        cwd: sess.resolve_path(workdir),
+        timeout_ms,
+        env: create_kay_shell_env(sess),
+        with_escalated_permissions,
+        justification: first.justification.clone(),
+    })
+}
+
+fn shell_tool_call_params_to_script(
+    params: &[ShellToolCallParams],
+) -> Result<String, String> {
+    let mut lines = Vec::with_capacity(params.len());
+
+    for (index, params) in params.iter().enumerate() {
+        let command = normalize_shell_tool_command(params.command.clone());
+        if command.is_empty() {
+            return Err(format!(
+                "concatenated shell command {} is empty",
+                index + 1
+            ));
+        }
+        let words = command.iter().map(String::as_str);
+        let command = shlex::try_join(words).map_err(|err| {
+            format!("failed to quote concatenated shell command {}: {err}", index + 1)
+        })?;
+        lines.push(command);
+    }
+
+    Ok(lines.join("\n"))
 }
 
 fn parse_shell_command_arguments(
@@ -8235,10 +8401,14 @@ mod kay_runtime_regression_tests {
     use super::autonomous_runtime_failure_message;
     use super::remember_last_task_message_from_turn;
     use super::normalize_exec_command_argv;
+    use super::parse_shell_tool_call_params_values;
+    use super::shell_tool_call_params_to_script;
     use super::ContentItem;
     use super::ResponseItem;
     use crate::error::CodexErr;
     use crate::error::UnexpectedResponseError;
+    use code_protocol::models::SandboxPermissions;
+    use code_protocol::models::ShellToolCallParams;
     use reqwest::StatusCode;
 
     #[test]
@@ -8259,6 +8429,122 @@ mod kay_runtime_regression_tests {
                 "rg foo | head -20".to_string()
             ]
         );
+    }
+
+    #[test]
+    fn parses_mimo_concatenated_shell_tool_arguments() {
+        let arguments = r#"{"command":["cat","src/public/index.html"]}{"command":["cat","src/public/notes-ui.js"]}"#;
+        let params = parse_shell_tool_call_params_values(arguments)
+            .expect("concatenated MiMo shell arguments should parse");
+
+        assert_eq!(params.len(), 2);
+        assert_eq!(
+            params[0].command,
+            vec!["cat".to_string(), "src/public/index.html".to_string()]
+        );
+        assert_eq!(
+            params[1].command,
+            vec!["cat".to_string(), "src/public/notes-ui.js".to_string()]
+        );
+        assert_eq!(
+            shell_tool_call_params_to_script(&params).expect("script"),
+            "cat src/public/index.html\ncat src/public/notes-ui.js"
+        );
+    }
+
+    #[test]
+    fn parses_mimo_concatenated_shell_tool_string_commands() {
+        let arguments = r#"{"command":"cat /tmp/index.html"}{"command":"cat /tmp/notes-ui.js"}"#;
+        let params = parse_shell_tool_call_params_values(arguments)
+            .expect("concatenated MiMo shell string arguments should parse");
+
+        assert_eq!(params.len(), 2);
+        assert_eq!(
+            params[0].command,
+            vec!["cat".to_string(), "/tmp/index.html".to_string()]
+        );
+        assert_eq!(
+            params[1].command,
+            vec!["cat".to_string(), "/tmp/notes-ui.js".to_string()]
+        );
+        assert_eq!(
+            shell_tool_call_params_to_script(&params).expect("script"),
+            "cat /tmp/index.html\ncat /tmp/notes-ui.js"
+        );
+    }
+
+    #[test]
+    fn parses_single_shell_tool_string_command() {
+        let arguments = r#"{"command":"rg foo | head -20","workdir":"/tmp"}"#;
+        let params = parse_shell_tool_call_params_values(arguments)
+            .expect("single shell string argument should parse");
+
+        assert_eq!(params.len(), 1);
+        assert_eq!(
+            params[0].command,
+            vec![
+                "bash".to_string(),
+                "-lc".to_string(),
+                "rg foo | head -20".to_string()
+            ]
+        );
+        assert_eq!(params[0].workdir.as_deref(), Some("/tmp"));
+    }
+
+    #[test]
+    fn normalizes_mimo_apply_patch_hunk_headers() {
+        let arguments = serde_json::json!({
+            "command": [
+                "apply_patch",
+                "*** Begin Patch\n*** Update File: src/public/index.html\n@@              <div class=\"right\"> @@\n               <div class=\"right\">\n+                <button id=\"duplicateButton\">Duplicate note</button>\n*** End Patch\n"
+            ],
+        })
+        .to_string();
+        let params = parse_shell_tool_call_params_values(&arguments)
+            .expect("apply_patch arguments should parse");
+
+        assert_eq!(params.len(), 1);
+        assert!(
+            params[0]
+                .command[1]
+                .contains("@@              <div class=\"right\">\n")
+        );
+        assert!(
+            !params[0]
+                .command[1]
+                .contains("@@              <div class=\"right\"> @@")
+        );
+    }
+
+    #[test]
+    fn concatenated_shell_tool_arguments_accept_legacy_escalation() {
+        let arguments = r#"{"command":["id"],"with_escalated_permissions":true}{"command":["whoami"],"with_escalated_permissions":true}"#;
+        let params = parse_shell_tool_call_params_values(arguments)
+            .expect("legacy escalation should normalize across concatenated args");
+
+        assert_eq!(params.len(), 2);
+        assert!(
+            params
+                .iter()
+                .all(|params| params.sandbox_permissions == Some(SandboxPermissions::RequireEscalated))
+        );
+    }
+
+    #[test]
+    fn concatenated_shell_tool_script_rejects_empty_command() {
+        let params = vec![ShellToolCallParams {
+            command: Vec::new(),
+            workdir: None,
+            timeout_ms: None,
+            sandbox_permissions: None,
+            prefix_rule: None,
+            additional_permissions: None,
+            justification: None,
+        }];
+
+        let err = shell_tool_call_params_to_script(&params)
+            .expect_err("empty command should not be converted into a blank script");
+        assert!(err.contains("empty"));
     }
 
     #[test]

@@ -926,7 +926,7 @@ pub fn create_xiaomi_provider() -> ModelProviderInfo {
         env_http_headers: None,
         request_max_retries: None,
         stream_max_retries: None,
-        stream_idle_timeout_ms: Some(OPENCODE_GO_STREAM_IDLE_TIMEOUT_MS),
+        stream_idle_timeout_ms: Some(DEFAULT_STREAM_IDLE_TIMEOUT_MS),
         websocket_connect_timeout_ms: None,
         requires_openai_auth: false,
         openrouter: None,

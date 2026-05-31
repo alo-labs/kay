@@ -50,12 +50,6 @@ fn build_chat_completions_payload(
     model_slug: &str,
     provider: &ModelProviderInfo,
 ) -> Result<Value> {
-    if prompt.output_schema.is_some() {
-        return Err(CodexErr::UnsupportedOperation(
-            "output_schema is not supported for Chat Completions API".to_string(),
-        ));
-    }
-
     let minimax = matches!(
         provider.chat_completions_format,
         ChatCompletionsFormat::MiniMax
@@ -342,6 +336,12 @@ fn build_chat_completions_payload(
     }
 
     let tools_json = create_tools_json_for_chat_completions_api(&prompt.tools)?;
+    let has_tools = !tools_json.is_empty();
+    if let Some(schema) = prompt.output_schema.as_ref()
+        && (has_tools || minimax)
+    {
+        insert_final_output_schema_instructions(&mut messages, schema);
+    }
     let mut payload = json!({
         "model": model_slug,
         "messages": messages,
@@ -356,6 +356,23 @@ fn build_chat_completions_payload(
         }
     } else {
         payload["tools"] = serde_json::Value::Array(tools_json);
+    }
+    if let Some(schema) = prompt.output_schema.as_ref()
+        && !has_tools
+        && !minimax
+        && let Some(obj) = payload.as_object_mut()
+    {
+        obj.insert(
+            "response_format".to_string(),
+            json!({
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "code_output_schema",
+                    "strict": true,
+                    "schema": schema,
+                }
+            }),
+        );
     }
 
     if let Some(openrouter_cfg) = provider.openrouter_config()
@@ -422,6 +439,22 @@ fn content_text(content: &[ContentItem]) -> String {
         }
     }
     text
+}
+
+fn insert_final_output_schema_instructions(messages: &mut Vec<Value>, schema: &Value) {
+    let schema_json = serde_json::to_string(schema).unwrap_or_else(|_| schema.to_string());
+    let content = format!(
+        "Final output contract:\n\
+         This schema applies only to the final assistant message after required tool work is complete. \
+         Do not answer early just to satisfy the schema. When finishing, return a single JSON object \
+         that matches this schema and no markdown fences or prose.\n\
+         Schema: {schema_json}"
+    );
+    let insert_at = messages
+        .iter()
+        .position(|message| message.get("role").and_then(Value::as_str) != Some("system"))
+        .unwrap_or(messages.len());
+    messages.insert(insert_at, json!({"role": "system", "content": content}));
 }
 
 pub(crate) async fn stream_chat_completions(
@@ -1595,6 +1628,150 @@ mod tests {
             serde_json::from_str(arguments).expect("OpenCode Go tool arguments must be valid JSON");
 
         assert_eq!(parsed["_raw"], "cat package.json");
+    }
+
+    #[test]
+    fn openai_compatible_chat_payload_serializes_output_schema() {
+        let provider = crate::model_provider_info::create_xiaomi_provider();
+        let model_family = crate::model_family::find_family_for_model("xiaomi/mimo-v2.5-pro")
+            .expect("known xiaomi mimo model");
+        let schema = json!({
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["summary"],
+            "properties": {
+                "summary": { "type": "string" }
+            }
+        });
+        let prompt = Prompt {
+            input: vec![ResponseItem::Message {
+                id: None,
+                role: "user".to_string(),
+                content: vec![ContentItem::InputText {
+                    text: "return JSON".to_string(),
+                }],
+                end_turn: None,
+                phase: None,
+            }],
+            output_schema: Some(schema.clone()),
+            ..Prompt::default()
+        };
+
+        let payload = build_chat_completions_payload(
+            &prompt,
+            &model_family,
+            "mimo-v2.5-pro",
+            &provider,
+        )
+        .expect("payload");
+
+        assert_eq!(payload["response_format"]["type"], "json_schema");
+        assert_eq!(
+            payload["response_format"]["json_schema"]["name"],
+            "code_output_schema"
+        );
+        assert_eq!(
+            payload["response_format"]["json_schema"]["strict"],
+            true
+        );
+        assert_eq!(
+            payload["response_format"]["json_schema"]["schema"],
+            schema
+        );
+    }
+
+    #[test]
+    fn openai_compatible_chat_payload_defers_output_schema_when_tools_are_available() {
+        let provider = crate::model_provider_info::create_xiaomi_provider();
+        let model_family = crate::model_family::find_family_for_model("xiaomi/mimo-v2.5-pro")
+            .expect("known xiaomi mimo model");
+        let prompt = Prompt {
+            input: vec![ResponseItem::Message {
+                id: None,
+                role: "user".to_string(),
+                content: vec![ContentItem::InputText {
+                    text: "edit files first".to_string(),
+                }],
+                end_turn: None,
+                phase: None,
+            }],
+            tools: vec![crate::openai_tools::OpenAiTool::LocalShell {}],
+            output_schema: Some(json!({
+                "type": "object",
+                "required": ["summary"],
+                "properties": {
+                    "summary": { "type": "string" }
+                }
+            })),
+            ..Prompt::default()
+        };
+
+        let payload = build_chat_completions_payload(
+            &prompt,
+            &model_family,
+            "mimo-v2.5-pro",
+            &provider,
+        )
+        .expect("payload");
+
+        assert!(
+            payload.get("response_format").is_none(),
+            "response_format should not short-circuit tool-capable Chat Completions turns"
+        );
+        assert!(payload["tools"].as_array().is_some_and(|tools| !tools.is_empty()));
+        let messages = payload["messages"].as_array().expect("messages array");
+        assert!(
+            messages.iter().any(|message| {
+                message["role"] == "system"
+                    && message["content"]
+                        .as_str()
+                        .is_some_and(|content| content.contains("Final output contract"))
+            }),
+            "tool-capable turns should still carry bounded final-output schema guidance"
+        );
+    }
+
+    #[test]
+    fn minimax_chat_payload_carries_output_schema_guidance_without_failing() {
+        let provider = crate::model_provider_info::create_minimax_provider();
+        let model_family = derive_default_model_family("MiniMax-M2.7");
+        let prompt = Prompt {
+            input: vec![ResponseItem::Message {
+                id: None,
+                role: "user".to_string(),
+                content: vec![ContentItem::InputText {
+                    text: "return JSON".to_string(),
+                }],
+                end_turn: None,
+                phase: None,
+            }],
+            output_schema: Some(json!({
+                "type": "object",
+                "required": ["summary"],
+                "properties": {
+                    "summary": { "type": "string" }
+                }
+            })),
+            ..Prompt::default()
+        };
+
+        let payload = build_chat_completions_payload(&prompt, &model_family, "MiniMax-M2.7", &provider)
+            .expect("payload");
+
+        assert!(
+            payload.get("response_format").is_none(),
+            "MiniMax chat payloads should not use response_format"
+        );
+        let messages = payload["messages"].as_array().expect("messages array");
+        assert!(
+            messages.iter().any(|message| {
+                message["role"] == "system"
+                    && message["content"]
+                        .as_str()
+                        .is_some_and(|content| content.contains("Final output contract"))
+            }),
+            "MiniMax should receive schema guidance instead of failing the turn"
+        );
     }
 
     #[test]
