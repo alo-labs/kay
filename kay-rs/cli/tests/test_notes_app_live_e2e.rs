@@ -6,16 +6,13 @@ use std::process::Stdio;
 
 use serde::Deserialize;
 use serde_json::json;
-use code_apply_patch::{
-    maybe_parse_apply_patch_verified, ApplyPatchAction, ApplyPatchFileChange,
-    MaybeApplyPatchVerified,
-};
 use tempfile::TempDir;
 
 mod common;
 use common::SessionPreserver;
 
 const TEST_NOTES_APP_REPO_ROOT: &str = "/Users/shafqat/projects/test-notes-app";
+const EXPECTED_NOTES_FILES: &[&str] = &["src/public/index.html", "src/public/notes-ui.js"];
 
 const OPENCODE_GO_MODELS: &[&str] = &[
     "opencode-go/glm-5.1",
@@ -27,13 +24,40 @@ const OPENCODE_GO_MODELS: &[&str] = &[
     "opencode-go/deepseek-v4-pro",
     "opencode-go/deepseek-v4-flash",
 ];
+const XIAOMI_MODELS: &[&str] = &["xiaomi/mimo-v2.5-pro", "xiaomi/mimo-v2.5"];
+
+struct ProviderSpec {
+    provider_id: &'static str,
+    primary_api_key_env: &'static str,
+    fallback_api_key_env: Option<&'static str>,
+    models: &'static [&'static str],
+}
+
+const OPENCODE_GO_SPEC: ProviderSpec = ProviderSpec {
+    provider_id: "opencode-go",
+    primary_api_key_env: "OPENCODE_GO_LIVE_API_KEY",
+    fallback_api_key_env: Some("OPENCODE_GO_API_KEY"),
+    models: OPENCODE_GO_MODELS,
+};
+
+const XIAOMI_SPEC: ProviderSpec = ProviderSpec {
+    provider_id: "xiaomi",
+    primary_api_key_env: "XIAOMI_LIVE_API_KEY",
+    fallback_api_key_env: Some("XIAOMI_API_KEY"),
+    models: XIAOMI_MODELS,
+};
 
 fn code_bin() -> &'static str {
     env!("CARGO_BIN_EXE_code")
 }
 
-fn live_key() -> Option<String> {
-    std::env::var("OPENCODE_GO_LIVE_API_KEY")
+fn live_key(spec: &ProviderSpec) -> Option<String> {
+    std::env::var(spec.primary_api_key_env)
+        .or_else(|_| {
+            spec.fallback_api_key_env
+                .map(std::env::var)
+                .unwrap_or_else(|| Err(std::env::VarError::NotPresent))
+        })
         .ok()
         .map(|key| key.trim().to_string())
         .filter(|key| !key.is_empty())
@@ -45,9 +69,9 @@ fn repo_root() -> PathBuf {
         .unwrap_or_else(|| PathBuf::from(TEST_NOTES_APP_REPO_ROOT))
 }
 
-fn selected_models() -> Vec<&'static str> {
+fn selected_models(spec: &ProviderSpec) -> Vec<&'static str> {
     let Some(raw) = std::env::var_os("TEST_NOTES_APP_MODEL_FILTER") else {
-        return OPENCODE_GO_MODELS.to_vec();
+        return spec.models.to_vec();
     };
 
     let requested: Vec<String> = raw
@@ -58,21 +82,21 @@ fn selected_models() -> Vec<&'static str> {
         .collect();
 
     if requested.is_empty() {
-        return OPENCODE_GO_MODELS.to_vec();
+        return spec.models.to_vec();
     }
 
-    OPENCODE_GO_MODELS
+    spec.models
         .iter()
         .copied()
         .filter(|model| requested.iter().any(|wanted| wanted == model))
         .collect()
 }
 
-fn login_opencode_go(kay_home: &TempDir, api_key: &str) {
+fn login_provider(kay_home: &TempDir, spec: &ProviderSpec, api_key: &str) {
     let mut child = Command::new(code_bin())
         .arg("login")
         .arg("--provider")
-        .arg("opencode-go")
+        .arg(spec.provider_id)
         .arg("--with-api-key")
         .env("KAY_HOME", kay_home.path())
         .stdin(Stdio::piped())
@@ -86,7 +110,7 @@ fn login_opencode_go(kay_home: &TempDir, api_key: &str) {
         .as_mut()
         .expect("stdin should be piped")
         .write_all(api_key.as_bytes())
-        .expect("write opencode-go api key");
+        .expect("write provider api key");
 
     let output = child.wait_with_output().expect("wait for kay login");
     assert!(
@@ -124,6 +148,7 @@ fn clone_repo() -> (TempDir, PathBuf) {
 fn run_notes_feature_turn(
     kay_home: &TempDir,
     repo_dir: &Path,
+    provider_id: &str,
     model: &str,
     prompt: &str,
     last_message_path: &Path,
@@ -149,6 +174,8 @@ fn run_notes_feature_turn(
         .arg("--json")
         .arg("--max-seconds")
         .arg("1800")
+        .arg("--sandbox")
+        .arg("workspace-write")
         .arg("--cd")
         .arg(repo_dir)
         .arg("--output-schema")
@@ -156,7 +183,7 @@ fn run_notes_feature_turn(
         .arg("--output-last-message")
         .arg(last_message_path)
         .arg("-c")
-        .arg("model_provider=opencode-go")
+        .arg(format!("model_provider={provider_id}"))
         .arg("-c")
         .arg(format!("model={model}"))
         .arg(prompt)
@@ -177,22 +204,7 @@ fn run_notes_feature_turn(
     save_stdout_transcript(repo_dir, model, &stdout_transcript);
 
     let raw_message = fs::read_to_string(last_message_path).expect("read last message file");
-    let response = parse_notes_work_response(&raw_message)
-        .unwrap_or_else(|| panic!("expected trailing JSON output from kay exec, got:\n{raw_message}"));
-    let applied = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        apply_model_patch_blocks(repo_dir, &raw_message, &response.summary);
-    }));
-    if applied.is_err() {
-        apply_duplicate_note_fallback(repo_dir);
-    } else {
-        let diff = git_diff_names(repo_dir);
-        let has_index = diff.iter().any(|name| name == "src/public/index.html");
-        let has_notes_ui = diff.iter().any(|name| name == "src/public/notes-ui.js");
-        if !has_index || !has_notes_ui {
-            apply_duplicate_note_fallback(repo_dir);
-        }
-    }
-    response
+    notes_response_from_last_message(repo_dir, &raw_message)
 }
 
 fn build_notes_feature_prompt(repo_root: &Path) -> String {
@@ -203,8 +215,8 @@ You are working in {}.
 Implement a duplicate-note workflow by editing only `src/public/index.html`
 and `src/public/notes-ui.js`.
 
-You do not need to inspect the repository. The app already has note CRUD,
-tags, pinning, archiving, and search.
+Inspect those files first, then edit the actual files in this checkout. The app
+already has note CRUD, tags, pinning, archiving, and search.
 Use these exact current names: `state.selectedId`, `state.notes`,
 `currentNote()`, `selectNote(id)`, `saveNote(event)`,
 `deleteSelectedNote()`, `renderEditor(note)`, `renderNotes()`,
@@ -213,117 +225,23 @@ Use these exact current names: `state.selectedId`, `state.notes`,
 Do not invent alternate names like `deleteBtn`, `selectedNoteId`, `pin`, or
 `archive`.
 
+Critical execution rule:
+- Do not send any normal assistant/progress message until both files are edited
+  and `node --check src/public/notes-ui.js` passes.
+- Kay treats a normal assistant message as the end of this test turn. Use tool
+  calls only for inspection, editing, repair, and validation until the final
+  contracted output.
+- If a tool call fails, repair it with another tool call; do not narrate the
+  failure in an assistant message.
+
 Output contract:
 - Return exactly one JSON object and nothing else.
 - The JSON object must contain only `summary` and `touched_files`.
 - If the edit succeeds, `touched_files` must be exactly
   `["src/public/index.html", "src/public/notes-ui.js"]`.
-- Put the exact `*** Begin Patch` / `*** End Patch` blocks inside the
-  `summary` string after a short human summary; do not emit patch blocks
-  outside the JSON object.
-- Keep each patch block minimal and target one file per block.
+- Use the `summary` string for a concise human summary of the edits.
 - If you cannot complete the task, return a JSON object with an empty
   `touched_files` array and a `summary` that explains the blocker.
-
-The exact current editor markup and JS wiring look like this:
-```html
-              <div class="right">
-                <button class="ghost" id="deleteButton" type="button" disabled>Delete</button>
-                <button class="primary" type="submit">Save note</button>
-              </div>
-            </div>
-            <p class="hint">Use the list to pick a note, or create a new one with the button above. Search and tags update the list in place.</p>
-```
-```js
-  const els = {{
-    statusPill: document.getElementById('statusPill'),
-    noteList: document.getElementById('noteList'),
-    searchInput: document.getElementById('searchInput'),
-    tagFilter: document.getElementById('tagFilter'),
-    archiveFilter: document.getElementById('archiveFilter'),
-    newNoteButton: document.getElementById('newNoteButton'),
-    editorHeading: document.getElementById('editorHeading'),
-    editorMeta: document.getElementById('editorMeta'),
-    editorForm: document.getElementById('editorForm'),
-    noteTitle: document.getElementById('noteTitle'),
-    noteBody: document.getElementById('noteBody'),
-    noteTags: document.getElementById('noteTags'),
-    notePinned: document.getElementById('notePinned'),
-    noteArchived: document.getElementById('noteArchived'),
-    deleteButton: document.getElementById('deleteButton'),
-  }};
-
-  els.editorForm.addEventListener('submit', saveNote);
-  els.deleteButton.addEventListener('click', deleteSelectedNote);
-
-  function renderEditor(note) {{
-    if (!note) {{
-      els.editorHeading.textContent = 'Create note';
-      els.editorMeta.textContent = 'No note selected';
-      els.noteTitle.value = '';
-      els.noteBody.value = '';
-      els.noteTags.value = '';
-      els.notePinned.checked = false;
-      els.noteArchived.checked = false;
-      els.deleteButton.disabled = true;
-      return;
-    }}
-
-    els.editorHeading.textContent = `Editing note #${{note.id}}`;
-    els.editorMeta.textContent = `Last updated ${{formatTimestamp(note.updated_at)}}`;
-    els.noteTitle.value = note.title || '';
-    els.noteBody.value = note.body || '';
-    els.noteTags.value = (note.tags || []).join(', ');
-    els.notePinned.checked = Boolean(note.pinned);
-    els.noteArchived.checked = Boolean(note.archived);
-    els.deleteButton.disabled = false;
-  }}
-
-  function isTyping() {{
-    const tag = document.activeElement?.tagName?.toLowerCase();
-    return tag === 'input' || tag === 'textarea' || tag === 'select';
-  }}
-
-  document.addEventListener('keydown', (event) => {{
-    if (event.ctrlKey && event.key === 'Enter') {{
-      if (isTyping()) {{
-        event.preventDefault();
-        els.editorForm.requestSubmit();
-      }}
-      return;
-    }}
-
-    if (event.key === 'Escape') {{
-      if (state.selectedId !== null) {{
-        state.selectedId = null;
-        renderNotes();
-        renderEditor(null);
-        updateStatus('Creating a new note');
-      }} else if (isTyping()) {{
-        document.activeElement.blur();
-      }}
-      return;
-    }}
-
-    if (isTyping()) return;
-
-    if (event.key === 'n' || event.key === 'N') {{
-      event.preventDefault();
-      state.selectedId = null;
-      renderNotes();
-      renderEditor(null);
-      els.noteTitle.focus();
-      updateStatus('Creating a new note');
-      return;
-    }}
-
-    if (event.key === '/') {{
-      event.preventDefault();
-      els.searchInput.focus();
-      return;
-    }}
-  }});
-```
 
 Add these behaviors:
 - In `index.html`, insert a visible `Duplicate note` button in the editor
@@ -347,13 +265,6 @@ Add these behaviors:
 
 Keep the app lightweight, preserve the existing Express + SQLite architecture,
 and do not introduce new dependencies.
-
-Do not use any tools of any kind. Do not call shell, apply_patch, image_view,
-or any other tool. Write the patch blocks directly in your assistant message,
-then finish with a single JSON object containing exactly:
-`summary` and `touched_files`.
-`summary` must be a string.
-`touched_files` must be a JSON array of the files you changed.
 "#,
         repo_root.display()
     )
@@ -383,201 +294,14 @@ fn git_diff_names(repo_dir: &Path) -> Vec<String> {
         .collect()
 }
 
+fn is_expected_notes_file(path: &str) -> bool {
+    EXPECTED_NOTES_FILES.contains(&path)
+}
+
 #[derive(Debug, Deserialize)]
 struct NotesWorkResponse {
     summary: String,
     touched_files: Vec<String>,
-}
-
-fn extract_patch_blocks(input: &str) -> Vec<String> {
-    let mut patches = Vec::new();
-    let mut rest = input;
-
-    while let Some(begin_rel) = rest.find("*** Begin Patch") {
-        let after_begin = &rest[begin_rel..];
-        let Some(end_rel) = after_begin.find("*** End Patch") else {
-            break;
-        };
-        let end = end_rel + "*** End Patch".len();
-        patches.push(after_begin[..end].trim().to_string());
-        rest = &after_begin[end..];
-    }
-
-    patches
-}
-
-fn normalize_patch_block(block: &str) -> String {
-    let mut normalized = block
-        .lines()
-        .map(|line| {
-            if let Some(rest) = line.strip_prefix("-<<p class=\"hint\">") {
-                format!("-            <p class=\"hint\">{}", rest)
-            } else if let Some(rest) = line.strip_prefix("+<<p class=\"hint\">") {
-                format!("+            <p class=\"hint\">{}", rest)
-            } else if let Some(rest) = line.strip_prefix("-<") {
-                format!("-<{}", rest)
-            } else if let Some(rest) = line.strip_prefix("+<") {
-                format!("+<{}", rest)
-            } else {
-                line.to_string()
-            }
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
-    if !normalized.contains("*** End Patch") {
-        if !normalized.ends_with('\n') {
-            normalized.push('\n');
-        }
-        normalized.push_str("*** End Patch");
-    }
-    normalized
-}
-
-fn git_head_file_contents(repo_root: &Path, path: &str) -> String {
-    let output = Command::new("git")
-        .arg("-C")
-        .arg(repo_root)
-        .arg("show")
-        .arg(format!("HEAD:{path}"))
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .output()
-        .expect("git show HEAD:file");
-
-    assert!(
-        output.status.success(),
-        "git show failed for {path}\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
-
-    String::from_utf8_lossy(&output.stdout).to_string()
-}
-
-fn apply_duplicate_note_fallback(repo_dir: &Path) {
-    let index_path = repo_dir.join("src/public/index.html");
-    let notes_ui_path = repo_dir.join("src/public/notes-ui.js");
-
-    let index_html = git_head_file_contents(repo_dir, "src/public/index.html")
-        .replace(
-            "                <button class=\"ghost\" id=\"deleteButton\" type=\"button\" disabled>Delete</button>\n                <button class=\"primary\" type=\"submit\">Save note</button>\n",
-            "                <button class=\"ghost\" id=\"duplicateButton\" type=\"button\" disabled>Duplicate note</button>\n                <button class=\"ghost\" id=\"deleteButton\" type=\"button\" disabled>Delete</button>\n                <button class=\"primary\" type=\"submit\">Save note</button>\n",
-        )
-        .replace(
-            "            <p class=\"hint\">Keyboard: <kbd>N</kbd> new note, <kbd>/</kbd> search, <kbd>Ctrl+Enter</kbd> save, <kbd>Esc</kbd> clear. Use the list to pick a note, or create a new one with the button above. Search and tags update the list in place.</p>",
-            "            <p class=\"hint\">Keyboard: <kbd>N</kbd> new note, <kbd>D</kbd> duplicate, <kbd>/</kbd> search, <kbd>Ctrl+Enter</kbd> save, <kbd>Esc</kbd> clear. Use the list to pick a note, or create a new one with the button above. Search and tags update the list in place.</p>",
-        );
-    fs::write(&index_path, index_html).expect("write fallback index.html");
-
-    let notes_ui_js = git_head_file_contents(repo_dir, "src/public/notes-ui.js")
-        .replace(
-            "    deleteButton: document.getElementById('deleteButton'),\n",
-            "    deleteButton: document.getElementById('deleteButton'),\n    duplicateButton: document.getElementById('duplicateButton'),\n",
-        )
-        .replace(
-            "  els.editorForm.addEventListener('submit', saveNote);\n  els.deleteButton.addEventListener('click', deleteSelectedNote);\n",
-            "  els.editorForm.addEventListener('submit', saveNote);\n  els.deleteButton.addEventListener('click', deleteSelectedNote);\n  els.duplicateButton.addEventListener('click', duplicateSelectedNote);\n",
-        )
-        .replace(
-            "      els.deleteButton.disabled = true;\n",
-            "      els.deleteButton.disabled = true;\n      els.duplicateButton.disabled = true;\n",
-        )
-        .replace(
-            "    els.deleteButton.disabled = false;\n",
-            "    els.deleteButton.disabled = false;\n    els.duplicateButton.disabled = false;\n",
-        )
-        .replace(
-            "  if (event.key === '/') {\n",
-            "  if (event.key === 'd' || event.key === 'D') {\n    event.preventDefault();\n    duplicateSelectedNote();\n    return;\n  }\n\n  if (event.key === '/') {\n",
-        )
-        .replace(
-            "  }\n\n  async function deleteSelectedNote() {\n",
-            "  }\n\n  async function duplicateSelectedNote() {\n    const note = currentNote();\n    if (!note) return;\n    const res = await fetch('/api/notes', {\n      method: 'POST',\n      headers: { 'Content-Type': 'application/json' },\n      body: JSON.stringify({\n        title: `Copy of ${note.title}`,\n        body: note.body,\n        tags: note.tags,\n        pinned: note.pinned,\n        archived: note.archived,\n      }),\n    });\n    const created = await res.json();\n    state.notes.unshift(created);\n    state.selectedId = created.id;\n    renderNotes();\n    renderEditor(created);\n    els.noteTitle.focus();\n  }\n\n  async function deleteSelectedNote() {\n",
-        );
-    fs::write(&notes_ui_path, notes_ui_js).expect("write fallback notes-ui.js");
-}
-
-fn apply_model_patch_blocks(repo_dir: &Path, raw_message: &str, summary: &str) {
-    let mut patch_blocks = extract_patch_blocks(summary);
-    if patch_blocks.is_empty() {
-        patch_blocks = extract_patch_blocks(raw_message);
-    }
-    assert!(
-        !patch_blocks.is_empty(),
-        "expected at least one apply_patch block in assistant output, got:\n{raw_message}"
-    );
-
-    for patch_block in patch_blocks {
-        let patch_block = normalize_patch_block(&patch_block);
-        let argv = vec!["apply_patch".to_string(), patch_block];
-        let parsed = maybe_parse_apply_patch_verified(&argv, repo_dir);
-        let action = match parsed {
-            MaybeApplyPatchVerified::Body(action) => action,
-            MaybeApplyPatchVerified::NotApplyPatch => {
-                panic!("assistant output contained a non-patch block:\n{raw_message}")
-            }
-            MaybeApplyPatchVerified::ShellParseError(err) => {
-                panic!("failed to parse model patch wrapper: {err:?}\nraw output:\n{raw_message}")
-            }
-            MaybeApplyPatchVerified::CorrectnessError(err) => {
-                panic!("model patch could not be applied: {err}\nraw output:\n{raw_message}")
-            }
-        };
-
-        apply_patch_action(repo_dir, &action);
-    }
-}
-
-fn apply_patch_action(repo_dir: &Path, action: &ApplyPatchAction) {
-    assert_eq!(
-        action.cwd.as_path(),
-        repo_dir,
-        "patch cwd should match the cloned repository"
-    );
-
-    for (path, change) in action.changes() {
-        assert!(
-            path.starts_with(repo_dir),
-            "patch attempted to touch a path outside the repo: {}",
-            path.display()
-        );
-
-        match change {
-            ApplyPatchFileChange::Add { content } => {
-                if let Some(parent) = path.parent() {
-                    fs::create_dir_all(parent)
-                        .unwrap_or_else(|err| panic!("create {}: {err}", parent.display()));
-                }
-                fs::write(path, content)
-                    .unwrap_or_else(|err| panic!("write {}: {err}", path.display()));
-            }
-            ApplyPatchFileChange::Delete { .. } => {
-                fs::remove_file(path)
-                    .unwrap_or_else(|err| panic!("delete {}: {err}", path.display()));
-            }
-            ApplyPatchFileChange::Update {
-                new_content,
-                move_path,
-                ..
-            } => {
-                if let Some(dest) = move_path {
-                    if let Some(parent) = dest.parent() {
-                        fs::create_dir_all(parent)
-                            .unwrap_or_else(|err| panic!("create {}: {err}", parent.display()));
-                    }
-                    fs::write(dest, new_content)
-                        .unwrap_or_else(|err| panic!("write {}: {err}", dest.display()));
-                    if dest != path {
-                        fs::remove_file(path)
-                            .unwrap_or_else(|err| panic!("remove {}: {err}", path.display()));
-                    }
-                } else {
-                    fs::write(path, new_content)
-                        .unwrap_or_else(|err| panic!("write {}: {err}", path.display()));
-                }
-            }
-        }
-    }
 }
 
 fn parse_notes_work_response(input: &str) -> Option<NotesWorkResponse> {
@@ -596,6 +320,26 @@ fn parse_notes_work_response(input: &str) -> Option<NotesWorkResponse> {
         }
     }
     None
+}
+
+fn notes_response_from_last_message(repo_dir: &Path, raw_message: &str) -> NotesWorkResponse {
+    if let Some(response) = parse_notes_work_response(raw_message) {
+        return response;
+    }
+
+    let touched_files: Vec<String> = git_diff_names(repo_dir)
+        .into_iter()
+        .filter(|name| is_expected_notes_file(name))
+        .collect();
+    assert!(
+        !touched_files.is_empty(),
+        "expected trailing JSON output or tracked notes UI edits from kay exec, got:\n{raw_message}"
+    );
+
+    NotesWorkResponse {
+        summary: raw_message.trim().to_string(),
+        touched_files,
+    }
 }
 
 fn latest_session_jsonl(kay_home: &Path) -> Option<PathBuf> {
@@ -667,6 +411,14 @@ fn save_stdout_transcript(repo_dir: &Path, model: &str, stdout: &str) -> PathBuf
 
 fn assert_notes_feature_change(repo_dir: &Path) {
     let diff = git_diff_names(repo_dir);
+    let unexpected_files: Vec<&String> = diff
+        .iter()
+        .filter(|name| !is_expected_notes_file(name))
+        .collect();
+    assert!(
+        unexpected_files.is_empty(),
+        "expected only notes UI files to change, got unexpected tracked files: {unexpected_files:?}"
+    );
     assert!(
         diff.iter().any(|name| name == "src/public/notes-ui.js"),
         "expected notes UI to change, diff:\n{diff:?}"
@@ -674,6 +426,139 @@ fn assert_notes_feature_change(repo_dir: &Path) {
     assert!(
         diff.iter().any(|name| name == "src/public/index.html"),
         "expected notes UI help copy to change, diff:\n{diff:?}"
+    );
+}
+
+fn contains_any(haystack: &str, needles: &[&str]) -> bool {
+    needles.iter().any(|needle| haystack.contains(needle))
+}
+
+fn assert_notes_feature_behavior(repo_dir: &Path) {
+    let index_html = fs::read_to_string(repo_dir.join("src/public/index.html"))
+        .expect("read src/public/index.html");
+    let notes_ui_js = fs::read_to_string(repo_dir.join("src/public/notes-ui.js"))
+        .expect("read src/public/notes-ui.js");
+
+    let duplicate_button_index = index_html
+        .find("id=\"duplicateButton\"")
+        .expect("duplicate button should be present in index.html");
+    let delete_button_index = index_html
+        .find("id=\"deleteButton\"")
+        .expect("delete button should remain present in index.html");
+    assert!(
+        duplicate_button_index < delete_button_index,
+        "duplicate button should appear before delete button"
+    );
+    assert!(
+        index_html.contains("Duplicate note"),
+        "duplicate button label should be visible"
+    );
+    assert!(
+        index_html.contains("D duplicate") && index_html.contains("Ctrl+Enter"),
+        "keyboard hint should mention duplicate and existing shortcuts"
+    );
+
+    assert!(
+        contains_any(
+            &notes_ui_js,
+            &[
+                "duplicateButton: document.getElementById('duplicateButton')",
+                "duplicateButton: document.getElementById(\"duplicateButton\")",
+            ],
+        ),
+        "notes UI should cache duplicateButton in els"
+    );
+    assert!(
+        contains_any(
+            &notes_ui_js,
+            &[
+                "els.duplicateButton.addEventListener('click', duplicateSelectedNote)",
+                "els.duplicateButton.addEventListener(\"click\", duplicateSelectedNote)",
+            ],
+        ),
+        "duplicate button should be wired to duplicateSelectedNote"
+    );
+    assert!(
+        notes_ui_js.contains("duplicateSelectedNote"),
+        "duplicateSelectedNote should be implemented"
+    );
+    assert!(
+        notes_ui_js.contains("els.duplicateButton.disabled = true")
+            && notes_ui_js.contains("els.duplicateButton.disabled = false"),
+        "duplicate button should be disabled without a note and enabled with a note"
+    );
+    assert!(
+        contains_any(
+            &notes_ui_js,
+            &["method: 'POST'", "method: \"POST\"", "method: 'post'", "method: \"post\""],
+        ),
+        "duplicateSelectedNote should create a fresh note via POST"
+    );
+    for expected in [
+        "Copy of",
+        "note.title",
+        "note.body",
+        "note.tags",
+        "note.pinned",
+        "note.archived",
+        "state.selectedId",
+        "renderEditor",
+        "els.noteTitle.focus()",
+    ] {
+        assert!(
+            notes_ui_js.contains(expected),
+            "notes UI should preserve duplicate workflow detail: {expected}"
+        );
+    }
+    assert!(
+        contains_any(
+            &notes_ui_js,
+            &[
+                "addEventListener('keydown'",
+                "addEventListener(\"keydown\"",
+                "onkeydown",
+            ],
+        ),
+        "notes UI should install a keyboard handler"
+    );
+    assert!(
+        contains_any(
+            &notes_ui_js,
+            &[
+                "event.key === 'd'",
+                "event.key === \"d\"",
+                "event.key.toLowerCase() === 'd'",
+                "event.key.toLowerCase() === \"d\"",
+            ],
+        ),
+        "notes UI should handle the d duplicate shortcut"
+    );
+    assert!(
+        contains_any(
+            &notes_ui_js,
+            &[
+                "isTyping()",
+                "const isTyping",
+                "let isTyping",
+                "document.activeElement",
+                "event.target",
+            ],
+        ),
+        "duplicate shortcut should avoid firing while typing"
+    );
+    assert!(
+        !contains_any(
+            &notes_ui_js,
+            &[
+                "els.pin.checked",
+                "els.archive.checked",
+                "getElementById('pin')",
+                "getElementById(\"pin\")",
+                "getElementById('archive')",
+                "getElementById(\"archive\")",
+            ],
+        ),
+        "notes UI should keep using notePinned and noteArchived"
     );
 }
 
@@ -700,20 +585,26 @@ fn assert_notes_js_syntax(repo_dir: &Path) {
     }
 }
 
-#[test]
-fn opencode_go_notes_app_live_feature_workflow() {
-    let Some(api_key) = live_key() else {
-        eprintln!("skipping notes-app live E2E: OPENCODE_GO_LIVE_API_KEY is not set");
+fn run_notes_app_live_feature_workflow(spec: &ProviderSpec) {
+    let Some(api_key) = live_key(spec) else {
+        eprintln!(
+            "skipping notes-app live E2E for {}: {} is not set",
+            spec.provider_id, spec.primary_api_key_env
+        );
         return;
     };
 
-    for &model in &selected_models() {
+    for &model in &selected_models(spec) {
         let kay_home = TempDir::new().expect("temp KAY_HOME");
         let _sessions = SessionPreserver::new(
             kay_home.path(),
-            format!("test_notes_app_live_e2e_{}", model.replace('/', "_")),
+            format!(
+                "test_notes_app_live_e2e_{}_{}",
+                spec.provider_id,
+                model.replace('/', "_")
+            ),
         );
-        login_opencode_go(&kay_home, &api_key);
+        login_provider(&kay_home, spec, &api_key);
 
         let (_workspace_guard, repo_dir) = clone_repo();
         let last_message_dir = TempDir::new().expect("last message tempdir");
@@ -721,11 +612,12 @@ fn opencode_go_notes_app_live_feature_workflow() {
             .path()
             .join(format!("{}.txt", model.replace('/', "_")));
 
-        let prompt = build_notes_feature_prompt(&repo_root());
+        let prompt = build_notes_feature_prompt(&repo_dir);
 
         let response = run_notes_feature_turn(
             &kay_home,
             &repo_dir,
+            spec.provider_id,
             model,
             prompt.trim(),
             &last_message,
@@ -738,15 +630,17 @@ fn opencode_go_notes_app_live_feature_workflow() {
         let mut touched_files = response.touched_files.clone();
         touched_files.sort();
         touched_files.dedup();
+        let expected_files = EXPECTED_NOTES_FILES
+            .iter()
+            .map(|file| file.to_string())
+            .collect::<Vec<_>>();
         assert!(
-            touched_files == vec![
-                "src/public/index.html".to_string(),
-                "src/public/notes-ui.js".to_string(),
-            ],
+            touched_files == expected_files,
             "expected the model to touch only the notes UI files for {model}, got {touched_files:?}"
         );
 
         assert_notes_feature_change(&repo_dir);
+        assert_notes_feature_behavior(&repo_dir);
         assert_notes_js_syntax(&repo_dir);
 
         let transcript_path = copy_transcript(kay_home.path(), &repo_dir, model);
@@ -756,4 +650,14 @@ fn opencode_go_notes_app_live_feature_workflow() {
             transcript_path.display()
         );
     }
+}
+
+#[test]
+fn opencode_go_notes_app_live_feature_workflow() {
+    run_notes_app_live_feature_workflow(&OPENCODE_GO_SPEC);
+}
+
+#[test]
+fn xiaomi_notes_app_live_feature_workflow() {
+    run_notes_app_live_feature_workflow(&XIAOMI_SPEC);
 }
