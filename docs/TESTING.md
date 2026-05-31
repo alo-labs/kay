@@ -112,6 +112,22 @@ before releases, not just final-answer smoke:
 3. Review the copied session transcript JSONL in the notes-app repo when
    investigating model behavior or UX frictions.
 
+The same harness also covers the direct Xiaomi MiMo provider when
+`XIAOMI_LIVE_API_KEY` or `XIAOMI_API_KEY` is set. Use
+`TEST_NOTES_APP_MODEL_FILTER` to focus on exact provider-qualified model ids:
+
+```bash
+XIAOMI_API_KEY=... \
+TEST_NOTES_APP_MODEL_FILTER=xiaomi/mimo-v2.5-pro,xiaomi/mimo-v2.5 \
+cargo test -p code-cli --test test_notes_app_live_e2e xiaomi_notes_app_live_feature_workflow -- --nocapture
+```
+
+The live harness runs `kay exec` with workspace-write access against a temporary
+clone, then validates the tracked notes UI diffs, expected duplicate-note
+behavior markers, and `node --check` syntax. It uses the model's contracted JSON
+when available, but still fails if the real file edits are missing or drift
+outside the two expected UI files.
+
 This target is intended to expose real edit/review behavior, transcript
 provenance, and UX rough edges that simple prompt smokes cannot catch.
 

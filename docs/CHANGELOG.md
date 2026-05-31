@@ -2,6 +2,15 @@
 
 Rolling task log for the documentation and workflow surface.
 
+## 2026-05-31
+
+- Hardened shared MiMo model-family tool guidance so OpenCode Go and direct
+  Xiaomi MiMo models use the same apply-patch grammar, tool-call, and final
+  output contract behavior.
+- Extended the live notes-app harness for direct Xiaomi MiMo runs to validate
+  real tracked file edits, duplicate-note behavior markers, and JavaScript
+  syntax instead of accepting deterministic fallback patches.
+
 ## 2026-05-24
 
 - Added Xiaomi as a built-in provider with `xiaomi/mimo-v2.5-pro` and

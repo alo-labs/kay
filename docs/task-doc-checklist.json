@@ -1,7 +1,7 @@
 {
   "task_id": "issue-23-mimo-stalling",
   "task_granularity": 2,
-  "updated_at": "2026-05-24T17:20:15Z",
+  "updated_at": "2026-05-31T16:07:26Z",
   "_notes": [
     "Added Kay brand renaming policy and inventory docs in the current session.",
     "Refreshed during the Kay reliability-grade policy update in the current session.",
@@ -22,7 +22,8 @@
     "Added docs/upstream-merge-strategy.md to capture Kay's Every Code-first merge strategy plus the mandatory direct OSS Codex review pass.",
     "Clarified that documentation-only changes are exempt from the ./build-fast.sh completion gate and should use targeted doc validation instead.",
     "Refreshed during doc-scheme hook remediation for the upstream-merge-strategy task so Architecture, Testing, slash-command notes, and checklist freshness all match the current session.",
-    "Refreshed for GitHub issue #23 so MiMo stalling mitigation, changelog, knowledge, lessons, and checklist coverage are recorded in the same session."
+    "Refreshed for GitHub issue #23 so MiMo stalling mitigation, changelog, knowledge, lessons, and checklist coverage are recorded in the same session.",
+    "Refreshed during Xiaomi MiMo compatibility hardening so shared MiMo apply-patch/tool-output guidance, direct Xiaomi live notes-app coverage, and doc-scheme freshness are recorded in the same session."
   ],
   "docs": {
     "docs/ARCHITECTURE.md": "updated",
@@ -73,7 +74,7 @@
   },
   "sections": {
     "docs/CHANGELOG.md": {
-      "2026-05-11": "not-needed: existing required historical section unchanged; issue #23 entry added under 2026-05-24"
+      "2026-05-11": "not-needed: existing required historical section unchanged; Xiaomi MiMo compatibility entry added under 2026-05-31"
     },
     "docs/doc-scheme.md": {
       "Current Shape": "not-needed: governance contract unchanged for runtime model observability",
