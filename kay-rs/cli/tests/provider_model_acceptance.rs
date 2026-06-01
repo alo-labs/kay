@@ -8,6 +8,8 @@ use tempfile::TempDir;
 mod common;
 use common::SessionPreserver;
 
+const EXEC_TIMEOUT_SECS: &str = "900";
+
 #[derive(Clone, Copy)]
 struct ProviderAcceptanceSpec {
     provider_id: &'static str,
@@ -97,6 +99,8 @@ fn run_exec_prompt(
 ) -> String {
     let output = Command::new(code_bin())
         .arg("exec")
+        .arg("--max-seconds")
+        .arg(EXEC_TIMEOUT_SECS)
         .arg("--json")
         .arg("--skip-git-repo-check")
         .arg("--output-last-message")
@@ -134,6 +138,8 @@ fn run_exec_prompt_with_demo(
         .arg("--demo")
         .arg(developer)
         .arg("exec")
+        .arg("--max-seconds")
+        .arg(EXEC_TIMEOUT_SECS)
         .arg("--json")
         .arg("--skip-git-repo-check")
         .arg("--output-last-message")
@@ -169,6 +175,8 @@ fn run_exec_prompt_with_output_schema(
 ) -> String {
     let output = Command::new(code_bin())
         .arg("exec")
+        .arg("--max-seconds")
+        .arg(EXEC_TIMEOUT_SECS)
         .arg("--json")
         .arg("--skip-git-repo-check")
         .arg("--output-schema")

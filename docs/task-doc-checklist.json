@@ -1,7 +1,7 @@
 {
   "task_id": "issue-23-mimo-stalling",
   "task_granularity": 2,
-  "updated_at": "2026-05-31T22:07:55Z",
+  "updated_at": "2026-06-01T00:49:01Z",
   "_notes": [
     "Added Kay brand renaming policy and inventory docs in the current session.",
     "Refreshed during the Kay reliability-grade policy update in the current session.",
@@ -27,7 +27,11 @@
     "Refreshed during final Xiaomi MiMo schema/tool compatibility work so output-schema routing, Chat Completions schema deferral, live notes-app acceptance, and checklist freshness are recorded in the same session.",
     "Refreshed after live Xiaomi mimo-v2.5 exposed string-form shell commands inside concatenated tool arguments, so the shared parser fix and docs coverage are recorded in the same session.",
     "Refreshed after live Xiaomi mimo-v2.5 exposed malformed apply_patch hunk headers with trailing @@ markers, so shared normalization and MiMo-family guidance are recorded in the same session.",
-    "Refreshed after the release preflight exposed MiMo progress prose before final JSON and an inline typing guard in the notes-app workflow, so schema repair and harness coverage are recorded in the same session."
+    "Refreshed after the release preflight exposed MiMo progress prose before final JSON and an inline typing guard in the notes-app workflow, so schema repair and harness coverage are recorded in the same session.",
+    "Refreshed after pre-release exposed live-provider credential leakage into workspace nextest, so release-gate isolation and docs coverage are recorded in the same session.",
+    "Refreshed after direct Xiaomi mimo-v2.5 exposed native response_format disconnect retries, so shared MiMo schema-guidance compatibility and acceptance timeouts are recorded in the same session.",
+    "Refreshed after live acceptance showed recovered stream retry events still forced kay exec exit code 1, so retry status handling and docs coverage are recorded in the same session.",
+    "Refreshed after pre-release showed OpenCode Go MiMo needs a longer live-smoke turn budget during normal SSE retry recovery, so the release gate timeout and docs are recorded in the same session."
   ],
   "docs": {
     "docs/ARCHITECTURE.md": "not-needed: architecture overview unchanged by final Xiaomi MiMo schema/tool compatibility fixes",

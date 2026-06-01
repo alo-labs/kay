@@ -90,6 +90,19 @@ fn build_auto_drive_exec_config(config: &Config) -> Config {
 	    auto_config.model_reasoning_effort = config.auto_drive.model_reasoning_effort;
 	    auto_config
 }
+
+fn is_retrying_stream_error(message: &str) -> bool {
+    let lower = message.to_ascii_lowercase();
+    lower.starts_with("stream error:") && lower.contains("retrying")
+}
+
+fn is_fatal_error_event(event: &Event) -> bool {
+    matches!(
+        &event.msg,
+        EventMsg::Error(error) if !is_retrying_stream_error(&error.message)
+    )
+}
+
 use code_core::git_info::current_branch_name;
 use code_core::timeboxed_exec_guidance::{
     AUTO_EXEC_TIMEBOXED_CLI_GUIDANCE,
@@ -787,7 +800,7 @@ pub async fn run_main(cli: Cli, code_linux_sandbox_exe: Option<PathBuf>) -> anyh
                 emit_auto_review_completion(&completion);
             }
         }
-        if matches!(event.msg, EventMsg::Error(_)) {
+        if is_fatal_error_event(&event) {
             error_seen = true;
         }
 
@@ -2583,7 +2596,7 @@ async fn submit_and_wait(
 
         let event = res?;
         let event_id = event.id.clone();
-        if matches!(event.msg, EventMsg::Error(_)) {
+        if is_fatal_error_event(&event) {
             error_seen = true;
         }
 
@@ -2683,6 +2696,31 @@ mod tests {
 	    use filetime::{set_file_mtime, FileTime};
 	    use tempfile::TempDir;
 	    use uuid::Uuid;
+
+    fn error_event(message: &str) -> Event {
+        Event {
+            id: "test".to_string(),
+            event_seq: 0,
+            msg: EventMsg::Error(code_core::protocol::ErrorEvent {
+                message: message.to_string(),
+            }),
+            order: None,
+        }
+    }
+
+    #[test]
+    fn retrying_stream_error_does_not_mark_exec_failed() {
+        let event = error_event("stream error: stream disconnected before completion; retrying in 184ms");
+
+        assert!(!is_fatal_error_event(&event));
+    }
+
+    #[test]
+    fn non_retrying_error_marks_exec_failed() {
+        let event = error_event("stream disconnected before completion");
+
+        assert!(is_fatal_error_event(&event));
+    }
 
 	    #[test]
 	    fn output_schema_size_limit_accepts_small_schema() {

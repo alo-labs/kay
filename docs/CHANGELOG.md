@@ -5,9 +5,19 @@ Rolling task log for the documentation and workflow surface.
 ## 2026-05-31
 
 - Wired `kay exec --output-schema` into the user-turn schema path and taught
-  OpenAI-compatible Chat Completions requests to use `response_format` for
-  no-tool structured-output turns while deferring it during tool-capable turns
-  so MiMo does not skip required file edits.
+  OpenAI-compatible Chat Completions requests to use native `response_format`
+  only for model families that support it. MiMo now uses shared schema guidance
+  across OpenCode Go and direct Xiaomi so direct Xiaomi does not stall on native
+  structured-output transport and tool-capable turns still perform required
+  edits before final JSON.
+- Added a hard per-call timeout to live provider acceptance checks so repeated
+  provider stream disconnect retries fail the release gate instead of wedging
+  pre-release indefinitely.
+- Kept recovered stream-retry notifications from making `kay exec` exit
+  nonzero after the turn successfully completes, preserving fatal exit behavior
+  for non-retry errors.
+- Increased the OpenCode Go onboarding live-smoke turn budget so curated MiMo
+  release coverage can survive normal multi-window SSE retry recovery.
 - Taught the shared shell-tool parser to recover MiMo's observed concatenated
   JSON tool-argument objects, including string-form commands, by executing the
   commands as one quoted shell script instead of trapping the turn in repeated
