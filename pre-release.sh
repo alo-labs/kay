@@ -10,6 +10,18 @@ pids=()
 names=()
 logs=()
 
+unset_live_provider_test_env() {
+  unset OPENCODE_GO_API_KEY
+  unset OPENCODE_GO_LIVE_API_KEY
+  unset XIAOMI_API_KEY
+  unset XIAOMI_LIVE_API_KEY
+  unset MINIMAX_API_KEY
+  unset MINIMAX_LIVE_API_KEY
+  unset TEST_NOTES_APP_MODEL_FILTER
+  unset KAY_ONBOARDING_LIVE_SMOKE
+  unset KAY_ONBOARDING_LIVE_SMOKE_MODEL_FILTER
+}
+
 cleanup() {
   local code=$?
   if (( code != 0 )); then
@@ -57,6 +69,7 @@ run_dev_fast_and_cli_smokes() {
 run_workspace_nextest() {
   echo "[pre-release] running workspace tests (nextest)"
   cd "$ROOT_DIR/kay-rs"
+  unset_live_provider_test_env
   CARGO_TARGET_DIR="$BASE_CARGO_TARGET_DIR/pre-release-nextest" \
     cargo +stable nextest run --no-fail-fast --locked
 }

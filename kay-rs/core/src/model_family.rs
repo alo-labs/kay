@@ -296,6 +296,10 @@ pub struct ModelFamily {
     /// reasoning content to be replayed explicitly.
     pub chat_completions_reasoning_strategy: ChatCompletionsReasoningStrategy,
 
+    /// Whether Chat Completions requests may use native
+    /// `response_format: json_schema` for structured final output.
+    pub supports_chat_completions_response_format_json_schema: bool,
+
     // Instructions to use for querying the model
     pub base_instructions: String,
 }
@@ -352,6 +356,7 @@ macro_rules! model_family {
             supports_image_generation: false,
             chat_completions_role_strategy: ChatCompletionsRoleStrategy::OpenAi,
             chat_completions_reasoning_strategy: ChatCompletionsReasoningStrategy::OpenAi,
+            supports_chat_completions_response_format_json_schema: true,
             base_instructions: BASE_INSTRUCTIONS.to_string(),
         };
         // apply overrides
@@ -662,6 +667,7 @@ pub fn find_family_for_model(slug: &str) -> Option<ModelFamily> {
         model_family!(
             slug, "mimo",
             needs_special_apply_patch_instructions: true,
+            supports_chat_completions_response_format_json_schema: false,
             base_instructions: BASE_INSTRUCTIONS_WITH_APPLY_PATCH.to_string(),
         )
         .map(with_mimo_synthesis_checkpoint)
@@ -714,6 +720,7 @@ pub fn derive_default_model_family(model: &str) -> ModelFamily {
         supports_image_generation: false,
         chat_completions_role_strategy: ChatCompletionsRoleStrategy::OpenAi,
         chat_completions_reasoning_strategy: ChatCompletionsReasoningStrategy::OpenAi,
+        supports_chat_completions_response_format_json_schema: true,
         base_instructions: BASE_INSTRUCTIONS.to_string(),
     })
 }
@@ -886,6 +893,14 @@ mod tests {
             assert_eq!(
                 opencode.chat_completions_reasoning_strategy,
                 xiaomi.chat_completions_reasoning_strategy
+            );
+            assert_eq!(
+                opencode.supports_chat_completions_response_format_json_schema,
+                xiaomi.supports_chat_completions_response_format_json_schema
+            );
+            assert!(
+                !xiaomi.supports_chat_completions_response_format_json_schema,
+                "MiMo models should use shared schema guidance instead of native response_format"
             );
             assert_eq!(
                 opencode.needs_special_apply_patch_instructions,

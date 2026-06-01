@@ -337,8 +337,10 @@ fn build_chat_completions_payload(
 
     let tools_json = create_tools_json_for_chat_completions_api(&prompt.tools)?;
     let has_tools = !tools_json.is_empty();
+    let supports_native_output_schema = !minimax
+        && model_family.supports_chat_completions_response_format_json_schema;
     if let Some(schema) = prompt.output_schema.as_ref()
-        && (has_tools || minimax)
+        && (has_tools || !supports_native_output_schema)
     {
         insert_final_output_schema_instructions(&mut messages, schema);
     }
@@ -359,7 +361,7 @@ fn build_chat_completions_payload(
     }
     if let Some(schema) = prompt.output_schema.as_ref()
         && !has_tools
-        && !minimax
+        && supports_native_output_schema
         && let Some(obj) = payload.as_object_mut()
     {
         obj.insert(
@@ -1631,10 +1633,12 @@ mod tests {
     }
 
     #[test]
-    fn openai_compatible_chat_payload_serializes_output_schema() {
-        let provider = crate::model_provider_info::create_xiaomi_provider();
-        let model_family = crate::model_family::find_family_for_model("xiaomi/mimo-v2.5-pro")
-            .expect("known xiaomi mimo model");
+    fn openai_compatible_non_mimo_chat_payload_serializes_output_schema() {
+        let provider = crate::model_provider_info::create_opencode_go_provider();
+        let model_family = crate::model_family::find_family_for_model(
+            "opencode-go/deepseek-v4-flash",
+        )
+        .expect("known opencode go deepseek model");
         let schema = json!({
             "type": "object",
             "additionalProperties": false,
@@ -1660,7 +1664,7 @@ mod tests {
         let payload = build_chat_completions_payload(
             &prompt,
             &model_family,
-            "mimo-v2.5-pro",
+            "deepseek-v4-flash",
             &provider,
         )
         .expect("payload");
@@ -1677,6 +1681,55 @@ mod tests {
         assert_eq!(
             payload["response_format"]["json_schema"]["schema"],
             schema
+        );
+    }
+
+    #[test]
+    fn mimo_chat_payload_uses_schema_guidance_instead_of_response_format() {
+        let provider = crate::model_provider_info::create_xiaomi_provider();
+        let model_family = crate::model_family::find_family_for_model("xiaomi/mimo-v2.5-pro")
+            .expect("known xiaomi mimo model");
+        let prompt = Prompt {
+            input: vec![ResponseItem::Message {
+                id: None,
+                role: "user".to_string(),
+                content: vec![ContentItem::InputText {
+                    text: "return JSON".to_string(),
+                }],
+                end_turn: None,
+                phase: None,
+            }],
+            output_schema: Some(json!({
+                "type": "object",
+                "required": ["summary"],
+                "properties": {
+                    "summary": { "type": "string" }
+                }
+            })),
+            ..Prompt::default()
+        };
+
+        let payload = build_chat_completions_payload(
+            &prompt,
+            &model_family,
+            "mimo-v2.5-pro",
+            &provider,
+        )
+        .expect("payload");
+
+        assert!(
+            payload.get("response_format").is_none(),
+            "MiMo chat payloads should avoid response_format because direct Xiaomi can disconnect"
+        );
+        let messages = payload["messages"].as_array().expect("messages array");
+        assert!(
+            messages.iter().any(|message| {
+                message["role"] == "system"
+                    && message["content"]
+                        .as_str()
+                        .is_some_and(|content| content.contains("Final output contract"))
+            }),
+            "MiMo should receive schema guidance for no-tool structured output"
         );
     }
 
