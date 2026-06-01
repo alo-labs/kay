@@ -1,366 +1,257 @@
 # Kay
 
-Kay is a terminal coding agent built for local, scriptable, multi-provider workflows.
+Kay is a Codex-style terminal coding agent built for developers who want the same local agent workflow with more control over model cost.
 
-Its main value proposition is cost control: Kay keeps the Codex-style terminal workflow, but lets you reserve OpenAI for the jobs that truly need it and route the rest to built-in, cost-effective high-performing models.
+The core idea is simple: keep OpenAI available when it is the right choice, but make cost-effective, high-performing model providers first-class options instead of one-off proxy hacks. Kay ships with built-in routing for Xiaomi MiMo, OpenCode Go, MiniMax, and OpenAI, so you can choose the model/provider mix that fits the task and budget.
 
-Its defining difference is first-class provider architecture: credentials, provider selection, and model routing are built into the product instead of being bolted on later, so you can move between OpenAI, Xiaomi MiMo, OpenCode Go, and MiniMax without extra glue or custom scripts.
+Kay keeps its own state under `~/.kay`, supports interactive and headless workflows, and preserves the local terminal ergonomics of the Codex CLI lineage while moving provider selection, credential management, and model routing into the product.
 
-It carries forward the ergonomics of the Codex CLI lineage and the multi-provider direction from Every Code, but it is its own project with its own release line, UI decisions, and isolated home directory under `~/.kay`.
+## Why Use Kay
 
-Xiaomi MiMo support is now built in, with the Xiaomi provider exposing `xiaomi/mimo-v2.5-pro` and `xiaomi/mimo-v2.5` through the same provider workflow as the other built-ins.
+- Lower routine coding costs by routing everyday agent work to built-in non-OpenAI providers.
+- Keep OpenAI in the same toolchain for tasks where you still want OpenAI models.
+- Use Xiaomi MiMo directly with `xiaomi/mimo-v2.5-pro` and `xiaomi/mimo-v2.5`.
+- Switch providers and models from `/provider` and `/model` instead of editing wrapper scripts.
+- Run the same workflows interactively in the TUI or non-interactively through `kay exec`.
+- Keep auth, transcripts, logs, config, and sessions isolated under `~/.kay`.
 
-## Why Kay exists separately
+## Built-In Providers
 
-- The main reason Kay exists separately is that provider selection, credential management, and model routing are first-class architecture here, not add-ons.
-- Codex gave this project its original CLI and agent workflow shape.
-- Every Code introduced the multi-provider direction and the idea that provider/model support should be a core capability.
-- Kay exists so that architecture can evolve independently without being forced into a rename-only or compatibility-only release model.
-- Kay keeps the upstream lineage visible, but it is not the same project as Codex or Every Code.
+Kay can use custom OpenAI-compatible providers, but these providers are available out of the box:
 
-## What Kay does well
+| Provider | Built-in models | Why it matters |
+| --- | --- | --- |
+| Xiaomi | `xiaomi/mimo-v2.5-pro`, `xiaomi/mimo-v2.5` | Direct Xiaomi MiMo support for cost-effective coding turns. |
+| OpenCode Go | `opencode-go/glm-5.1`, `opencode-go/kimi-k2.6`, `opencode-go/mimo-v2.5-pro`, `opencode-go/mimo-v2.5`, `opencode-go/minimax-m2.7`, `opencode-go/qwen3.6-plus`, `opencode-go/deepseek-v4-pro`, `opencode-go/deepseek-v4-flash` | A curated set of high-performing coding models behind one provider. |
+| MiniMax | `MiniMax-M2.7` | A focused built-in option for MiniMax workflows. |
+| OpenAI | The upstream OpenAI model list supported by Kay's Codex lineage. | Keep OpenAI available without making it the only path. |
 
-- Runs as a local coding agent in your terminal.
-- Coordinates multi-step tasks with Auto Drive.
-- Supports browser-driven workflows through internal browser mode or CDP/Chrome.
-- Provides multi-agent commands such as `/plan`, `/code`, `/solve`, and `/auto`.
-- Exposes a provider workflow for adding, updating, and removing credentials, including built-in Xiaomi MiMo support.
-- Helps you control model spend by making Xiaomi MiMo, OpenCode Go, and MiniMax first-class choices alongside OpenAI.
-- Keeps its own state under `~/.kay` instead of inheriting a local Codex or Every Code environment.
-- Integrates with MCP tools, custom agents, and safety controls directly in the TUI.
-- Records transcript JSONL so sessions remain inspectable and attributable.
-- Runs Auto Review in a separate worktree so quality checks can happen without blocking the main flow.
-- Keeps long sessions responsive with bounded queues, caches, and history compaction.
-- Supports headless `kay exec` for JSONL streams, structured output, and CI automation.
-
-## Current focus
-
-- Auto Drive and Auto Review are decoupled so review finalization does not block the command flow; `Esc` returns control immediately while typing continues.
-- Review metadata, worktree context, and history remain queryable after completion.
-- Terminal agents are compacted and archived so heavy payloads stay smaller while review linkage is preserved.
-- Coordinator and TUI caches are bounded, and background review notes are added as non-blocking history entries.
-- Stress tests cover heavy agent churn plus concurrent review and typing responsiveness.
-- Use `/model` to compare the exact provider-specific model choices available in your current setup and pick the best cost/performance tradeoff for the task.
-- The release philosophy is quality-first: the point is not only "can the model write this file" but "did we verify it works".
+Provider availability, pricing, quotas, and model names can change. Use `/model` inside Kay to see the exact choices available for your configured credentials.
 
 ## Install
 
-Install Kay from npm:
+Install from npm:
 
 ```bash
 npm install -g @alo-labs/kay
 ```
 
-If you want a one-shot launch without a global install:
+Or run it without a global install:
 
 ```bash
 npx -y @alo-labs/kay
 ```
 
-The primary command is `kay`. The package also installs `codex` and `coder` aliases, and installs the legacy `code` alias when doing so would not override another `code` command already on PATH.
+The main command is `kay`. The package also installs `codex` and `coder` compatibility aliases, and installs the legacy `code` alias when doing so will not override another `code` command already on `PATH`.
 
-Provider credentials you save with `kay login` are stored in `$KAY_HOME/auth.json` (defaults to `~/.kay/auth.json`), so once configured they work from any directory.
+Standalone release archives are also available from [GitHub Releases](https://github.com/alo-labs/kay/releases/latest).
 
-GitHub Releases also provide standalone archives.
+## Quick Start
 
-1. Open the latest release: [alo-labs/kay releases](https://github.com/alo-labs/kay/releases/latest)
-2. Download the asset for your platform:
-   - macOS arm64: `kay-aarch64-apple-darwin.tar.gz` or `kay-aarch64-apple-darwin.zst`
-   - macOS x64: `kay-x86_64-apple-darwin.tar.gz` or `kay-x86_64-apple-darwin.zst`
-   - Linux arm64 musl: `kay-aarch64-unknown-linux-musl.tar.gz` or `kay-aarch64-unknown-linux-musl.zst`
-   - Linux x64 musl: `kay-x86_64-unknown-linux-musl.tar.gz` or `kay-x86_64-unknown-linux-musl.zst`
-   - Windows x64: `kay-x86_64-pc-windows-msvc.exe.zip`
-3. Extract the archive and run the `kay` binary. Legacy `code-*` compatibility archives are also published during the migration so existing scripts can keep working.
-
-Example for macOS or Linux:
+Launch the TUI:
 
 ```bash
-tar -xzf kay-x86_64-apple-darwin.tar.gz
-./kay
+kay
 ```
 
-Example for Windows PowerShell:
+Add a provider key from the TUI:
 
-```powershell
-Expand-Archive .\kay-x86_64-pc-windows-msvc.exe.zip
-.\kay.exe
+```text
+/provider
 ```
 
-## Getting Started
+Or add a provider key from the CLI:
 
-1. Launch Kay:
+```bash
+kay login --provider xiaomi --api-key <KEY>
+kay login --provider opencode-go --api-key <KEY>
+kay login --provider minimax --api-key <KEY>
+kay login --provider openai --api-key <KEY>
+```
 
-   ```bash
-   kay
-   ```
+For shell-safe key entry, pipe the key through stdin:
 
-2. Set up a provider from inside the TUI with `/provider`.
-   - Add the provider API key for Xiaomi, OpenCode Go, MiniMax, or OpenAI.
-   - For OpenAI, `kay login` can also use ChatGPT sign-in when that is the auth mode you want.
-   - If you prefer to avoid the TUI flow, you can provide the key from the CLI instead:
+```bash
+printenv XIAOMI_API_KEY | kay login --provider xiaomi --with-api-key
+printenv OPENCODE_GO_API_KEY | kay login --provider opencode-go --with-api-key
+printenv MINIMAX_API_KEY | kay login --provider minimax --with-api-key
+printenv OPENAI_API_KEY | kay login --provider openai --with-api-key
+```
 
-   ```bash
-   kay login --provider xiaomi --api-key <KEY>
-   kay login --provider opencode-go --api-key <KEY>
-   kay login --provider minimax --api-key <KEY>
-   kay login --provider openai --api-key <KEY>
-   ```
+Choose a model:
 
-   If you want stdin-safe entry:
+```text
+/model
+```
 
-   ```bash
-   printenv XIAOMI_API_KEY | kay login --provider xiaomi --with-api-key
-   printenv OPENCODE_GO_API_KEY | kay login --provider opencode-go --with-api-key
-   printenv MINIMAX_API_KEY | kay login --provider minimax --with-api-key
-   printenv OPENAI_API_KEY | kay login --provider openai --with-api-key
-   ```
+Start coding:
 
-   These commands save the credentials into `$KAY_HOME/auth.json` so Kay can
-   reuse them the next time you launch the CLI, even from a different
-   directory. If you plan to use external CLI agents through `[[agents]]`,
-   install the binaries you reference there and keep them on `PATH`.
+```bash
+kay "explain this repo and find the riskiest module"
+kay exec "run the test suite and summarize the failures"
+kay exec --full-auto --sandbox workspace-write "fix the failing tests"
+```
 
-3. Pick a model with `/model`.
-   - Kay shows the models available for the providers you have configured.
-   - For Xiaomi, that is `xiaomi/mimo-v2.5-pro` and `xiaomi/mimo-v2.5`.
-   - For OpenCode Go, that is the OpenCode Go model list we already support.
-   - For MiniMax, that is MiniMax M2.7.
-   - For OpenAI, that is the upstream OpenAI model set supported by Codex.
+Credentials saved with `kay login` are stored in `$KAY_HOME/auth.json`. `KAY_HOME` defaults to `~/.kay`, so the same provider credentials work from any project directory.
 
-4. Start a task:
-   - Type a prompt directly into the TUI, for example: `refactor this module`
-   - Or run a one-shot command with `kay exec "..."`.
-   - Use `/code`, `/plan`, `/solve`, or `/auto` when you want a specialized workflow.
+## Common Workflows
 
-5. Review the transcript later if you need provenance or debugging context. Kay stores JSONL transcripts under `~/.kay/history.jsonl` and related logs under `~/.kay/debug_logs/`, and the transcript viewer makes them easy to inspect.
+### Interactive Coding
 
-## Build from source
+Use Kay as a terminal coding agent:
+
+```bash
+kay "refactor this parser and explain the change"
+```
+
+Inside the TUI, use slash commands for focused workflows:
+
+```text
+/model
+/provider
+/plan "design the migration"
+/code "implement the selected plan"
+/solve "find the root cause of this flaky test"
+/auto "finish the bug fix and verify it"
+```
+
+### Headless Automation
+
+Use `kay exec` when you want scriptable output:
+
+```bash
+kay exec --json "inspect this change and list the risks"
+kay exec --output-schema schema.json --output-last-message "extract the release summary"
+kay exec --full-auto --sandbox workspace-write "update docs and run the relevant checks"
+```
+
+`kay exec` defaults to read-only. Add `--full-auto` and a writable sandbox only when you want Kay to edit files or run commands that change the workspace.
+
+### Browser And Agent Workflows
+
+Kay includes browser and multi-agent commands:
+
+```text
+/browser
+/browser https://example.com
+/chrome
+/chrome 9222
+/plan "decompose this feature"
+/solve "debug this failure"
+/auto "drive this task to completion"
+```
+
+## Configuration
+
+Kay reads configuration from `~/.kay/config.toml` by default. If that file is absent, Kay can also read the older `~/.kay/kay.toml` provider-default format.
+
+Minimal example:
+
+```toml
+model = "xiaomi/mimo-v2.5-pro"
+model_provider = "xiaomi"
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+model_reasoning_effort = "medium"
+
+[tui.theme]
+name = "light-photon"
+```
+
+Built-in Xiaomi provider configuration:
+
+```toml
+[model_providers.xiaomi]
+name = "Xiaomi"
+base_url = "https://token-plan-sgp.xiaomimimo.com/v1"
+env_key = "XIAOMI_API_KEY"
+wire_api = "chat"
+requires_openai_auth = false
+```
+
+Kay also supports custom providers that expose OpenAI-compatible Chat Completions or Responses APIs:
+
+```toml
+model = "mistral"
+model_provider = "local-ollama"
+
+[model_providers.local-ollama]
+name = "Local Ollama"
+base_url = "http://localhost:11434/v1"
+wire_api = "chat"
+requires_openai_auth = false
+```
+
+Useful environment variables:
+
+- `KAY_HOME`: Override Kay's config and state directory.
+- `XIAOMI_API_KEY`: API key for the built-in Xiaomi provider.
+- `OPENCODE_GO_API_KEY`: API key for the built-in OpenCode Go provider.
+- `MINIMAX_API_KEY`: API key for the built-in MiniMax provider.
+- `OPENAI_API_KEY`: Use OpenAI API key auth.
+- `OPENAI_BASE_URL`: Override the built-in OpenAI base URL.
+- `OPENAI_WIRE_API`: Force the built-in OpenAI provider to use `chat` or `responses`.
+
+See [Configuration](docs/config.md) for the full config reference.
+
+## Project Memory And Transcripts
+
+Kay reads project instructions from files such as `AGENTS.md` and `CLAUDE.md` in your project root. Use those files to record local conventions, test commands, architecture notes, and safety rules.
+
+Kay records transcripts and logs under `~/.kay/`, including JSONL history that can be inspected later for provenance, debugging, or review.
+
+## Build From Source
 
 ```bash
 git clone https://github.com/alo-labs/kay.git
 cd kay
 
-# Install Rust if you do not already have it.
+# Install Rust if needed.
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 source "$HOME/.cargo/env"
 
-# Build everything the same way CI validates it.
+# Build the workspace using the same required local gate.
 ./build-fast.sh
 
-# Launch the TUI from the preserved Kay workspace bin output.
-./kay-rs/bin/kay -- "explain this codebase to me"
+# Launch the built binary.
+./kay-rs/bin/kay
 ```
-
-## Demo Videos
-
-The Every Code lineage also published a few workflow demos that map closely to Kay's browser, Auto Drive, and multi-agent flows:
-
-- [Auto Review](https://www.youtube.com/watch?v=Ra3q8IVpIOc)
-- [Auto Drive Overview](https://youtu.be/UOASHZPruQk)
-- [Multi-Agent Promo](https://youtu.be/sV317OhiysQ)
-
-## Commands
-
-### Browser
-
-```bash
-# Connect Kay to an external Chrome browser running CDP
-/chrome
-/chrome 9222
-
-# Switch to internal browser mode
-/browser
-/browser https://example.com
-```
-
-### Agents
-
-```bash
-# Plan code changes with multiple agents and a consolidated plan
-/plan "Stop the AI from ordering pizza at 3AM"
-
-# Solve a hard problem with multiple agents racing on the answer
-/solve "Why does deleting one user drop the whole database?"
-
-# Run the main coding workflow
-/code "Show dark mode when I feel cranky"
-```
-
-### Auto Drive
-
-```bash
-# Hand off a multi-step task; Auto Drive coordinates agents and approvals
-/auto "Refactor the auth flow and add device login"
-
-/auto status
-```
-
-### General
-
-```bash
-/themes
-/reasoning low|medium|high
-/model
-/new
-/settings
-/provider
-/login
-/approvals
-```
-
-## CLI Reference
-
-```shell
-kay [options] [prompt]
-
-Options:
-  -m, --model <name>    Override the model for the active provider
-  -s, --sandbox <mode>   Set sandbox level (read-only, workspace-write, etc.)
-  -a, --ask-for-approval <mode>
-                        Choose when commands need human approval
-  --full-auto           Convenience alias for low-friction automatic execution
-  --dangerously-bypass-approvals-and-sandbox
-                        Skip approvals and sandboxing entirely
-  -C, --cd <dir>        Use a different working root
-  -i, --image <file>    Attach image(s) to the initial prompt
-  -c, --config <key=val>
-                        Override config values
-  -d, --debug           Log API requests and responses to file
-  --oss                 Use the local open source model provider
-  --version             Show version number
-```
-
-Note: `--model` only changes the model name sent to the active provider. To use a different provider, set `model_provider` in `config.toml`. Providers must expose an OpenAI-compatible API (Chat Completions or Responses). Use `--full-auto` for the low-friction automatic execution preset, and reserve `--dangerously-bypass-approvals-and-sandbox` for externally sandboxed environments.
-
-## Headless / CI Mode
-
-For automation and CI/CD:
-
-```shell
-# Run a specific task and stream JSONL events
-kay exec --json "run the test suite and summarize the failures"
-
-# Generate structured output and keep only the final payload
-kay exec --output-schema schema.json --output-last-message "extract the project summary"
-
-# Let Kay edit files and run commands in a writable sandbox
-kay exec --full-auto --sandbox workspace-write "run the test suite and fix any failures"
-```
-
-`kay exec` defaults to read-only. Use `--full-auto` together with a writable sandbox when you want edits. By default it uses the same authentication method as the TUI, and you can override that per process with `CODEX_API_KEY` if needed.
-
-## Memory & project docs
-
-Kay can remember project context across sessions:
-
-1. Create an `AGENTS.md` or `CLAUDE.md` file in your project root:
-
-   ```markdown
-   # Project Context
-   This is a React TypeScript application with:
-   - Authentication via JWT
-   - PostgreSQL database
-   - Express.js backend
-
-   ## Key files:
-   - `/src/auth/` - Authentication logic
-   - `/src/api/` - API client code
-   - `/server/` - Backend services
-   ```
-
-2. Kay maintains conversation history and transcript files under `~/.kay/`.
-3. Kay automatically understands project structure as long as your repo instructions are clear.
-
-## Model Context Protocol (MCP)
-
-Kay supports MCP for extended capabilities:
-
-- File operations
-- Database connections
-- API integrations
-- Custom tools
-
-Configure MCP in `~/.kay/config.toml` under `[mcp_servers.<name>]`:
-
-```toml
-[mcp_servers.filesystem]
-command = "npx"
-args = ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/project"]
-```
-
-## Configuration
-
-Main config file: `~/.kay/config.toml`
-
-> [!NOTE]
-> Kay reads from `~/.kay/` by default and keeps its writable state there. If `~/.kay/config.toml` is absent, Kay also reads the older `~/.kay/kay.toml` provider-default format. If you are migrating from a Codex-based setup, copy the settings you want to keep into `~/.kay/config.toml` so Kay can use them explicitly.
-
-```toml
-# Model settings
-model = "gpt-5.1"
-model_provider = "openai"
-
-# Behavior
-approval_policy = "on-request"  # untrusted | on-failure | on-request | never
-model_reasoning_effort = "medium" # low | medium | high
-sandbox_mode = "workspace-write"
-
-# UI preferences
-[tui.theme]
-name = "light-photon"
-
-# Add config for specific models
-[profiles.gpt-5]
-model = "gpt-5.1"
-model_provider = "openai"
-approval_policy = "never"
-model_reasoning_effort = "high"
-model_reasoning_summary = "detailed"
-```
-
-Kay supports custom model providers that expose OpenAI-compatible Chat Completions or Responses APIs. The built-in provider set includes OpenAI, Xiaomi, OpenCode Go, and MiniMax, and you can extend it in `config.toml` with additional providers if needed.
-
-### Environment variables
-
-- `KAY_HOME`: Override config directory location
-- `OPENAI_API_KEY`: Use API key instead of ChatGPT auth
-- `OPENAI_BASE_URL`: Use OpenAI-compatible API endpoints (chat or responses)
-- `OPENAI_WIRE_API`: Force the built-in OpenAI provider to use `chat` or `responses` wiring
-- `XIAOMI_API_KEY`: API key for the built-in Xiaomi provider
-- `OPENCODE_GO_API_KEY`: API key for the built-in OpenCode Go provider
-- `MINIMAX_API_KEY`: API key for the built-in MiniMax provider
 
 ## FAQ
 
-**How is this different from the original?**
+**How is Kay different from Codex?**
 
-> Kay is a community fork of the upstream `openai/codex` CLI that keeps the Codex workflow, adds built-in provider routing for cost-effective high-performing models, and preserves browser integration, multi-agent commands, Auto Drive, theming, reasoning controls, MCP support, and a provider workflow built around `~/.kay`.
+Kay is a community fork of the upstream `openai/codex` CLI focused on provider choice and model cost control. It keeps the terminal coding workflow, then adds built-in provider management for Xiaomi MiMo, OpenCode Go, MiniMax, and OpenAI.
 
-**Which models are supported?**
+**Is Kay only for cheaper models?**
 
-> The built-in model list changes over time. Configure your providers, then use `/model` to see the current options Kay can use in your environment.
+No. Kay is for choosing the right model for each job. The point is to avoid making one provider the default for every task when lower-cost providers can handle much of the daily coding workload.
 
-**Can I use my existing Codex configuration?**
+**Can I use OpenAI?**
 
-> You can migrate the settings you care about into `~/.kay/config.toml`. Kay keeps a few compatibility paths alive, but `~/.kay` is the directory to treat as canonical.
+Yes. OpenAI remains a built-in provider. Kay supports both OpenAI API key auth and ChatGPT sign-in where that mode is appropriate.
 
-**Does this work with ChatGPT Plus?**
+**Which model should I use?**
 
-> Yes. Use the `kay login` flow and choose ChatGPT sign-in for the OpenAI provider when that is the account mode you want.
+Use `/model` after configuring your providers. Kay shows only the model choices available for your current credentials. A practical default is to start with Xiaomi MiMo or another lower-cost provider for routine work, then switch to OpenAI when a task benefits from it.
 
-**Is my data secure?**
+**Does Kay proxy my traffic?**
 
-> Authentication stays on your machine, and Kay does not proxy your credentials or conversations beyond the provider you choose.
+No. Kay sends requests from your machine to the provider you configure. Your API keys are stored locally in `~/.kay/auth.json`.
+
+**Can I migrate existing Codex settings?**
+
+Yes. Copy the settings you still want into `~/.kay/config.toml`. Kay keeps some compatibility paths alive, but `~/.kay` is the canonical home for Kay state.
 
 ## Documentation
 
 - [Getting Started](docs/getting-started.md)
 - [Configuration](docs/config.md)
 - [Authentication](docs/authentication.md)
-- [Slash commands](docs/slash-commands.md)
+- [Slash Commands](docs/slash-commands.md)
 - [Agents](docs/agents.md)
 - [Auto Drive](docs/auto-drive.md)
-- [Exec mode](docs/exec.md)
+- [Exec Mode](docs/exec.md)
 - [MCP](docs/config.md#mcp_servers)
 - [Testing](docs/TESTING.md)
 - [FAQ](docs/faq.md)
@@ -370,19 +261,15 @@ Kay supports custom model providers that expose OpenAI-compatible Chat Completio
 
 ## Contributing
 
-We welcome contributions. Kay keeps the core build gate simple: run `./build-fast.sh` from the repository root, let it clean the transient build artifacts it produces, and make sure it passes cleanly before you send changes.
-
-### Development workflow
+Kay keeps the required local build gate simple:
 
 ```bash
-git clone https://github.com/alo-labs/kay.git
-cd kay
-npm install
 ./build-fast.sh
-./kay-rs/bin/kay
 ```
 
-If you want the repository hooks that ship with Kay, enable them locally:
+Run it from the repository root before sending code, build, packaging, workflow, dependency, or generated-artifact changes. Documentation-only changes can use targeted validation such as `git diff --check`.
+
+To enable repository hooks locally:
 
 ```bash
 git config core.hooksPath .githooks
@@ -390,32 +277,14 @@ git config core.hooksPath .githooks
 
 The `pre-push` hook runs `./pre-release.sh` automatically when pushing to `main`.
 
-## Legal & Use
+## Legal And Use
 
-### License & attribution
+Kay is distributed under the repository license in [LICENSE](LICENSE). It is a community fork of the Codex CLI lineage and preserves upstream license and notice files where applicable. Kay is not affiliated with, sponsored by, or endorsed by OpenAI.
 
-- Kay is distributed under the repository license in [`LICENSE`](LICENSE).
-- Kay is a community fork of the original Codex CLI lineage and preserves upstream LICENSE and NOTICE files where applicable.
-- Kay is not affiliated with, sponsored by, or endorsed by OpenAI.
+Using OpenAI, Xiaomi, MiniMax, OpenCode Go, Anthropic, Google, or other provider services through Kay means you are responsible for the terms, limits, data policies, and account rules of the provider you choose.
 
-### Your responsibilities
+Your auth file lives at `~/.kay/auth.json`. Inputs and outputs sent to AI providers are handled under those providers' terms and privacy policies.
 
-Using OpenAI, Anthropic, Google, Xiaomi, MiniMax, OpenCode Go, or other provider services through Kay means you agree to their terms and policies. In particular:
+## Need Help?
 
-- Do not programmatically scrape or extract content outside intended flows.
-- Do not bypass or interfere with rate limits, quotas, or safety mitigations.
-- Use your own account; do not share or rotate accounts to evade limits.
-- If you configure other model providers, you are responsible for their terms.
-
-### Privacy
-
-- Your auth file lives at `~/.kay/auth.json`
-- Inputs and outputs you send to AI providers are handled under their terms and privacy policies; consult those documents and any org-level data-sharing settings.
-
-### Subject to change
-
-AI providers can change eligibility, limits, models, or authentication flows. Kay supports both ChatGPT sign-in and API-key modes so you can pick what fits your workflow.
-
-## Need help?
-
-Open an issue on [GitHub](https://github.com/alo-labs/kay/issues) or check the documentation.
+Open an issue on [GitHub](https://github.com/alo-labs/kay/issues) or start with the [Getting Started](docs/getting-started.md) guide.
