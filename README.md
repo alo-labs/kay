@@ -2,9 +2,13 @@
 
 Kay is a terminal coding agent built for local, scriptable, multi-provider workflows.
 
-Its defining difference is first-class provider architecture: credentials, provider selection, and model routing are built into the product instead of being bolted on later.
+Its main value proposition is cost control: Kay keeps the Codex-style terminal workflow, but lets you reserve OpenAI for the jobs that truly need it and route the rest to built-in, cost-effective high-performing models.
+
+Its defining difference is first-class provider architecture: credentials, provider selection, and model routing are built into the product instead of being bolted on later, so you can move between OpenAI, Xiaomi MiMo, OpenCode Go, and MiniMax without extra glue or custom scripts.
 
 It carries forward the ergonomics of the Codex CLI lineage and the multi-provider direction from Every Code, but it is its own project with its own release line, UI decisions, and isolated home directory under `~/.kay`.
+
+Xiaomi MiMo support is now built in, with the Xiaomi provider exposing `xiaomi/mimo-v2.5-pro` and `xiaomi/mimo-v2.5` through the same provider workflow as the other built-ins.
 
 ## Why Kay exists separately
 
@@ -20,7 +24,8 @@ It carries forward the ergonomics of the Codex CLI lineage and the multi-provide
 - Coordinates multi-step tasks with Auto Drive.
 - Supports browser-driven workflows through internal browser mode or CDP/Chrome.
 - Provides multi-agent commands such as `/plan`, `/code`, `/solve`, and `/auto`.
-- Exposes a provider workflow for adding, updating, and removing credentials.
+- Exposes a provider workflow for adding, updating, and removing credentials, including built-in Xiaomi MiMo support.
+- Helps you control model spend by making Xiaomi MiMo, OpenCode Go, and MiniMax first-class choices alongside OpenAI.
 - Keeps its own state under `~/.kay` instead of inheriting a local Codex or Every Code environment.
 - Integrates with MCP tools, custom agents, and safety controls directly in the TUI.
 - Records transcript JSONL so sessions remain inspectable and attributable.
@@ -35,7 +40,7 @@ It carries forward the ergonomics of the Codex CLI lineage and the multi-provide
 - Terminal agents are compacted and archived so heavy payloads stay smaller while review linkage is preserved.
 - Coordinator and TUI caches are bounded, and background review notes are added as non-blocking history entries.
 - Stress tests cover heavy agent churn plus concurrent review and typing responsiveness.
-- Use `/model` to see the exact provider-specific model choices available in your current setup.
+- Use `/model` to compare the exact provider-specific model choices available in your current setup and pick the best cost/performance tradeoff for the task.
 - The release philosophy is quality-first: the point is not only "can the model write this file" but "did we verify it works".
 
 ## Install
@@ -329,7 +334,7 @@ Kay supports custom model providers that expose OpenAI-compatible Chat Completio
 
 **How is this different from the original?**
 
-> Kay is a community fork of the upstream `openai/codex` CLI with browser integration, multi-agent commands, Auto Drive, theming, reasoning controls, MCP support, and a provider workflow built around `~/.kay`.
+> Kay is a community fork of the upstream `openai/codex` CLI that keeps the Codex workflow, adds built-in provider routing for cost-effective high-performing models, and preserves browser integration, multi-agent commands, Auto Drive, theming, reasoning controls, MCP support, and a provider workflow built around `~/.kay`.
 
 **Which models are supported?**
 
