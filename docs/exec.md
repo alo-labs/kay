@@ -85,14 +85,15 @@ Combine `--output-schema` with `-o` to only print the final JSON output. You can
 
 Provider behavior varies by wire protocol. Responses API models receive native
 structured-output settings. OpenAI-compatible Chat Completions providers use
-native `response_format` only for no-tool turns; tool-capable turns receive the
-same bounded final-output contract as system guidance so the model can inspect
-and edit files before producing the final JSON.
+native `response_format` only for no-tool turns when the model family supports
+it; MiMo-family Chat Completions turns use the same bounded final-output
+contract as system guidance so direct Xiaomi and OpenCode Go MiMo share one
+compatibility path.
 
-MiMo-family tool turns also get a final-output repair pass. If a MiMo model
-emits a progress assistant message where the schema requires JSON, Kay prompts
-the model to continue with tools or return the contracted JSON instead of
-treating that progress message as successful completion.
+MiMo-family turns also get a final-output repair pass. If a MiMo model emits a
+progress assistant message where the schema requires JSON, Kay prompts the model
+to continue with tools or return the contracted JSON instead of treating that
+progress message as successful completion.
 
 ### Git repository requirement
 

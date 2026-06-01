@@ -136,10 +136,12 @@ valid JavaScript, and accepts the common `typing`/`isTyping` guard shapes that
 prevent the duplicate shortcut from firing inside text inputs.
 
 For Chat Completions providers, `kay exec --output-schema` is forwarded into the
-turn context. The chat wire layer sends `response_format: json_schema` only when
-the request has no tools available; tool-capable turns instead carry a bounded
-final-output contract as system guidance because Xiaomi MiMo can otherwise
-satisfy the schema before performing required edits.
+turn context. The chat wire layer sends `response_format: json_schema` only for
+model families that support native schema response formatting and only when the
+request has no tools available. MiMo turns, including Xiaomi and OpenCode Go
+MiMo models, use a bounded final-output contract as system guidance because
+direct Xiaomi MiMo can disconnect on native `response_format`, and tool-capable
+MiMo turns can otherwise satisfy the schema before performing required edits.
 
 For MiMo-family tool workflows, Kay also validates the final assistant message
 against the requested schema before completing the turn. If MiMo emits a normal
@@ -205,6 +207,17 @@ var, and finally falls back to `provider_credentials.opencode-go.api_key` in
 `$KAY_HOME/auth.json`. Xiaomi accepts `XIAOMI_LIVE_API_KEY`, falls back to
 `XIAOMI_API_KEY`, and finally falls back to
 `provider_credentials.xiaomi.api_key` in `$KAY_HOME/auth.json`.
+
+The live gate gives each OpenCode Go onboarding turn a 30-minute budget by
+default because MiMo can spend several five-minute SSE windows reconnecting
+before returning a valid response. Override
+`KAY_ONBOARDING_LIVE_SMOKE_TURN_TIMEOUT_SECS` only for focused diagnostics.
+
+`./pre-release.sh` intentionally removes live-provider opt-in environment
+variables before launching the workspace nextest suite. Keep live model traffic
+inside the dedicated live-provider gate; otherwise exported credentials can make
+workspace tests run the expensive notes-app live matrix a second time and crowd
+out the deterministic release budget.
 
 For focused debugging, set `KAY_ONBOARDING_LIVE_SMOKE_MODEL_FILTER` to a comma
 separated subset of exact provider ids or model ids, such as
