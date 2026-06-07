@@ -39,9 +39,12 @@ use crate::colors;
 use crate::util::buffer::fill_rect;
 use code_core::config::Config;
 use code_core::config::ConfigOverrides;
+use code_core::SESSIONS_SUBDIR;
 
 const DEFAULT_LATEST_GLOB_PREFIX: &str = "session-";
 const DEFAULT_LATEST_GLOB_SUFFIX: &str = ".jsonl";
+const DEFAULT_ROLLOUT_GLOB_PREFIX: &str = "rollout-";
+const DEFAULT_ROLLOUT_GLOB_SUFFIX: &str = ".jsonl";
 
 #[derive(Debug, Clone, Default)]
 pub struct TranscriptViewerArgs {
@@ -133,10 +136,40 @@ fn resolve_relative_path(path: PathBuf) -> io::Result<PathBuf> {
 
 fn latest_session_log_path(config: &Config) -> io::Result<PathBuf> {
     let log_dir = code_core::config::log_dir(config)?;
+    if let Some(path) =
+        newest_matching_file_in_dir(&log_dir, DEFAULT_LATEST_GLOB_PREFIX, DEFAULT_LATEST_GLOB_SUFFIX)?
+    {
+        return Ok(path);
+    }
+
+    let sessions_dir = config.code_home.join(SESSIONS_SUBDIR);
+    if let Some(path) =
+        newest_matching_file_under_dir(&sessions_dir, DEFAULT_ROLLOUT_GLOB_PREFIX, DEFAULT_ROLLOUT_GLOB_SUFFIX)?
+    {
+        return Ok(path);
+    }
+
+    Err(io::Error::new(
+        io::ErrorKind::NotFound,
+        format!(
+            "no transcript JSONL files found in {} or {}",
+            log_dir.display(),
+            sessions_dir.display()
+        ),
+    ))
+}
+
+fn newest_matching_file_in_dir(dir: &Path, prefix: &str, suffix: &str) -> io::Result<Option<PathBuf>> {
     let mut newest: Option<PathBuf> = None;
     let mut newest_name: Option<String> = None;
 
-    for entry in std::fs::read_dir(&log_dir)? {
+    let entries = match std::fs::read_dir(dir) {
+        Ok(entries) => entries,
+        Err(err) if err.kind() == io::ErrorKind::NotFound => return Ok(None),
+        Err(err) => return Err(err),
+    };
+
+    for entry in entries {
         let entry = entry?;
         let path = entry.path();
         if !path.is_file() {
@@ -145,7 +178,7 @@ fn latest_session_log_path(config: &Config) -> io::Result<PathBuf> {
         let Some(name) = path.file_name().and_then(|s| s.to_str()).map(str::to_string) else {
             continue;
         };
-        if !name.starts_with(DEFAULT_LATEST_GLOB_PREFIX) || !name.ends_with(DEFAULT_LATEST_GLOB_SUFFIX) {
+        if !name.starts_with(prefix) || !name.ends_with(suffix) {
             continue;
         }
         let should_replace = newest_name
@@ -158,12 +191,66 @@ fn latest_session_log_path(config: &Config) -> io::Result<PathBuf> {
         }
     }
 
-    newest.ok_or_else(|| {
-        io::Error::new(
-            io::ErrorKind::NotFound,
-            format!("no transcript JSONL files found in {}", log_dir.display()),
-        )
-    })
+    Ok(newest)
+}
+
+fn newest_matching_file_under_dir(dir: &Path, prefix: &str, suffix: &str) -> io::Result<Option<PathBuf>> {
+    let mut newest: Option<PathBuf> = None;
+    let mut newest_key: Option<String> = None;
+    collect_newest_matching_file(dir, dir, prefix, suffix, &mut newest, &mut newest_key)?;
+    Ok(newest)
+}
+
+fn collect_newest_matching_file(
+    root: &Path,
+    dir: &Path,
+    prefix: &str,
+    suffix: &str,
+    newest: &mut Option<PathBuf>,
+    newest_key: &mut Option<String>,
+) -> io::Result<()> {
+    let entries = match std::fs::read_dir(dir) {
+        Ok(entries) => entries,
+        Err(err) if err.kind() == io::ErrorKind::NotFound => return Ok(()),
+        Err(err) => return Err(err),
+    };
+
+    for entry in entries {
+        let entry = entry?;
+        let file_type = entry.file_type()?;
+        let path = entry.path();
+
+        if file_type.is_dir() {
+            collect_newest_matching_file(root, &path, prefix, suffix, newest, newest_key)?;
+            continue;
+        }
+        if !file_type.is_file() {
+            continue;
+        }
+
+        let Some(name) = path.file_name().and_then(|s| s.to_str()) else {
+            continue;
+        };
+        if !name.starts_with(prefix) || !name.ends_with(suffix) {
+            continue;
+        }
+
+        let key = path
+            .strip_prefix(root)
+            .unwrap_or(&path)
+            .to_string_lossy()
+            .to_string();
+        let should_replace = newest_key
+            .as_ref()
+            .map(|current| key > *current)
+            .unwrap_or(true);
+        if should_replace {
+            *newest = Some(path);
+            *newest_key = Some(key);
+        }
+    }
+
+    Ok(())
 }
 
 pub fn load_transcript_entries(path: &Path) -> io::Result<Vec<TranscriptEntry>> {
@@ -713,6 +800,63 @@ mod tests {
 
         let config = prepare_viewer_config()?;
         assert!(matches!(config.tui.theme.name, ThemeName::DarkCarbonNight));
+        Ok(())
+    }
+
+    #[test]
+    fn default_transcript_path_falls_back_to_latest_rollout_session() -> io::Result<()> {
+        let _lock = ENV_LOCK.lock().unwrap();
+        let _kay_home_guard = EnvGuard::new("KAY_HOME");
+        let kay_home = TempDir::new().expect("temp kay home");
+
+        unsafe {
+            std::env::set_var("KAY_HOME", kay_home.path());
+        }
+
+        fs::create_dir_all(kay_home.path().join("debug_logs"))?;
+        let older = kay_home.path().join(
+            "sessions/2026/05/13/rollout-2026-05-13T10-00-00-11111111-1111-4111-8111-111111111111.jsonl",
+        );
+        let newer = kay_home.path().join(
+            "sessions/2026/05/14/rollout-2026-05-14T10-00-00-22222222-2222-4222-8222-222222222222.jsonl",
+        );
+        fs::create_dir_all(older.parent().expect("older parent"))?;
+        fs::create_dir_all(newer.parent().expect("newer parent"))?;
+        fs::write(&older, "{}\n")?;
+        fs::write(&newer, "{}\n")?;
+
+        let config = prepare_viewer_config()?;
+        let resolved = latest_session_log_path(&config)?;
+
+        assert_eq!(fs::canonicalize(resolved)?, fs::canonicalize(newer)?);
+        Ok(())
+    }
+
+    #[test]
+    fn default_transcript_path_prefers_debug_log_session() -> io::Result<()> {
+        let _lock = ENV_LOCK.lock().unwrap();
+        let _kay_home_guard = EnvGuard::new("KAY_HOME");
+        let kay_home = TempDir::new().expect("temp kay home");
+
+        unsafe {
+            std::env::set_var("KAY_HOME", kay_home.path());
+        }
+
+        let debug_log = kay_home
+            .path()
+            .join("debug_logs/session-2026-05-13T10-00-00.jsonl");
+        let rollout = kay_home.path().join(
+            "sessions/2026/05/14/rollout-2026-05-14T10-00-00-22222222-2222-4222-8222-222222222222.jsonl",
+        );
+        fs::create_dir_all(debug_log.parent().expect("debug log parent"))?;
+        fs::create_dir_all(rollout.parent().expect("rollout parent"))?;
+        fs::write(&debug_log, "{}\n")?;
+        fs::write(&rollout, "{}\n")?;
+
+        let config = prepare_viewer_config()?;
+        let resolved = latest_session_log_path(&config)?;
+
+        assert_eq!(fs::canonicalize(resolved)?, fs::canonicalize(debug_log)?);
         Ok(())
     }
 }
