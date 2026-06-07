@@ -104,8 +104,8 @@ const LIVE_MODELS: &[LiveModelSpec] = &[
     LiveModelSpec {
         provider_label: "MiniMax",
         provider_id: "minimax",
-        model: "MiniMax-M2.7",
-        header_label: "MiniMax-M2.7",
+        model: "MiniMax-M3",
+        header_label: "MiniMax-M3",
         reasoning_effort: None,
     },
     LiveModelSpec {
