@@ -15,7 +15,7 @@ const OPENCODE_GO_SUPPORTED_MODELS: &[&str] = &[
     "deepseek-v4-flash",
 ];
 
-const MINIMAX_SUPPORTED_MODELS: &[&str] = &["MiniMax-M2.7"];
+const MINIMAX_SUPPORTED_MODELS: &[&str] = &["MiniMax-M3", "MiniMax-M2.7"];
 
 const XIAOMI_SUPPORTED_MODELS: &[&str] = &["mimo-v2.5-pro", "mimo-v2.5"];
 
@@ -317,8 +317,11 @@ mod tests {
 
     #[test]
     fn minimax_model_matching_is_exact() {
+        assert!(matches_minimax_model("MiniMax-M3"));
+        assert!(matches_minimax_model("minimax-m3"));
         assert!(matches_minimax_model("MiniMax-M2.7"));
         assert!(matches_minimax_model("minimax-m2.7"));
+        assert!(!matches_minimax_model("MiniMax-M3-beta"));
         assert!(!matches_minimax_model("MiniMax-M2.7-beta"));
         assert!(!matches_minimax_model("preMiniMax-M2.7"));
     }

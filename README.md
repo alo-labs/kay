@@ -2,7 +2,7 @@
 
 Kay is a Codex-style terminal coding agent built for developers who want the same local agent workflow with more control over model cost.
 
-The core idea is simple: keep OpenAI available when it is the right choice, but make cost-effective, high-performing model providers first-class options instead of one-off proxy hacks. Kay ships with built-in routing for Xiaomi MiMo, OpenCode Go, MiniMax, and OpenAI, so you can choose the model/provider mix that fits the task and budget.
+The core idea is simple: keep OpenAI available when it is the right choice, but make cost-effective, high-performing model providers first-class options instead of one-off proxy hacks. Kay ships with built-in routing for Xiaomi MiMo, OpenCode Go, MiniMax, OpenRouter, and OpenAI, so you can choose the model/provider mix that fits the task and budget.
 
 Kay keeps its own state under `~/.kay`, supports interactive and headless workflows, and preserves the local terminal ergonomics of the Codex CLI lineage while moving provider selection, credential management, and model routing into the product.
 
@@ -23,10 +23,18 @@ Kay can use custom OpenAI-compatible providers, but these providers are availabl
 | --- | --- | --- |
 | Xiaomi | `xiaomi/mimo-v2.5-pro`, `xiaomi/mimo-v2.5` | Direct Xiaomi MiMo support for cost-effective coding turns. |
 | OpenCode Go | `opencode-go/glm-5.1`, `opencode-go/kimi-k2.6`, `opencode-go/mimo-v2.5-pro`, `opencode-go/mimo-v2.5`, `opencode-go/minimax-m2.7`, `opencode-go/qwen3.6-plus`, `opencode-go/deepseek-v4-pro`, `opencode-go/deepseek-v4-flash` | A curated set of high-performing coding models behind one provider. |
-| MiniMax | `MiniMax-M2.7` | A focused built-in option for MiniMax workflows. |
+| MiniMax | `MiniMax-M3`, `MiniMax-M2.7` | Focused built-in options for MiniMax workflows. |
+| OpenRouter | OpenRouter's configured model catalog. | Broad third-party model access through one OpenAI-compatible provider. |
 | OpenAI | The upstream OpenAI model list supported by Kay's Codex lineage. | Keep OpenAI available without making it the only path. |
 
 Provider availability, pricing, quotas, and model names can change. Use `/model` inside Kay to see the exact choices available for your configured credentials.
+
+Kay can also import Hermes Agent provider profiles:
+
+```bash
+kay providers import-hermes --source /path/to/hermes-agent --check
+kay providers import-hermes --source /path/to/hermes-agent --install
+```
 
 ## Install
 
@@ -66,6 +74,7 @@ Or add a provider key from the CLI:
 kay login --provider xiaomi --api-key <KEY>
 kay login --provider opencode-go --api-key <KEY>
 kay login --provider minimax --api-key <KEY>
+kay login --provider openrouter --api-key <KEY>
 kay login --provider openai --api-key <KEY>
 ```
 
@@ -75,6 +84,7 @@ For shell-safe key entry, pipe the key through stdin:
 printenv XIAOMI_API_KEY | kay login --provider xiaomi --with-api-key
 printenv OPENCODE_GO_API_KEY | kay login --provider opencode-go --with-api-key
 printenv MINIMAX_API_KEY | kay login --provider minimax --with-api-key
+printenv OPENROUTER_API_KEY | kay login --provider openrouter --with-api-key
 printenv OPENAI_API_KEY | kay login --provider openai --with-api-key
 ```
 
@@ -188,9 +198,10 @@ Useful environment variables:
 - `XIAOMI_API_KEY`: API key for the built-in Xiaomi provider.
 - `OPENCODE_GO_API_KEY`: API key for the built-in OpenCode Go provider.
 - `MINIMAX_API_KEY`: API key for the built-in MiniMax provider.
+- `OPENROUTER_API_KEY`: API key for the built-in OpenRouter provider.
 - `OPENAI_API_KEY`: Use OpenAI API key auth.
 - `OPENAI_BASE_URL`: Override the built-in OpenAI base URL.
-- `OPENAI_WIRE_API`: Force the built-in OpenAI provider to use `chat` or `responses`.
+- `OPENAI_WIRE_API`: Force the built-in OpenAI provider to use `chat`, `responses`, or `responses_websocket`.
 
 See [Configuration](docs/config.md) for the full config reference.
 
@@ -221,7 +232,7 @@ source "$HOME/.cargo/env"
 
 **How is Kay different from Codex?**
 
-Kay is a community fork of the upstream `openai/codex` CLI focused on provider choice and model cost control. It keeps the terminal coding workflow, then adds built-in provider management for Xiaomi MiMo, OpenCode Go, MiniMax, and OpenAI.
+Kay is a community fork of the upstream `openai/codex` CLI focused on provider choice and model cost control. It keeps the terminal coding workflow, then adds built-in provider management for Xiaomi MiMo, OpenCode Go, MiniMax, OpenRouter, and OpenAI.
 
 **Is Kay only for cheaper models?**
 

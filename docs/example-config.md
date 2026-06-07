@@ -258,6 +258,8 @@ experimental_use_freeform_apply_patch = false
 # - openai (Responses API; requires login or OPENAI_API_KEY via auth flow)
 # - xiaomi (Chat Completions API; requires login or XIAOMI_API_KEY via auth flow)
 # - opencode-go (Chat Completions API; requires login or OPENCODE_GO_API_KEY via auth flow)
+# - openrouter (Chat Completions API; requires login or OPENROUTER_API_KEY via auth flow)
+# - amazon-bedrock (Bedrock Converse; uses the standard AWS SDK credential chain)
 # - oss (Chat Completions API; defaults to http://localhost:11434/v1)
 
 [model_providers]
@@ -290,6 +292,18 @@ experimental_use_freeform_apply_patch = false
 # env_key = "XIAOMI_API_KEY"
 # wire_api = "chat"
 # # requires_openai_auth = false
+
+# --- Example: OpenRouter (multi-provider OpenAI-compatible chat completions) ---
+# model_provider = "openrouter"
+# model = "anthropic/claude-sonnet-4.5"
+# [model_providers.openrouter.openrouter]
+# require_parameters = true
+# order = ["Anthropic", "Google"]
+
+# Hermes Agent provider profiles can also be imported into
+# $KAY_HOME/provider_profiles/hermes/:
+#   kay providers import-hermes --source /path/to/hermes-agent --check
+#   kay providers import-hermes --source /path/to/hermes-agent --install
 
 # --- Example: Azure (Chat/Responses depending on endpoint) ---
 # [model_providers.azure]

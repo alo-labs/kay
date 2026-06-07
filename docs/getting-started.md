@@ -47,7 +47,8 @@ Use that screen to add, update, or remove credentials for the supported provider
 1. Xiaomi
 2. OpenCode Go
 3. MiniMax
-4. OpenAI
+4. OpenRouter
+5. OpenAI
 
 You can also provide a key from the CLI instead of typing it into the TUI:
 
@@ -55,6 +56,7 @@ You can also provide a key from the CLI instead of typing it into the TUI:
 kay login --provider xiaomi --api-key <KEY>
 kay login --provider opencode-go --api-key <KEY>
 kay login --provider minimax --api-key <KEY>
+kay login --provider openrouter --api-key <KEY>
 kay login --provider openai --api-key <KEY>
 ```
 
@@ -64,6 +66,7 @@ If you prefer stdin-safe entry:
 printenv XIAOMI_API_KEY | kay login --provider xiaomi --with-api-key
 printenv OPENCODE_GO_API_KEY | kay login --provider opencode-go --with-api-key
 printenv MINIMAX_API_KEY | kay login --provider minimax --with-api-key
+printenv OPENROUTER_API_KEY | kay login --provider openrouter --with-api-key
 printenv OPENAI_API_KEY | kay login --provider openai --with-api-key
 ```
 
@@ -83,7 +86,8 @@ Model availability currently looks like this:
 | --- | --- |
 | Xiaomi | `xiaomi/mimo-v2.5-pro`, `xiaomi/mimo-v2.5` |
 | OpenCode Go | `opencode-go/glm-5.1`, `opencode-go/kimi-k2.6`, `opencode-go/mimo-v2.5-pro`, `opencode-go/mimo-v2.5`, `opencode-go/minimax-m2.7`, `opencode-go/qwen3.6-plus`, `opencode-go/deepseek-v4-pro`, `opencode-go/deepseek-v4-flash` |
-| MiniMax | `minimax-m2.7` |
+| MiniMax | `MiniMax-M3`, `MiniMax-M2.7` |
+| OpenRouter | OpenRouter models available for your account and routing settings |
 | OpenAI | The OpenAI models supported by the upstream model list |
 
 Pick the model that matches the provider key you already added. Kay keeps provider selection and model selection separate so you can mix and match supported providers without editing config files by hand.

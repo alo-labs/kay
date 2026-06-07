@@ -26,6 +26,7 @@ code-utils-absolute-path = { workspace = true }
 code-protocol = { workspace = true }
 code-rmcp-client = { workspace = true }
 code-app-server-protocol = { workspace = true }
+code-aws-auth = { workspace = true }
 code-otel = { workspace = true, features = ["otel"] }
 code-browser = { path = "../browser" }
 code-version = { path = "../code-version" }
@@ -46,6 +47,7 @@ os_info = { workspace = true }
 fs2 = "0.4"
 htmd = "0.1"
 httpdate = "1"
+http = { workspace = true }
 img_hash = "3"
 once_cell = { workspace = true }
 portable-pty = { workspace = true }
@@ -88,6 +90,7 @@ tree-sitter = { workspace = true }
 tree-sitter-bash = { workspace = true }
 uuid = { workspace = true, features = ["serde", "v4"] }
 url = "2"
+urlencoding = { workspace = true }
 which = { workspace = true }
 wildmatch = { workspace = true }
 

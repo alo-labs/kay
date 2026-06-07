@@ -70,6 +70,10 @@ const OPENAI_BASE_URL_ENV_VAR: &str = "OPENAI_BASE_URL";
 const RESERVED_MODEL_PROVIDER_IDS: [&str; 5] =
     ["openai", "oss", "minimax", "xiaomi", "opencode-go"];
 
+fn is_reserved_model_provider_id(provider_id: &str) -> bool {
+    RESERVED_MODEL_PROVIDER_IDS.contains(&provider_id)
+}
+
 fn validate_reserved_model_provider_ids(
     model_providers: &HashMap<String, ModelProviderInfo>,
 ) -> Result<(), String> {
@@ -90,6 +94,20 @@ fn validate_reserved_model_provider_ids(
 }
 
 fn validate_model_providers(model_providers: &HashMap<String, ModelProviderInfo>) -> Result<(), String> {
+    for (key, provider) in model_providers {
+        if provider.name.trim().is_empty() {
+            return Err(format!("model_providers.{key}: provider name must not be empty"));
+        }
+        provider
+            .validate()
+            .map_err(|message| format!("model_providers.{key}: {message}"))?;
+    }
+    Ok(())
+}
+
+fn validate_model_provider_overrides(
+    model_providers: &HashMap<String, ModelProviderInfo>,
+) -> Result<(), String> {
     validate_reserved_model_provider_ids(model_providers)?;
     for (key, provider) in model_providers {
         provider
@@ -97,6 +115,59 @@ fn validate_model_providers(model_providers: &HashMap<String, ModelProviderInfo>
             .map_err(|message| format!("model_providers.{key}: {message}"))?;
     }
     Ok(())
+}
+
+fn merge_model_provider_overlay(base: &mut ModelProviderInfo, overlay: ModelProviderInfo) {
+    if !overlay.name.trim().is_empty() {
+        *base = overlay;
+        return;
+    }
+
+    if overlay.base_url.is_some() {
+        base.base_url = overlay.base_url;
+    }
+    if overlay.env_key.is_some() {
+        base.env_key = overlay.env_key;
+    }
+    if overlay.env_key_instructions.is_some() {
+        base.env_key_instructions = overlay.env_key_instructions;
+    }
+    if overlay.experimental_bearer_token.is_some() {
+        base.experimental_bearer_token = overlay.experimental_bearer_token;
+    }
+    if overlay.auth.is_some() {
+        base.auth = overlay.auth;
+    }
+    if overlay.credential_ref.is_some() {
+        base.credential_ref = overlay.credential_ref;
+    }
+    if overlay.query_params.is_some() {
+        base.query_params = overlay.query_params;
+    }
+    if overlay.http_headers.is_some() {
+        base.http_headers = overlay.http_headers;
+    }
+    if overlay.env_http_headers.is_some() {
+        base.env_http_headers = overlay.env_http_headers;
+    }
+    if overlay.request_max_retries.is_some() {
+        base.request_max_retries = overlay.request_max_retries;
+    }
+    if overlay.stream_max_retries.is_some() {
+        base.stream_max_retries = overlay.stream_max_retries;
+    }
+    if overlay.stream_idle_timeout_ms.is_some() {
+        base.stream_idle_timeout_ms = overlay.stream_idle_timeout_ms;
+    }
+    if overlay.websocket_connect_timeout_ms.is_some() {
+        base.websocket_connect_timeout_ms = overlay.websocket_connect_timeout_ms;
+    }
+    if overlay.requires_openai_auth {
+        base.requires_openai_auth = true;
+    }
+    if overlay.openrouter.is_some() {
+        base.openrouter = overlay.openrouter;
+    }
 }
 
 pub use builder::ConfigBuilder;
@@ -1197,13 +1268,38 @@ impl Config {
         }
         let effective_openai_base_url = openai_base_url.or(openai_base_url_from_env);
 
-        validate_model_providers(&cfg.model_providers).map_err(std::io::Error::other)?;
+        validate_model_provider_overrides(&cfg.model_providers).map_err(std::io::Error::other)?;
 
         let mut model_providers = built_in_model_providers(effective_openai_base_url);
+        for profile in crate::model_provider::load_provider_profiles_from_home(&code_home)? {
+            if is_reserved_model_provider_id(profile.id.as_str()) {
+                tracing::warn!(
+                    provider_id = profile.id.as_str(),
+                    "ignoring imported provider profile because it would override a reserved built-in provider"
+                );
+                continue;
+            }
+            match profile.to_model_provider_info() {
+                Ok(provider) => {
+                    model_providers.entry(profile.id).or_insert(provider);
+                }
+                Err(err) => {
+                    tracing::warn!(
+                        provider_id = profile.id.as_str(),
+                        "ignoring imported provider profile that requires an unavailable adapter: {err}"
+                    );
+                }
+            }
+        }
         // Merge user-defined providers into the built-in list.
         for (key, provider) in cfg.model_providers.into_iter() {
-            model_providers.entry(key).or_insert(provider);
+            if let Some(existing) = model_providers.get_mut(&key) {
+                merge_model_provider_overlay(existing, provider);
+            } else {
+                model_providers.insert(key, provider);
+            }
         }
+        validate_model_providers(&model_providers).map_err(std::io::Error::other)?;
 
         let model_provider_explicit = model_provider.is_some()
             || config_profile.model_provider.is_some()
