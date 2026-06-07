@@ -28,7 +28,7 @@ const OPENCODE_GO_MODELS: &[&str] = &[
     "opencode-go/deepseek-v4-flash",
 ];
 
-const MINIMAX_MODELS: &[&str] = &["MiniMax-M2.7"];
+const MINIMAX_MODELS: &[&str] = &["MiniMax-M3"];
 
 const XIAOMI_MODELS: &[&str] = &["xiaomi/mimo-v2.5-pro", "xiaomi/mimo-v2.5"];
 
