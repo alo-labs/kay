@@ -54,7 +54,7 @@ fn run_minimax_exec(code_home: &TempDir, prompt: &str) -> String {
         .arg("-c")
         .arg("model_provider=minimax")
         .arg("-c")
-        .arg("model=MiniMax-M2.7")
+        .arg("model=MiniMax-M3")
         .arg(prompt)
         .env("KAY_HOME", code_home.path())
         .env_remove("OPENAI_API_KEY")
@@ -85,7 +85,7 @@ fn first_json_object(output: &str) -> Option<serde_json::Value> {
 }
 
 #[test]
-fn minimax_m27_live_exec_edge_cases() {
+fn minimax_m3_live_exec_edge_cases() {
     let Some(api_key) = live_key() else {
         eprintln!("skipping MiniMax live E2E: MINIMAX_LIVE_API_KEY is not set");
         return;
@@ -103,12 +103,12 @@ fn minimax_m27_live_exec_edge_cases() {
 
     let json = run_minimax_exec(
         &code_home,
-        "Return only this compact JSON object, with no markdown: {\"provider\":\"minimax\",\"model\":\"M2.7\",\"ok\":true}",
+        "Return only this compact JSON object, with no markdown: {\"provider\":\"minimax\",\"model\":\"M3\",\"ok\":true}",
     );
     let parsed =
         first_json_object(&json).unwrap_or_else(|| panic!("expected JSON object, got:\n{json}"));
     assert_eq!(parsed["provider"], "minimax");
-    assert_eq!(parsed["model"], "M2.7");
+    assert_eq!(parsed["model"], "M3");
     assert_eq!(parsed["ok"], true);
 
     let role_collapse = run_minimax_exec(
