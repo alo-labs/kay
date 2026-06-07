@@ -118,6 +118,7 @@ pub fn infer_model_provider_id(model: &str) -> Option<&'static str> {
     }
 
     if model.eq_ignore_ascii_case("MiniMax-M2.7")
+        || model.eq_ignore_ascii_case("MiniMax-M3")
         || provider_model_slug(MINIMAX_PROVIDER_ID, model).as_ref() != model
     {
         return Some(MINIMAX_PROVIDER_ID);
@@ -448,6 +449,17 @@ pub fn find_family_for_model(slug: &str) -> Option<ModelFamily> {
     let slug_lower = slug.to_ascii_lowercase();
     if matches!(
         slug_lower.as_str(),
+        "minimax-m3" | "codex-minimax-m3"
+    ) {
+        model_family!(
+            slug, "minimax-m3",
+            needs_special_apply_patch_instructions: true,
+            base_instructions: BASE_INSTRUCTIONS_WITH_APPLY_PATCH.to_string(),
+            context_window: Some(1_000_000),
+            truncation_policy: TruncationPolicy::Tokens(10_000),
+        )
+    } else if matches!(
+        slug_lower.as_str(),
         "minimax-m2.7" | "codex-minimax-m2.7"
     ) {
         model_family!(
@@ -671,6 +683,12 @@ pub fn find_family_for_model(slug: &str) -> Option<ModelFamily> {
             base_instructions: BASE_INSTRUCTIONS_WITH_APPLY_PATCH.to_string(),
         )
         .map(with_mimo_synthesis_checkpoint)
+    } else if slug.starts_with("minimax-m3") {
+        model_family!(
+            slug, "minimax-m3",
+            context_window: Some(1_000_000),
+            needs_special_apply_patch_instructions: true,
+        )
     } else if slug.starts_with("minimax-m2.7") {
         model_family!(
             slug, "minimax-m2.7",
@@ -790,6 +808,16 @@ mod tests {
         assert_eq!(family.context_window, Some(204_800));
         assert!(family.needs_special_apply_patch_instructions);
         assert!(!model_supports_configurable_reasoning_effort("MiniMax-M2.7"));
+    }
+
+    #[test]
+    fn minimax_m3_has_first_class_model_family() {
+        let family = find_family_for_model("MiniMax-M3").expect("known MiniMax M3 model");
+
+        assert_eq!(family.family, "minimax-m3");
+        assert_eq!(family.context_window, Some(1_000_000));
+        assert!(family.needs_special_apply_patch_instructions);
+        assert!(!model_supports_configurable_reasoning_effort("MiniMax-M3"));
     }
 
     #[test]
@@ -1044,6 +1072,10 @@ mod tests {
             "minimax/MiniMax-M2.7",
             "MiniMax-M2.7"
         ));
+        assert!(response_model_matches_request(
+            "minimax/MiniMax-M3",
+            "MiniMax-M3"
+        ));
     }
 
     #[test]
@@ -1088,6 +1120,7 @@ mod tests {
     #[test]
     fn infer_model_provider_id_prefers_third_party_models() {
         assert_eq!(infer_model_provider_id("MiniMax-M2.7"), Some(MINIMAX_PROVIDER_ID));
+        assert_eq!(infer_model_provider_id("MiniMax-M3"), Some(MINIMAX_PROVIDER_ID));
         assert_eq!(
             infer_model_provider_id("opencode-go/kimi-k2.6"),
             Some(OPENCODE_GO_PROVIDER_ID)

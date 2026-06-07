@@ -1,6 +1,6 @@
 ---
 source: tui/tests/vt100_chatwidget_snapshot.rs
-assertion_line: 2815
+assertion_line: 2816
 expression: "frames.join(\"\\n---FRAME---\\n\")"
 ---
  +------------------------------------------------------------------------------------------------+
@@ -20,7 +20,6 @@ expression: "frames.join(\"\\n---FRAME---\\n\")"
    - Running commands
 
 
-
  +--------------------------------------- Manage Providers ---------------------------------------+
  | Supported Providers                                                                            |
  |                                                                                                |
@@ -28,7 +27,8 @@ expression: "frames.join(\"\\n---FRAME---\\n\")"
  | OpenCode Go (configured)  Set OPENCODE_GO_API_KEY or run `kay login --provider opencode-go     |
  | --with-api-key`.                                                                               |
  | MiniMax (missing)  Set MINIMAX_API_KEY or run `kay login --provider minimax --with-api-key`.   |
- | OpenAI (configured)                                                                            |
+ | OpenRouter (missing)  Set OPENROUTER_API_KEY or run `kay login --provider openrouter           |
+ | --with-api-key`.                                                                               |
  +------------------------------------------------------------------------------------------------+
 
 ---FRAME---

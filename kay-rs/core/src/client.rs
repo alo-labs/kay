@@ -367,7 +367,10 @@ impl ModelClient {
 
                 prefer_websockets.then_some(preferred_ws_version_from_env())
             }
-            WireApi::Chat => None,
+            WireApi::Chat
+            | WireApi::AnthropicMessages
+            | WireApi::GeminiNative
+            | WireApi::BedrockConverse => None,
         }
     }
 
@@ -699,6 +702,33 @@ impl ModelClient {
                 });
 
                 Ok(ResponseStream { rx_event: rx })
+            }
+            WireApi::BedrockConverse => {
+                crate::bedrock_converse::stream_bedrock_converse(
+                    crate::bedrock_converse::BedrockConverseRequest {
+                        prompt,
+                        model_family: &self.config.model_family,
+                        model_provider_id: &self.config.model_provider_id,
+                        model: self.config.model.as_str(),
+                        client: &self.client,
+                        provider: &self.provider,
+                        responses_originator_header: self
+                            .config
+                            .responses_originator_header
+                            .as_str(),
+                        debug_logger: &self.debug_logger,
+                        otel_event_manager: self.otel_event_manager.clone(),
+                        log_tag,
+                    },
+                )
+                .await
+            }
+            WireApi::AnthropicMessages | WireApi::GeminiNative => {
+                Err(CodexErr::UnsupportedOperation(format!(
+                    "provider `{}` declares unsupported wire_api `{:?}`; Hermes import support is available, but this native transport is not implemented yet",
+                    self.config.model_provider_id,
+                    self.provider.wire_api
+                )))
             }
         }
     }

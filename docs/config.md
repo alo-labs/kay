@@ -28,7 +28,7 @@ model = "o3"  # overrides the default of "gpt-5.1-codex"
 
 ## model_providers
 
-This option lets you override and amend the default set of model providers bundled with Kay. This value is a map where the key is the value to use with `model_provider` to select the corresponding provider. Providers must expose an OpenAI-compatible HTTP API (Chat Completions or Responses); native Anthropic/Gemini APIs are not supported directly without a proxy.
+This option lets you override and amend the default set of model providers bundled with Kay. This value is a map where the key is the value to use with `model_provider` to select the corresponding provider. The active runtime supports OpenAI-compatible Chat Completions, OpenAI Responses, and Amazon Bedrock Converse providers. Imported profiles can also declare native transports such as `anthropic_messages` and `gemini_native` so Kay can recognize them before their native adapters are implemented.
 
 For example, if you wanted to add a provider that uses the OpenAI 4o model via the chat completions API, then you could add the following configuration:
 
@@ -47,7 +47,9 @@ base_url = "https://api.openai.com/v1"
 # using Kay with this provider. The value of the environment variable must be
 # non-empty and will be used in the `Bearer TOKEN` HTTP header for the POST request.
 env_key = "OPENAI_API_KEY"
-# Valid values for wire_api are "chat" and "responses". Defaults to "chat" if omitted.
+# Valid values for wire_api include "chat", "responses", "responses_websocket",
+# "anthropic_messages", "gemini_native", and "bedrock_converse".
+# Defaults to "chat" if omitted.
 wire_api = "chat"
 # If necessary, extra query params that need to be added to the URL.
 # See the Azure example below.
@@ -81,6 +83,30 @@ requires_openai_auth = false
 
 Xiaomi model ids use the `xiaomi/<model-id>` format. The built-in Xiaomi
 models are `xiaomi/mimo-v2.5-pro` and `xiaomi/mimo-v2.5`.
+
+OpenRouter is available as a built-in provider using the `openrouter` id:
+
+```toml
+model_provider = "openrouter"
+model = "anthropic/claude-sonnet-4.5"
+
+[model_providers.openrouter.openrouter]
+require_parameters = true
+order = ["Anthropic", "Google"]
+```
+
+Save an OpenRouter key with `kay login --provider openrouter --api-key <KEY>` or set `OPENROUTER_API_KEY`.
+
+Kay can import Hermes Agent provider profiles into `$KAY_HOME/provider_profiles/hermes/`:
+
+```shell
+kay providers import-hermes --source /path/to/hermes-agent --check
+kay providers import-hermes --source /path/to/hermes-agent --install
+```
+
+Imported data-only Hermes profiles are available as `model_provider` values without editing `config.toml`. Profiles with known Hermes hooks are mapped to named Kay compatibility adapters. Unknown hookful profiles are recorded with `requires_adapter` and are not used as generic runtime providers until Kay gains a matching adapter.
+
+Amazon Bedrock is registered as `amazon-bedrock` with `wire_api = "bedrock_converse"`. Kay signs Bedrock Converse requests with the standard AWS SDK credential chain.
 
 Note this makes it possible to use the Kay CLI with non-OpenAI models, so long as they use a wire API that is compatible with the OpenAI chat completions API. For example, you could define the following provider to use Kay CLI with Ollama running locally:
 
@@ -176,7 +202,7 @@ How long Kay will wait for activity on a streaming response before treating the 
 
 ## model_provider
 
-Identifies which provider to use from the `model_providers` map. Defaults to `"openai"`. Built-in provider IDs include `"openai"`, `"xiaomi"`, `"opencode-go"`, `"minimax"`, and `"oss"`. You can override the `base_url` for the built-in `openai` provider via the `OPENAI_BASE_URL` environment variable and force the wire protocol (`"responses"` or `"chat"`) with `OPENAI_WIRE_API`.
+Identifies which provider to use from the `model_providers` map. Defaults to `"openai"`. Built-in provider IDs include `"openai"`, `"xiaomi"`, `"opencode-go"`, `"minimax"`, `"openrouter"`, `"amazon-bedrock"`, and `"oss"`. You can override the `base_url` for the built-in `openai` provider via the `OPENAI_BASE_URL` environment variable and force the wire protocol with `OPENAI_WIRE_API`.
 
 Note that if you override `model_provider`, then you likely want to override
 `model`, as well. For example, if you are running ollama with Mistral locally,
@@ -1044,7 +1070,7 @@ Project commands appear in the TUI via `/cmd <name>` and run through the standar
 | `model_providers.<id>.name` | string | Display name. |
 | `model_providers.<id>.base_url` | string | API base URL. |
 | `model_providers.<id>.env_key` | string | Env var for API key. |
-| `model_providers.<id>.wire_api` | `chat` \| `responses` | Protocol used (default: `chat`). |
+| `model_providers.<id>.wire_api` | `chat` \| `responses` \| `responses_websocket` \| `anthropic_messages` \| `gemini_native` \| `bedrock_converse` | Protocol used (default: `chat`). |
 | `model_providers.<id>.query_params` | map<string,string> | Extra query params (e.g., Azure `api-version`). |
 | `model_providers.<id>.http_headers` | map<string,string> | Additional static headers. |
 | `model_providers.<id>.env_http_headers` | map<string,string> | Headers sourced from env vars. |

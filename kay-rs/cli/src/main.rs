@@ -17,6 +17,7 @@ use code_cli::login::run_login_with_device_code;
 use code_cli::login::run_logout;
 mod bridge;
 mod llm;
+mod providers_cmd;
 use code_cloud_tasks::Cli as CloudTasksCli;
 use code_common::CliConfigOverrides;
 use code_core::SessionCatalog;
@@ -33,6 +34,8 @@ use code_tui::run_transcript_viewer;
 use code_tui::TranscriptViewerArgs;
 use self::llm::LlmCli;
 use self::llm::run_llm;
+use self::providers_cmd::ProvidersCommand;
+use self::providers_cmd::run_providers_command;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json;
@@ -171,6 +174,9 @@ enum Subcommand {
 
     /// Manage Kay Bridge subscription for this workspace.
     Bridge(BridgeCommand),
+
+    /// Manage third-party model provider profiles.
+    Providers(ProvidersCommand),
 }
 
 #[derive(Debug, Parser)]
@@ -658,6 +664,9 @@ async fn cli_main(code_linux_sandbox_exe: Option<PathBuf>) -> anyhow::Result<()>
         }
         Some(Subcommand::Bridge(bridge_cli)) => {
             run_bridge_command(bridge_cli).await?;
+        }
+        Some(Subcommand::Providers(providers_cli)) => {
+            run_providers_command(providers_cli)?;
         }
         Some(Subcommand::Llm(mut llm_cli)) => {
             prepend_config_flags(&mut llm_cli.config_overrides, root_config_overrides.clone());

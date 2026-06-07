@@ -16,11 +16,12 @@ kay login --api-key <KEY>
 printenv OPENAI_API_KEY | kay login --with-api-key
 ```
 
-If you are saving a provider-specific key, add `--provider xiaomi`, `--provider minimax`, or `--provider opencode-go` to either form, for example:
+If you are saving a provider-specific key, add `--provider xiaomi`, `--provider minimax`, `--provider opencode-go`, or `--provider openrouter` to either form, for example:
 
 ```bash
 kay login --provider xiaomi --api-key <KEY>
 kay login --provider minimax --api-key <KEY>
+kay login --provider openrouter --api-key <KEY>
 ```
 
 The direct argument form is convenient for scripts and one-off onboarding, but it will appear in shell history and process listings. Use the stdin form when you want to keep the secret out of both.

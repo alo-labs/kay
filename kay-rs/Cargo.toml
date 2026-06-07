@@ -6,6 +6,7 @@ members = [
     "app-server-protocol",
     "apply-patch",
     "arg0",
+    "aws-auth",
     "code-auto-drive-core",
     "code-auto-drive-diagnostics",
     "code-backend-openapi-models",
@@ -58,6 +59,7 @@ code-app-server = { path = "app-server" }
 code-app-server-protocol = { path = "app-server-protocol" }
 code-apply-patch = { path = "apply-patch" }
 code-arg0 = { path = "arg0" }
+code-aws-auth = { path = "aws-auth" }
 code-browser = { path = "browser" }
 code-chatgpt = { path = "chatgpt" }
 code-common = { path = "common" }
@@ -104,6 +106,10 @@ assert_cmd = "2"
 async-channel = "2.3.1"
 async-stream = "0.3.6"
 async-trait = "0.1.89"
+aws-config = "=1.8.12"
+aws-credential-types = "=1.2.11"
+aws-sigv4 = "=1.3.7"
+aws-types = "=1.3.11"
 base64 = "0.22.1"
 bytes = "1.10.1"
 chardetng = "0.1.17"
@@ -129,6 +135,7 @@ futures = "0.3"
 icu_provider = "2.0.0"
 icu_decimal = "2.0.0"
 icu_locale_core = "2.0.0"
+http = "1"
 ignore = "0.4.23"
 image = { version = "^0.25.8", default-features = false }
 indexmap = "2.6.0"
