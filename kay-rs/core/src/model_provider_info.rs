@@ -83,6 +83,18 @@ pub enum WireApi {
     /// Regular Chat Completions compatible with `/v1/chat/completions`.
     #[default]
     Chat,
+
+    /// Native Anthropic Messages API transport.
+    #[serde(rename = "anthropic_messages")]
+    AnthropicMessages,
+
+    /// Native Gemini API transport.
+    #[serde(rename = "gemini_native")]
+    GeminiNative,
+
+    /// Native Amazon Bedrock Converse transport.
+    #[serde(rename = "bedrock_converse")]
+    BedrockConverse,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize, Serialize)]
@@ -102,7 +114,8 @@ impl ChatCompletionsFormat {
 }
 
 /// Serializable representation of a provider definition.
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Clone, Default, Deserialize, Serialize, PartialEq)]
+#[serde(default)]
 pub struct ModelProviderInfo {
     /// Friendly display name.
     pub name: String,
@@ -522,6 +535,10 @@ impl ModelProviderInfo {
                 format!("{base_url}/responses{query_string}")
             }
             WireApi::Chat => format!("{base_url}/chat/completions{query_string}"),
+            WireApi::AnthropicMessages => format!("{base_url}/messages{query_string}"),
+            WireApi::GeminiNative | WireApi::BedrockConverse => {
+                format!("{base_url}{query_string}")
+            }
         }
     }
 
@@ -787,6 +804,11 @@ pub const XIAOMI_PROVIDER_ID: &str = "xiaomi";
 pub const XIAOMI_DEFAULT_BASE_URL: &str = "https://token-plan-sgp.xiaomimimo.com/v1";
 pub const OPENCODE_GO_PROVIDER_ID: &str = "opencode-go";
 pub const OPENCODE_GO_DEFAULT_BASE_URL: &str = "https://opencode.ai/zen/go/v1";
+pub const OPENROUTER_PROVIDER_ID: &str = "openrouter";
+pub const OPENROUTER_DEFAULT_BASE_URL: &str = "https://openrouter.ai/api/v1";
+pub const AMAZON_BEDROCK_PROVIDER_ID: &str = "amazon-bedrock";
+pub const AMAZON_BEDROCK_DEFAULT_BASE_URL: &str =
+    "https://bedrock-runtime.us-east-1.amazonaws.com";
 const OPENCODE_GO_STREAM_IDLE_TIMEOUT_MS: u64 = 60_000;
 
 /// Built-in default provider list.
@@ -796,6 +818,9 @@ fn wire_api_override_from_env(env_key: &str) -> Option<WireApi> {
             "chat" => Some(WireApi::Chat),
             "responses" => Some(WireApi::Responses),
             "responses_websocket" => Some(WireApi::ResponsesWebsocket),
+            "anthropic_messages" => Some(WireApi::AnthropicMessages),
+            "gemini_native" => Some(WireApi::GeminiNative),
+            "bedrock_converse" => Some(WireApi::BedrockConverse),
             other if !other.is_empty() => {
                 tracing::warn!(
                     "Ignoring unknown {env_key} value '{other}'; falling back to default wire API"
@@ -862,11 +887,65 @@ pub fn built_in_model_providers(
         (MINIMAX_PROVIDER_ID, create_minimax_provider()),
         (XIAOMI_PROVIDER_ID, create_xiaomi_provider()),
         (OPENCODE_GO_PROVIDER_ID, create_opencode_go_provider()),
+        (OPENROUTER_PROVIDER_ID, create_openrouter_provider()),
+        (AMAZON_BEDROCK_PROVIDER_ID, create_amazon_bedrock_provider()),
         (BUILT_IN_OSS_MODEL_PROVIDER_ID, create_oss_provider()),
     ]
     .into_iter()
     .map(|(k, v)| (k.to_string(), v))
     .collect()
+}
+
+pub fn create_openrouter_provider() -> ModelProviderInfo {
+    ModelProviderInfo {
+        name: "OpenRouter".into(),
+        base_url: Some(OPENROUTER_DEFAULT_BASE_URL.to_string()),
+        env_key: Some("OPENROUTER_API_KEY".into()),
+        env_key_instructions: Some(
+            "Set OPENROUTER_API_KEY or run `kay login --provider openrouter --with-api-key`."
+                .to_string(),
+        ),
+        experimental_bearer_token: None,
+        auth: None,
+        credential_ref: Some(OPENROUTER_PROVIDER_ID.to_string()),
+        wire_api: WireApi::Chat,
+        chat_completions_format: ChatCompletionsFormat::OpenAi,
+        query_params: None,
+        http_headers: None,
+        env_http_headers: None,
+        request_max_retries: None,
+        stream_max_retries: None,
+        stream_idle_timeout_ms: None,
+        websocket_connect_timeout_ms: None,
+        requires_openai_auth: false,
+        openrouter: Some(OpenRouterConfig::default()),
+    }
+}
+
+pub fn create_amazon_bedrock_provider() -> ModelProviderInfo {
+    ModelProviderInfo {
+        name: "Amazon Bedrock".into(),
+        base_url: Some(AMAZON_BEDROCK_DEFAULT_BASE_URL.to_string()),
+        env_key: None,
+        env_key_instructions: Some(
+            "Configure AWS credentials for the Bedrock provider using the standard AWS SDK credential chain."
+                .to_string(),
+        ),
+        experimental_bearer_token: None,
+        auth: None,
+        credential_ref: None,
+        wire_api: WireApi::BedrockConverse,
+        chat_completions_format: ChatCompletionsFormat::OpenAi,
+        query_params: None,
+        http_headers: None,
+        env_http_headers: None,
+        request_max_retries: None,
+        stream_max_retries: None,
+        stream_idle_timeout_ms: None,
+        websocket_connect_timeout_ms: None,
+        requires_openai_auth: false,
+        openrouter: None,
+    }
 }
 
 pub fn create_minimax_provider() -> ModelProviderInfo {

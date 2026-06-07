@@ -22,7 +22,7 @@ model = "o3"  # overrides the default of "gpt-5.1"
 
 ## model_providers
 
-This option lets you override and amend the default set of model providers bundled with Codex. This value is a map where the key is the value to use with `model_provider` to select the corresponding provider. Providers must expose an OpenAI-compatible HTTP API (Chat Completions or Responses); native Anthropic/Gemini APIs are not supported directly without a proxy.
+This option lets you override and amend the default set of model providers bundled with Kay. This value is a map where the key is the value to use with `model_provider` to select the corresponding provider. The active runtime supports OpenAI-compatible Chat Completions, OpenAI Responses, and Amazon Bedrock Converse providers. Imported profiles can also declare native transports such as `anthropic_messages` and `gemini_native` so Kay can recognize them before their native adapters are implemented.
 
 Built-in provider IDs:
 
@@ -31,6 +31,8 @@ Built-in provider IDs:
 - `minimax`: MiniMax Chat Completions provider, default base URL `https://api.minimax.io/v1`.
 - `xiaomi`: Xiaomi MiMo Chat Completions provider, default base URL `https://token-plan-sgp.xiaomimimo.com/v1`.
 - `opencode-go`: OpenCode Go Chat Completions provider, default base URL `https://opencode.ai/zen/go/v1`.
+- `openrouter`: OpenRouter Chat Completions provider, default base URL `https://openrouter.ai/api/v1`.
+- `amazon-bedrock`: Amazon Bedrock Converse provider, default base URL `https://bedrock-runtime.us-east-1.amazonaws.com`; uses the standard AWS SDK credential chain.
 
 The built-in `minimax` provider reads credentials from `~/.kay/auth.json` under
 `provider_credentials.minimax.api_key`, with `MINIMAX_API_KEY` as an environment
@@ -83,7 +85,9 @@ env_key = "OPENAI_API_KEY"
 # reads `provider_credentials.<credential_ref>.api_key`, then falls back to
 # `env_key`. It never falls back to the OpenAI API key.
 credential_ref = "openai-chat-completions"
-# Valid values for wire_api are "chat" and "responses". Defaults to "chat" if omitted.
+# Valid values for wire_api include "chat", "responses", "responses_websocket",
+# "anthropic_messages", "gemini_native", and "bedrock_converse".
+# Defaults to "chat" if omitted.
 wire_api = "chat"
 # Optional Chat Completions compatibility mode. Omit for OpenAI-compatible
 # providers; use "minimax" only for MiniMax-style payloads.
@@ -93,7 +97,16 @@ wire_api = "chat"
 query_params = {}
 ```
 
-Note this makes it possible to use Codex CLI with non-OpenAI models, so long as they use a wire API that is compatible with the OpenAI chat completions API. For example, you could define the following provider to use Codex CLI with Ollama running locally:
+Kay can import Hermes Agent provider profiles into `$KAY_HOME/provider_profiles/hermes/`:
+
+```shell
+kay providers import-hermes --source /path/to/hermes-agent --check
+kay providers import-hermes --source /path/to/hermes-agent --install
+```
+
+Data-only Hermes profiles are available as `model_provider` values after import. Profiles with known Hermes hooks are mapped to named Kay compatibility adapters. Unknown hookful profiles are recorded with `requires_adapter` and are not used as generic runtime providers until Kay gains a matching adapter.
+
+Note this makes it possible to use Kay CLI with non-OpenAI models, so long as they use a wire API that is compatible with the OpenAI chat completions API. For example, you could define the following provider to use Kay CLI with Ollama running locally:
 
 ```toml
 [model_providers.ollama]
@@ -168,7 +181,7 @@ How long Codex will wait for activity on a streaming response before treating th
 
 ## model_provider
 
-Identifies which provider to use from the `model_providers` map. Defaults to `"openai"`. Built-in provider IDs include `"openai"`, `"xiaomi"`, `"opencode-go"`, `"minimax"`, and `"oss"`. You can override the `base_url` for the built-in `openai` provider via the `OPENAI_BASE_URL` environment variable and force the wire protocol (`"responses"` or `"chat"`) with `OPENAI_WIRE_API`.
+Identifies which provider to use from the `model_providers` map. Defaults to `"openai"`. Built-in provider IDs include `"openai"`, `"xiaomi"`, `"opencode-go"`, `"minimax"`, `"openrouter"`, `"amazon-bedrock"`, and `"oss"`. You can override the `base_url` for the built-in `openai` provider via the `OPENAI_BASE_URL` environment variable and force the wire protocol with `OPENAI_WIRE_API`.
 
 Note that if you override `model_provider`, then you likely want to override
 `model`, as well. For example, if you are running ollama with Mistral locally,

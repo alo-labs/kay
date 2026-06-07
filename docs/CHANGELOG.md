@@ -2,6 +2,13 @@
 
 Rolling task log for the documentation and workflow surface.
 
+## 2026-06-07
+
+- Added the Hermes-compatible provider profile import path, built-in
+  OpenRouter registration, and Bedrock Converse provider-profile recognition
+  so Kay can ingest future Hermes Agent provider definitions while keeping the
+  normal runtime Rust-only.
+
 ## 2026-05-31
 
 - Wired `kay exec --output-schema` into the user-turn schema path and taught

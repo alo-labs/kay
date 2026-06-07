@@ -14,6 +14,7 @@ use code_core::auth;
 use code_core::{
     built_in_model_providers,
     MINIMAX_PROVIDER_ID,
+    OPENROUTER_PROVIDER_ID,
     OPENCODE_GO_PROVIDER_ID,
     XIAOMI_PROVIDER_ID,
 };
@@ -158,10 +159,11 @@ impl ProviderCredentialsState {
             }
         };
 
-        const PROVIDER_ORDER: [&str; 4] = [
+        const PROVIDER_ORDER: [&str; 5] = [
             XIAOMI_PROVIDER_ID,
             OPENCODE_GO_PROVIDER_ID,
             MINIMAX_PROVIDER_ID,
+            OPENROUTER_PROVIDER_ID,
             "openai",
         ];
 

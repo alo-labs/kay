@@ -151,7 +151,9 @@ fn minimax_visibility_is_credential_driven_and_exact() {
     let _env = clear_provider_env();
     let code_home = TempDir::new().unwrap();
     let presets = vec![
+        TestPreset::new("MiniMax-M3"),
         TestPreset::new("MiniMax-M2.7"),
+        TestPreset::new("MiniMax-M3-beta"),
         TestPreset::new("MiniMax-M2.7-beta"),
         TestPreset::new("preMiniMax-M2.7"),
     ];
@@ -169,7 +171,10 @@ fn minimax_visibility_is_credential_driven_and_exact() {
             .collect::<Vec<_>>(),
         vec![VisibleProvider::MiniMax]
     );
-    assert_eq!(visible_models(&presets, &auth), vec!["MiniMax-M2.7"]);
+    assert_eq!(
+        visible_models(&presets, &auth),
+        vec!["MiniMax-M3", "MiniMax-M2.7"]
+    );
 
     remove_provider_api_key(code_home.path(), "minimax")
         .expect("minimax key should be removed");
@@ -255,7 +260,7 @@ fn provider_order_is_locked_xiaomi_then_open_code_go_then_minimax_then_openai() 
     let auth = load_auth_manager(&code_home);
     let presets = vec![
         TestPreset::new("xiaomi/mimo-v2.5-pro"),
-        TestPreset::new("MiniMax-M2.7"),
+        TestPreset::new("MiniMax-M3"),
         TestPreset::new("opencode-go/kimi-k2.6"),
         TestPreset::new("gpt-5.4"),
     ];
@@ -278,7 +283,7 @@ fn provider_order_is_locked_xiaomi_then_open_code_go_then_minimax_then_openai() 
         vec![
             "xiaomi/mimo-v2.5-pro",
             "opencode-go/kimi-k2.6",
-            "MiniMax-M2.7",
+            "MiniMax-M3",
             "gpt-5.4"
         ]
     );

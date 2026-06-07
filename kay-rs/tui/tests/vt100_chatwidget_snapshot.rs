@@ -2809,6 +2809,7 @@ fn provider_management_states_cover_list_update_add_and_delete() {
     harness.send_key(make_key(KeyCode::Esc, KeyModifiers::NONE));
     harness.send_key(make_key(KeyCode::Down, KeyModifiers::NONE));
     harness.send_key(make_key(KeyCode::Down, KeyModifiers::NONE));
+    harness.send_key(make_key(KeyCode::Down, KeyModifiers::NONE));
     harness.send_key(make_key(KeyCode::Char('d'), KeyModifiers::NONE));
     frames.push(normalize_output(render_chat_widget_to_vt100(&mut harness, 100, 28)));
 

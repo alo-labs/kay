@@ -616,7 +616,7 @@ impl ModelSelectionView {
             },
             ModelLine {
                 line: Line::from(vec![Span::styled(
-                    "Add provider credentials with /provider to unlock Xiaomi, OpenCode Go, MiniMax, and OpenAI models.",
+                    "Add provider credentials with /provider to unlock Xiaomi, OpenCode Go, MiniMax, OpenRouter, and OpenAI models.",
                     desc_style,
                 )]),
                 is_selected: false,

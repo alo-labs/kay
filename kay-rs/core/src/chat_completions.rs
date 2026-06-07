@@ -44,7 +44,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 /// Implementation for the classic Chat Completions API.
-fn build_chat_completions_payload(
+pub(crate) fn build_chat_completions_payload(
     prompt: &Prompt,
     model_family: &ModelFamily,
     model_slug: &str,
@@ -380,13 +380,30 @@ fn build_chat_completions_payload(
     if let Some(openrouter_cfg) = provider.openrouter_config()
         && let Some(obj) = payload.as_object_mut()
     {
-        if let Some(provider_cfg) = &openrouter_cfg.provider {
-            obj.insert("provider".to_string(), serde_json::to_value(provider_cfg)?);
+        let mut provider_payload = openrouter_cfg
+            .provider
+            .as_ref()
+            .map(serde_json::to_value)
+            .transpose()?
+            .and_then(|value| value.as_object().cloned())
+            .unwrap_or_default();
+        for (key, value) in &openrouter_cfg.extra {
+            if is_openrouter_provider_config_key(key) {
+                provider_payload
+                    .entry(key.clone())
+                    .or_insert_with(|| value.clone());
+            }
+        }
+        if !provider_payload.is_empty() {
+            obj.insert("provider".to_string(), Value::Object(provider_payload));
         }
         if let Some(route) = &openrouter_cfg.route {
             obj.insert("route".to_string(), route.clone());
         }
         for (key, value) in &openrouter_cfg.extra {
+            if is_openrouter_provider_config_key(key) {
+                continue;
+            }
             obj.entry(key.clone()).or_insert(value.clone());
         }
     }
@@ -402,6 +419,22 @@ fn build_chat_completions_payload(
     }
 
     Ok(payload)
+}
+
+fn is_openrouter_provider_config_key(key: &str) -> bool {
+    matches!(
+        key,
+        "order"
+            | "allow_fallbacks"
+            | "require_parameters"
+            | "data_collection"
+            | "zdr"
+            | "only"
+            | "ignore"
+            | "quantizations"
+            | "sort"
+            | "max_price"
+    )
 }
 
 fn normalize_tool_arguments_for_chat_history(arguments: &str) -> String {
@@ -1559,6 +1592,51 @@ mod tests {
                 .all(|message| message["role"] != "developer"),
             "MiniMax payload must not include unsupported developer role"
         );
+    }
+
+    #[test]
+    fn openrouter_shorthand_routing_keys_are_nested_under_provider() {
+        let mut provider = crate::model_provider_info::create_openrouter_provider();
+        provider.openrouter = Some(crate::model_provider_info::OpenRouterConfig {
+            provider: Some(crate::model_provider_info::OpenRouterProviderConfig {
+                allow_fallbacks: Some(false),
+                ..Default::default()
+            }),
+            route: None,
+            extra: BTreeMap::from([
+                ("order".to_string(), json!(["Anthropic", "Google"])),
+                ("require_parameters".to_string(), json!(true)),
+                ("transforms".to_string(), json!(["middle-out"])),
+            ]),
+        });
+        let model_family = derive_default_model_family("anthropic/claude-sonnet-4.5");
+        let prompt = Prompt {
+            input: vec![ResponseItem::Message {
+                id: None,
+                role: "user".to_string(),
+                content: vec![ContentItem::InputText {
+                    text: "hello".to_string(),
+                }],
+                end_turn: None,
+                phase: None,
+            }],
+            include_additional_instructions: false,
+            ..Default::default()
+        };
+
+        let payload = build_chat_completions_payload(
+            &prompt,
+            &model_family,
+            "anthropic/claude-sonnet-4.5",
+            &provider,
+        )
+        .expect("payload should build");
+
+        assert_eq!(payload["provider"]["allow_fallbacks"], false);
+        assert_eq!(payload["provider"]["require_parameters"], true);
+        assert_eq!(payload["provider"]["order"], json!(["Anthropic", "Google"]));
+        assert_eq!(payload["transforms"], json!(["middle-out"]));
+        assert!(payload.get("require_parameters").is_none());
     }
 
     #[test]

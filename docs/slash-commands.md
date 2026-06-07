@@ -23,7 +23,7 @@ Notes
 - `/exit`: exit Kay.
 - `/logout`: log out of Kay.
 - `/login`: manage Kay sign-ins (select, add, or disconnect accounts).
-- `/provider`: manage provider API keys for Xiaomi, OpenCode Go, MiniMax, and OpenAI without editing config files.
+- `/provider`: manage provider API keys for Xiaomi, OpenCode Go, MiniMax, OpenRouter, and OpenAI without editing config files.
 - `/settings [section]`: open the settings panel. Optional section argument
   jumps directly to `model`, `theme`, `agents`, `skills`, `auto`, `review`,
   `validation`, `limits`, `chrome`, `mcp`, or `notifications`.
@@ -130,8 +130,8 @@ Implementation Notes
   `kay-rs/core/src/slash_commands.rs`. `/code` is the canonical prompt-expanding
   command in the Kay UI.
   Provider credential CRUD lives in `/provider`, which is the shared entry
-  point for adding, updating, or removing Xiaomi, OpenCode Go, MiniMax, and
-  OpenAI API keys.
+  point for adding, updating, or removing Xiaomi, OpenCode Go, MiniMax,
+  OpenRouter, and OpenAI API keys.
   Provider/model compatibility fixes should update the provider, model-family,
   and testing docs; only update this slash-command surface when the visible
   command behavior changes.
