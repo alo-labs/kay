@@ -2,6 +2,19 @@
 
 Rolling task log for the documentation and workflow surface.
 
+## 2026-06-08
+
+- Closed obsolete release-asset issue #13 after confirming the current latest
+  release publishes installable platform assets.
+- Hardened `kay exec` compatibility with `--ask-for-approval`, keeping headless
+  defaults intact while allowing explicit approval-policy overrides.
+- Repaired MiniMax-M3's observed malformed `ls && -la && <path>` shell probe at
+  the shared command-normalization boundary so allowed edit workflows do not
+  waste turns on invalid `-la` command execution.
+- Strengthened skill instructions so exact named workflow requests such as
+  `silver:init` must execute that named skill instead of drifting into adjacent
+  scan/discovery paths.
+
 ## 2026-06-07
 
 - Added the Hermes-compatible provider profile import path, built-in

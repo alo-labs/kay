@@ -135,6 +135,10 @@ Implementation Notes
   Provider/model compatibility fixes should update the provider, model-family,
   and testing docs; only update this slash-command surface when the visible
   command behavior changes.
+  External workflow names such as `silver:init` are skill/plugin requests, not
+  Kay built-in slash commands. Exact named workflow routing is enforced in the
+  skills prompt renderer so those requests execute the named workflow instead
+  of drifting into adjacent scan or discovery paths.
   The end-user install and release docs should stay aligned with the shipped
   assets in GitHub Releases, not with the presence or absence of npm registry
   publication.

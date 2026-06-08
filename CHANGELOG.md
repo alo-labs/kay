@@ -1,5 +1,21 @@
 # Changelog
 
+## [Unreleased]
+
+### Bug Fixes
+
+- Exec: accept `--ask-for-approval` on `kay exec` and preserve explicit
+  approval-policy overrides while keeping headless default behavior.
+- Runtime: repair MiniMax-M3's malformed `ls && -la && <path>` shell probe
+  before command execution.
+- Skills: make exact named skill/workflow requests binding so `silver:init`
+  does not drift into adjacent scan/discovery paths.
+
+### Release Hygiene
+
+- Closed obsolete v0.8.0 release-asset issue #13 after confirming the current
+  latest release publishes installable platform assets.
+
 ## [0.9.17] — 2026-05-31
 
 ### Features
@@ -68,10 +84,6 @@
 - Docs: document OpenCode Go provider configuration and examples.
 
 ---
-
-## [Unreleased]
-
-- (none)
 
 ## [0.6.99] - 2026-05-23
 

@@ -103,6 +103,34 @@ fn is_fatal_error_event(event: &Event) -> bool {
     )
 }
 
+fn resolve_exec_policy_overrides(
+    full_auto: bool,
+    dangerously_bypass_approvals_and_sandbox: bool,
+    sandbox_mode_cli_arg: Option<code_common::SandboxModeCliArg>,
+    approval_policy_cli_arg: Option<code_common::ApprovalModeCliArg>,
+) -> (Option<SandboxMode>, Option<AskForApproval>) {
+    let sandbox_mode = if dangerously_bypass_approvals_and_sandbox {
+        Some(SandboxMode::DangerFullAccess)
+    } else if let Some(sandbox_mode) = sandbox_mode_cli_arg {
+        Some(sandbox_mode.into())
+    } else if full_auto {
+        Some(SandboxMode::WorkspaceWrite)
+    } else {
+        None
+    };
+    let approval_policy = if dangerously_bypass_approvals_and_sandbox {
+        Some(AskForApproval::Never)
+    } else if let Some(approval_policy) = approval_policy_cli_arg {
+        Some(approval_policy.into())
+    } else if full_auto {
+        Some(AskForApproval::OnFailure)
+    } else {
+        Some(AskForApproval::Never)
+    };
+
+    (sandbox_mode, approval_policy)
+}
+
 use code_core::git_info::current_branch_name;
 use code_core::timeboxed_exec_guidance::{
     AUTO_EXEC_TIMEBOXED_CLI_GUIDANCE,
@@ -141,6 +169,7 @@ pub async fn run_main(cli: Cli, code_linux_sandbox_exe: Option<PathBuf>) -> anyh
         last_message_file,
         json: json_mode,
         sandbox_mode: sandbox_mode_cli_arg,
+        approval_policy: approval_policy_cli_arg,
         prompt,
         output_schema: output_schema_path,
         include_plan_tool,
@@ -260,13 +289,12 @@ pub async fn run_main(cli: Cli, code_linux_sandbox_exe: Option<PathBuf>) -> anyh
         .or_else(|_| EnvFilter::try_new(default_level))
         .unwrap_or_else(|_| EnvFilter::new(default_level));
 
-    let sandbox_mode = if full_auto {
-        Some(SandboxMode::WorkspaceWrite)
-    } else if dangerously_bypass_approvals_and_sandbox {
-        Some(SandboxMode::DangerFullAccess)
-    } else {
-        sandbox_mode_cli_arg.map(Into::<SandboxMode>::into)
-    };
+    let (sandbox_mode, approval_policy) = resolve_exec_policy_overrides(
+        full_auto,
+        dangerously_bypass_approvals_and_sandbox,
+        sandbox_mode_cli_arg,
+        approval_policy_cli_arg,
+    );
 
     // When using `--oss`, let the bootstrapper pick the model (defaulting to
     // gpt-oss:20b) and ensure it is present locally. Also, force the built‑in
@@ -290,9 +318,7 @@ pub async fn run_main(cli: Cli, code_linux_sandbox_exe: Option<PathBuf>) -> anyh
         model,
         review_model: None,
         config_profile,
-        // This CLI is intended to be headless and has no affordances for asking
-        // the user for approval.
-        approval_policy: Some(AskForApproval::Never),
+        approval_policy,
         sandbox_mode,
         cwd: cwd.map(|p| p.canonicalize().unwrap_or(p)),
         model_provider,
@@ -2720,6 +2746,28 @@ mod tests {
         let event = error_event("stream disconnected before completion");
 
         assert!(is_fatal_error_event(&event));
+    }
+
+    #[test]
+    fn full_auto_policy_defaults_to_workspace_write_on_failure() {
+        let (sandbox_mode, approval_policy) =
+            resolve_exec_policy_overrides(true, false, None, None);
+
+        assert_eq!(sandbox_mode, Some(SandboxMode::WorkspaceWrite));
+        assert_eq!(approval_policy, Some(AskForApproval::OnFailure));
+    }
+
+    #[test]
+    fn explicit_exec_policy_overrides_full_auto_preset() {
+        let (sandbox_mode, approval_policy) = resolve_exec_policy_overrides(
+            true,
+            false,
+            Some(code_common::SandboxModeCliArg::ReadOnly),
+            Some(code_common::ApprovalModeCliArg::Never),
+        );
+
+        assert_eq!(sandbox_mode, Some(SandboxMode::ReadOnly));
+        assert_eq!(approval_policy, Some(AskForApproval::Never));
     }
 
 	    #[test]
