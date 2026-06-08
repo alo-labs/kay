@@ -8092,6 +8092,10 @@ fn normalize_apply_patch_hunk_header_text(patch: &str) -> String {
 }
 
 fn normalize_exec_command_argv(command: Vec<String>) -> Vec<String> {
+    if let Some(repaired) = repair_malformed_ls_probe(&command) {
+        return repaired;
+    }
+
     if command.len() != 1 {
         return command;
     }
@@ -8111,6 +8115,52 @@ fn normalize_exec_command_argv(command: Vec<String>) -> Vec<String> {
     shlex_split(trimmed).unwrap_or_else(|| {
         vec!["bash".to_string(), "-lc".to_string(), trimmed.to_string()]
     })
+}
+
+fn repair_malformed_ls_probe(command: &[String]) -> Option<Vec<String>> {
+    let parts = if command.len() == 1 {
+        command
+            .first()?
+            .split("&&")
+            .map(str::trim)
+            .filter(|part| !part.is_empty())
+            .map(ToString::to_string)
+            .collect::<Vec<_>>()
+    } else {
+        let has_literal_and = command.iter().any(|part| part.trim() == "&&");
+        if !has_literal_and {
+            return None;
+        }
+        command
+            .iter()
+            .map(|part| part.trim())
+            .filter(|part| !part.is_empty() && *part != "&&")
+            .map(ToString::to_string)
+            .collect::<Vec<_>>()
+    };
+
+    if parts.len() < 3 || parts.first().map(String::as_str) != Some("ls") {
+        return None;
+    }
+    let args = &parts[1..];
+    let has_option = args.iter().any(|arg| arg.starts_with('-'));
+    let has_path = args.iter().any(|arg| looks_like_path_probe_arg(arg));
+    if !has_option || !has_path || !args.iter().all(|arg| is_safe_ls_probe_arg(arg)) {
+        return None;
+    }
+
+    Some(parts)
+}
+
+fn is_safe_ls_probe_arg(arg: &str) -> bool {
+    !arg.is_empty()
+        && !arg.chars().any(char::is_whitespace)
+        && !looks_like_shell_script(arg)
+        && !matches!(arg, "&&" | "||" | ";" | "|")
+}
+
+fn looks_like_path_probe_arg(arg: &str) -> bool {
+    arg.contains('/') || arg == "." || arg == ".."
 }
 
 fn looks_like_shell_script(script: &str) -> bool {
@@ -8649,6 +8699,38 @@ mod kay_runtime_regression_tests {
                 "bash".to_string(),
                 "-lc".to_string(),
                 "rg foo | head -20".to_string()
+            ]
+        );
+    }
+
+    #[test]
+    fn minimax_malformed_ls_probe_string_is_repaired() {
+        assert_eq!(
+            normalize_exec_command_argv(vec![
+                "ls && -la && src/routes/todos.js".to_string()
+            ]),
+            vec![
+                "ls".to_string(),
+                "-la".to_string(),
+                "src/routes/todos.js".to_string()
+            ]
+        );
+    }
+
+    #[test]
+    fn minimax_malformed_ls_probe_argv_is_repaired() {
+        assert_eq!(
+            normalize_exec_command_argv(vec![
+                "ls".to_string(),
+                "&&".to_string(),
+                "-la".to_string(),
+                "&&".to_string(),
+                "src/routes/todos.js".to_string()
+            ]),
+            vec![
+                "ls".to_string(),
+                "-la".to_string(),
+                "src/routes/todos.js".to_string()
             ]
         );
     }

@@ -1,7 +1,7 @@
 {
-  "task_id": "hermes-compatible-provider-profiles",
+  "task_id": "issue-sweep-13-20-22-23-35",
   "task_granularity": 2,
-  "updated_at": "2026-06-07T00:00:00Z",
+  "updated_at": "2026-06-08T00:40:13Z",
   "_notes": [
     "Added Kay brand renaming policy and inventory docs in the current session.",
     "Refreshed during the Kay reliability-grade policy update in the current session.",
@@ -32,7 +32,8 @@
     "Refreshed after direct Xiaomi mimo-v2.5 exposed native response_format disconnect retries, so shared MiMo schema-guidance compatibility and acceptance timeouts are recorded in the same session.",
     "Refreshed after live acceptance showed recovered stream retry events still forced kay exec exit code 1, so retry status handling and docs coverage are recorded in the same session.",
     "Refreshed after pre-release showed OpenCode Go MiMo needs a longer live-smoke turn budget during normal SSE retry recovery, so the release gate timeout and docs are recorded in the same session.",
-    "Refreshed during Hermes-compatible provider profile import work so provider config, authentication, getting-started, slash-command, changelog, and README docs match the new provider surface."
+    "Refreshed during Hermes-compatible provider profile import work so provider config, authentication, getting-started, slash-command, changelog, and README docs match the new provider surface.",
+    "Refreshed during the open-issue reliability sweep for #13, #20, #22, #23, and #35 so exec approval compatibility, exact skill routing, MiniMax command normalization, and release notes are documented in the current session."
   ],
   "docs": {
     "docs/ARCHITECTURE.md": "not-needed: architecture overview unchanged by final Xiaomi MiMo schema/tool compatibility fixes",
@@ -40,17 +41,17 @@
     "docs/TESTING.md": "updated",
     "docs/advanced.md": "not-needed: unchanged by workspace path migration",
     "docs/agents.md": "not-needed: unchanged by workspace path migration",
-    "docs/authentication.md": "updated",
+    "docs/authentication.md": "not-needed: authentication flow unchanged by the open-issue reliability sweep",
     "docs/auto-drive.md": "not-needed: unchanged by workspace path migration",
-    "docs/config.md": "updated",
+    "docs/config.md": "not-needed: provider configuration unchanged by the open-issue reliability sweep",
     "docs/doc-scheme.md": "not-needed: governance contract unchanged for workspace path migration",
     "docs/doc-scheme.json": "not-needed: governance contract unchanged for workspace path migration",
-    "docs/example-config.md": "updated",
-    "docs/exec.md": "updated",
+    "docs/example-config.md": "not-needed: example provider configuration unchanged by the open-issue reliability sweep",
+    "docs/exec.md": "not-needed: exec documentation unchanged; compatibility coverage is recorded in testing and changelog docs",
     "docs/execpolicy.md": "not-needed: exec policy behavior unchanged by Xiaomi MiMo compatibility fixes",
     "docs/exit-confirmation-prompt-design.md": "not-needed: unchanged in this session",
     "docs/faq.md": "not-needed: unchanged by workspace path migration",
-    "docs/getting-started.md": "updated",
+    "docs/getting-started.md": "not-needed: getting-started flow unchanged by the open-issue reliability sweep",
     "docs/homebrew.md": "not-needed: unchanged by workspace path migration",
     "docs/index.md": "not-needed: docs navigation unchanged for workspace path migration",
     "docs/install.md": "not-needed: install flow unchanged by Xiaomi MiMo compatibility fixes",
@@ -62,7 +63,7 @@
     "docs/lessons/2026-05.md": "updated",
     "docs/platform-sandboxing.md": "not-needed: unchanged in this session",
     "docs/prompts.md": "not-needed: unchanged in this session",
-    "docs/release-notes/RELEASE_NOTES.md": "not-needed: release notes unchanged; no release cut in this task",
+    "docs/release-notes/RELEASE_NOTES.md": "updated",
     "docs/sandbox.md": "not-needed: unchanged by workspace path migration",
     "docs/sessions/2026-05-11-19-07-24.md": "not-needed: unchanged in this session",
     "docs/settings.md": "not-needed: unchanged in this session",
@@ -78,8 +79,8 @@
     "docs/upstream-merge-strategy.md": "not-needed: upstream merge policy unchanged by Xiaomi MiMo compatibility fixes",
     "docs/workflows/devops-cycle.md": "not-needed: no workflow changes in this task",
     "docs/workflows/full-dev-cycle.md": "not-needed: no workflow changes in this task",
-    "README.md": "updated",
-    "CHANGELOG.md": "not-needed: root release changelog unchanged for this task"
+    "README.md": "not-needed: README unchanged by the open-issue reliability sweep",
+    "CHANGELOG.md": "updated"
   },
   "sections": {
     "docs/CHANGELOG.md": {
@@ -117,8 +118,8 @@
       "Data Flow": "not-needed: data flow unchanged by final Xiaomi MiMo schema/tool compatibility fixes"
     },
     "docs/config.md": {
-      "model_providers": "updated",
-      "model_provider": "updated"
+      "model_providers": "not-needed: provider configuration unchanged by the open-issue reliability sweep",
+      "model_provider": "not-needed: provider selection unchanged by the open-issue reliability sweep"
     },
     "docs/index.md": {
       "Repository Governance": "not-needed: docs navigation unchanged for workspace path migration"
@@ -126,13 +127,13 @@
     "docs/TESTING.md": {
       "Required Gate": "not-needed: required build gate unchanged by Xiaomi MiMo compatibility fixes",
       "Reliability Grade": "not-needed: testing policy unchanged for workspace path migration",
-      "Recommended Checks": "not-needed: testing policy unchanged for workspace path migration",
-      "Provider / Model Strategy": "updated",
-      "Real Project Validation": "updated",
+      "Recommended Checks": "updated",
+      "Provider / Model Strategy": "not-needed: provider/model testing strategy unchanged by the open-issue reliability sweep",
+      "Real Project Validation": "not-needed: real-project validation policy unchanged by the open-issue reliability sweep",
       "Upstream Sync Policy": "not-needed: upstream sync policy unchanged by Xiaomi MiMo compatibility fixes"
     },
     "docs/exec.md": {
-      "Structured output": "updated"
+      "Structured output": "not-needed: structured-output behavior unchanged by the open-issue reliability sweep"
     },
     "docs/upstream-merge-strategy.md": {
       "Current Upstream Layout": "not-needed: upstream merge strategy unchanged by Xiaomi MiMo compatibility fixes",
