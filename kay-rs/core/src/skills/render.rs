@@ -19,8 +19,9 @@ pub fn render_skills_section(skills: &[SkillMetadata]) -> Option<String> {
 
     lines.push("### How to use skills".to_string());
     lines.push(
-        r###"- Discovery: The list above is the skills available in this session (name + description + file path). Skill bodies live on disk at the listed paths.
+r###"- Discovery: The list above is the skills available in this session (name + description + file path). Skill bodies live on disk at the listed paths.
 - Trigger rules: If the user names a skill (with `$SkillName` or plain text) OR the task clearly matches a skill's description shown above, you must use that skill for that turn. Multiple mentions mean use them all. Do not carry skills across turns unless re-mentioned.
+- Exact named skill requests are binding: when the user names one available skill or workflow exactly, you must execute that named skill. Do not substitute a nearby skill, discovery step, scan command, or router unless the named skill itself instructs you to route there.
 - Missing/blocked: If a named skill isn't in the list or the path can't be read, say so briefly and continue with the best fallback.
 - How to use a skill (progressive disclosure):
   1) After deciding to use a skill, open its `SKILL.md`. Read only enough to follow the workflow.
@@ -39,4 +40,28 @@ pub fn render_skills_section(skills: &[SkillMetadata]) -> Option<String> {
     );
 
     Some(lines.join("\n"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::skills::model::SkillScope;
+    use std::path::PathBuf;
+
+    #[test]
+    fn render_instructs_exact_named_skill_requests_are_binding() {
+        let rendered = render_skills_section(&[SkillMetadata {
+            name: "silver:init".to_string(),
+            description: "Initialize Silver Bullet".to_string(),
+            path: PathBuf::from("/tmp/silver-init/SKILL.md"),
+            scope: SkillScope::User,
+            content: String::new(),
+        }])
+        .expect("skills section");
+
+        let rendered_lower = rendered.to_ascii_lowercase();
+        assert!(rendered_lower.contains("exact named skill"));
+        assert!(rendered.contains("must execute that named skill"));
+        assert!(rendered.contains("Do not substitute"));
+    }
 }
