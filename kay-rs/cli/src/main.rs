@@ -1804,6 +1804,30 @@ mod tests {
     }
 
     #[test]
+    fn exec_accepts_root_approval_compatibility_flag() {
+        let cli = MultitoolCli::try_parse_from([
+            "kay",
+            "exec",
+            "--cd",
+            "/tmp",
+            "--sandbox",
+            "workspace-write",
+            "--ask-for-approval",
+            "never",
+            "say hi",
+        ])
+        .expect("exec should accept --ask-for-approval for CLI compatibility");
+
+        let Some(Subcommand::Exec(exec_cli)) = cli.subcommand else {
+            panic!("expected exec subcommand");
+        };
+        assert!(matches!(
+            exec_cli.approval_policy,
+            Some(code_common::ApprovalModeCliArg::Never)
+        ));
+    }
+
+    #[test]
     fn resume_model_flag_applies_when_no_root_flags() {
         let interactive = finalize_from_args(["codex", "resume", "-m", "gpt-5.1-test"].as_ref());
 
