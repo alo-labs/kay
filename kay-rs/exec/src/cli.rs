@@ -1,5 +1,6 @@
 use clap::Parser;
 use clap::ValueEnum;
+use code_common::ApprovalModeCliArg;
 use code_common::CliConfigOverrides;
 use std::path::PathBuf;
 
@@ -38,6 +39,10 @@ pub struct Cli {
     /// commands.
     #[arg(long = "sandbox", short = 's', value_enum)]
     pub sandbox_mode: Option<code_common::SandboxModeCliArg>,
+
+    /// Configure when Kay should ask for command approval.
+    #[arg(long = "ask-for-approval", short = 'a')]
+    pub approval_policy: Option<ApprovalModeCliArg>,
 
     /// Configuration profile from config.toml to specify default options.
     #[arg(long = "profile", short = 'p')]
