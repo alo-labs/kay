@@ -32,6 +32,14 @@ Upstream high-risk changes are not a release blocker by themselves. They are a m
 - End-to-end smoke checks for user-visible CLI flows
 - Doc and workflow verification when SB or GSD scaffolding changes
 - Use the dedicated `opencode-go` config, login, and live E2E coverage when touching provider ids, login help text, or namespaced model handling
+- When changing headless execution flags, cover root/exec CLI parsing so
+  compatibility flags such as `--ask-for-approval` are accepted on
+  `kay exec`.
+- When changing skill prompt rendering, cover exact named skill requests so a
+  request such as `silver:init` cannot silently route to a scan/discovery
+  workflow.
+- When changing model command normalization, cover both single-string and argv
+  malformed command shapes observed in live provider transcripts.
 
 ## Provider / Model Strategy
 
