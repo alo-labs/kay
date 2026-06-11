@@ -4,6 +4,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="${REPO_ROOT:-$(cd "${SCRIPT_DIR}/.." && pwd)}"
 DRY_RUN=false
+brew_formula=""
+manager=""
 
 usage() {
   cat <<'EOF'
@@ -62,26 +64,51 @@ latest_version() {
 }
 
 visible_kay_path() {
-  command -v kay 2>/dev/null || true
+  local kay_path
+
+  kay_path="$(command -v kay 2>/dev/null || true)"
+  if [[ -z "$kay_path" ]]; then
+    return 0
+  fi
+
+  if command -v python3 >/dev/null 2>&1; then
+    python3 - "$kay_path" <<'PY'
+import os
+import sys
+
+print(os.path.realpath(sys.argv[1]))
+PY
+  else
+    printf '%s\n' "$kay_path"
+  fi
 }
 
 classify_install() {
   local kay_path="$1"
+  brew_formula=""
+  manager=""
+  if command -v brew >/dev/null 2>&1; then
+    local detected_brew_formula
+    detected_brew_formula="$(brew which-formula "$kay_path" 2>/dev/null | awk 'NR==1 {print $1}')"
+    if [[ -n "$detected_brew_formula" ]]; then
+      manager="brew"
+      brew_formula="$detected_brew_formula"
+      return
+    fi
+  fi
+
   case "$kay_path" in
     *"/node_modules/@alo-labs/kay/"*|*"/node_modules/.bin/kay")
-      printf 'npm\n'
+      manager="npm"
       ;;
     *"/.bun/"*)
-      printf 'bun\n'
+      manager="bun"
       ;;
     *"/.local/share/pnpm/"*|*"/pnpm/"*)
-      printf 'pnpm\n'
-      ;;
-    /opt/homebrew/*|/usr/local/*)
-      printf 'brew\n'
+      manager="pnpm"
       ;;
     *)
-      printf 'standalone\n'
+      manager="standalone"
       ;;
   esac
 }
@@ -115,7 +142,7 @@ upgrade_command_for() {
         echo "error: visible Kay appears Homebrew-managed, but brew is not on PATH" >&2
         exit 1
       fi
-      printf 'brew upgrade kay || brew upgrade code\n'
+      printf 'brew upgrade %s\n' "${brew_formula:-kay}"
       ;;
     standalone)
       printf 'bash %q --release latest\n' "$REPO_ROOT/scripts/install/install.sh"
@@ -134,7 +161,7 @@ reported_version() {
 
 latest="$(latest_version)"
 kay_path="$(visible_kay_path)"
-manager="$(classify_install "$kay_path")"
+classify_install "$kay_path"
 upgrade_cmd="$(upgrade_command_for "$manager")"
 
 echo "[local-kay-upgrade] latest release: $latest"

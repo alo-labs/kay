@@ -2,8 +2,8 @@ Homebrew (macOS)
 
 This repository now includes a helper script to generate a Homebrew formula
 from the latest GitHub release artifacts. Publishing to Homebrew requires a
-tap repository (for example, `just-every/homebrew-tap`). Once a tap exists,
-you can generate and publish the formula like so:
+tap repository (for example, `just-every/homebrew-tap`). Once you have tapped
+that repository, you can generate and publish the formula like so:
 
 1) Generate the formula for the latest version:
 
@@ -17,7 +17,7 @@ and update the `url`/`sha256` if needed.
 3) Users can then install with:
 
 ```
-brew tap just-every/tap
+brew tap just-every/homebrew-tap
 brew install kay
 ```
 

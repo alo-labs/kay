@@ -1734,11 +1734,42 @@ async fn doctor_main() -> anyhow::Result<()> {
     println!("\nIf versions differ, remove older installs and keep one package manager:");
     println!("  - Bun: bun remove -g @alo-labs/kay");
     println!("  - npm/pnpm: npm uninstall -g @alo-labs/kay");
-    println!("  - Homebrew: brew uninstall kay");
+    let homebrew_uninstall = std::env::current_exe()
+        .ok()
+        .and_then(|exe_path| homebrew_formula_for_executable(&exe_path))
+        .map(|formula| format!("brew uninstall {formula}"))
+        .unwrap_or_else(|| "brew uninstall kay".to_string());
+    println!("  - Homebrew: {}", homebrew_uninstall);
     println!("  - Prefer using 'kay'. The 'code' command remains a compatibility alias when available.");
 
     Ok(())
 }
+
+#[cfg(target_os = "macos")]
+fn homebrew_formula_for_executable(exe_path: &Path) -> Option<String> {
+    let output = std::process::Command::new("brew")
+        .arg("which-formula")
+        .arg(exe_path)
+        .output()
+        .ok()?;
+
+    if !output.status.success() {
+        return None;
+    }
+
+    String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .next()
+        .map(str::trim)
+        .filter(|formula| !formula.is_empty())
+        .map(str::to_owned)
+}
+
+#[cfg(not(target_os = "macos"))]
+fn homebrew_formula_for_executable(_exe_path: &Path) -> Option<String> {
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

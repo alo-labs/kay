@@ -53,7 +53,9 @@ Notes
   custom instructions. With a focus argument, skips the picker and uses your
   text directly. Configure Auto Resolve and the max re-reviews (defaults to 5)
   from `/settings review` when you want Kay to rerun fixes and follow-up
-  checks automatically.
+  checks automatically. Scoped audit prompts should stay limited to the
+  requested files and distinguish a completed low pass from an exhaustive
+  review-loop result.
 - `/cloud`: browse Kay Cloud tasks, view details, apply patches, and create
   new tasks from the TUI.
 - `/cmd <name>`: run a project command defined for the current workspace.
@@ -142,9 +144,20 @@ Implementation Notes
   The end-user install and release docs should stay aligned with the shipped
   assets in GitHub Releases, not with the presence or absence of npm registry
   publication.
+  Installer and upgrade helpers should verify Homebrew ownership with
+  `brew which-formula` before proposing uninstall or upgrade actions; when a
+  formula is confirmed, use that formula name in the suggested brew command.
+  Fallback aliases like `code` or `codex` should only warn about PATH
+  ambiguity until ownership is confirmed.
+  Release-note headers must match the package version contract used by the
+  release pipeline (`## @alo-labs/kay v<version>`) so release-note verification
+  stays strict; hook remediation for release/install work should refresh this
+  note in the same session as `docs/task-doc-checklist.json`.
   Release-monitoring instructions should stay aligned with
   `docs/upstream-merge-strategy.md` and `AGENTS.md`, including the required
   Google Chat announcement check after successful `main` releases.
+  Release/install audit reports should cite only reproducible findings with
+  exact refs, or state a clean low-pass verdict with the checks actually run.
   When no `[[agents]]` are configured, the orchestrator advertises the
   following model slugs to the LLM for multi-agent runs: `code-gpt-5.4`,
   `code-gpt-5.3-codex`, `claude-opus-4.6`, `gemini-3-pro`,

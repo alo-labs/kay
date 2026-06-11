@@ -985,6 +985,12 @@ jobs:
             echo "publish=true" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Verify release notes header matches version
+        shell: bash
+        run: |
+          set -euo pipefail
+          scripts/check-release-notes-version.sh
+
       # Defer npm publish until after pushing changes and tags; platform packages first
 
       - name: Push tag
@@ -1030,12 +1036,6 @@ jobs:
           echo "Retrying push after policy merge..."
           git push origin main
           git push origin --tags || true
-
-      - name: Verify release notes header matches version
-        shell: bash
-        run: |
-          set -euo pipefail
-          scripts/check-release-notes-version.sh
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1

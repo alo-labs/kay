@@ -21,6 +21,8 @@ path_action="already"
 path_profile=""
 conflict_manager=""
 conflict_path=""
+conflict_command_name=""
+conflict_brew_formula=""
 lock_kind=""
 tmp_dir=""
 
@@ -454,32 +456,48 @@ current_installed_version() {
 }
 
 resolve_existing_codex() {
-  command -v kay 2>/dev/null || command -v code 2>/dev/null || command -v codex 2>/dev/null || command -v coder 2>/dev/null || true
+  local candidate candidate_name
+  existing_path=""
+
+  for candidate_name in kay code codex coder; do
+    candidate="$(command -v "$candidate_name" 2>/dev/null || true)"
+    if [ -n "$candidate" ]; then
+      conflict_command_name="$candidate_name"
+      existing_path="$candidate"
+      return 0
+    fi
+  done
+
+  conflict_command_name=""
+  existing_path=""
+  return 0
 }
 
 classify_existing_codex() {
-  existing_path="$1"
+  local existing_path="$1"
 
+  conflict_manager=""
   if [ -z "$existing_path" ] || [ "$existing_path" = "$BIN_PATH" ]; then
     return 1
   fi
 
-  case "$existing_path" in
-    /opt/homebrew/* | /usr/local/*)
-      if [ "$os" = "darwin" ]; then
-        printf 'brew\n'
-        return 0
-      fi
-      ;;
-  esac
+  if [ "$os" = "darwin" ] && command -v brew >/dev/null 2>&1; then
+    local brew_formula
+    brew_formula="$(brew which-formula "$existing_path" 2>/dev/null | awk 'NR==1 {print $1}')"
+    if [ -n "$brew_formula" ]; then
+      conflict_brew_formula="$brew_formula"
+      conflict_manager="brew"
+      return 0
+    fi
+  fi
 
   if [ -f "$existing_path" ] && grep -F "#!/usr/bin/env node" "$existing_path" >/dev/null 2>&1; then
     case "$existing_path" in
       *".bun"*)
-        printf 'bun\n'
+        conflict_manager="bun"
         ;;
       *)
-        printf 'npm\n'
+        conflict_manager="npm"
         ;;
     esac
     return 0
@@ -547,16 +565,22 @@ maybe_launch_codex_now() {
 }
 
 detect_conflicting_install() {
-  existing_path="$(resolve_existing_codex)"
-  manager="$(classify_existing_codex "$existing_path" || true)"
 
-  if [ -z "$manager" ]; then
+  resolve_existing_codex
+  conflict_brew_formula=""
+  conflict_manager=""
+  classify_existing_codex "$existing_path" || true
+
+  if [ -z "$conflict_manager" ]; then
+    if [ -n "$existing_path" ] && [ -n "$conflict_command_name" ]; then
+      step "Found existing $conflict_command_name at $existing_path"
+      warn "PATH already contains $conflict_command_name; Kay will not assume ownership until Homebrew, bun, or npm management is confirmed."
+    fi
     return
   fi
 
-  conflict_manager="$manager"
   conflict_path="$existing_path"
-  step "Detected existing $manager-managed Kay at $existing_path"
+  step "Detected existing $conflict_command_name at $existing_path"
   warn "Multiple managed Kay installs can be ambiguous because PATH order decides which one runs."
 }
 
@@ -565,9 +589,19 @@ handle_conflicting_install() {
     return
   fi
 
+  # Only the canonical kay binary can trigger a guided uninstall; fallback aliases may belong to other tools.
+  if [ "$conflict_command_name" != "kay" ]; then
+    warn "Leaving the existing $conflict_command_name on PATH. PATH order will determine which command runs."
+    return
+  fi
+
   case "$conflict_manager" in
     brew)
-      uninstall_cmd="brew uninstall --cask kay"
+      if [ -n "$conflict_brew_formula" ]; then
+        uninstall_cmd="brew uninstall $conflict_brew_formula"
+      else
+        uninstall_cmd="brew uninstall kay"
+      fi
       ;;
     bun)
       uninstall_cmd="bun remove -g @alo-labs/kay"
