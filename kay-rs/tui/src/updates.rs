@@ -194,16 +194,14 @@ pub fn resolve_upgrade_resolution() -> UpgradeResolution {
     #[cfg(target_os = "macos")]
     {
         if let Ok(exe_path) = std::env::current_exe() {
-            if exe_path.starts_with("/opt/homebrew") || exe_path.starts_with("/usr/local") {
+            if let Some(homebrew_formula) = homebrew_formula_for_executable(&exe_path) {
+                let command = format!("brew upgrade {homebrew_formula}");
                 return UpgradeResolution::Command {
-                    command: vec![
-                        "brew".to_string(),
-                        "upgrade".to_string(),
-                        "code".to_string(),
-                    ],
-                    display: "brew upgrade code".to_string(),
+                    command: vec!["sh".to_string(), "-c".to_string(), command.clone()],
+                    display: command,
                 };
             }
+
         }
     }
 
@@ -212,6 +210,26 @@ pub fn resolve_upgrade_resolution() -> UpgradeResolution {
             "Download the latest release from {CODE_RELEASE_URL} and replace the installed binary."
         ),
     }
+}
+
+#[cfg(target_os = "macos")]
+fn homebrew_formula_for_executable(exe_path: &Path) -> Option<String> {
+    let output = std::process::Command::new("brew")
+        .arg("which-formula")
+        .arg(exe_path)
+        .output()
+        .ok()?;
+
+    if !output.status.success() {
+        return None;
+    }
+
+    String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .next()
+        .map(str::trim)
+        .filter(|formula| !formula.is_empty())
+        .map(str::to_owned)
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]

@@ -75,6 +75,7 @@ homebrew-tap/Formula/Code.rb
 actions-runner/
 .github/workflows/*-local.yml
 .github/workflows/.cache/
+.planning/workflows/
 
 # caches
 .cache/
