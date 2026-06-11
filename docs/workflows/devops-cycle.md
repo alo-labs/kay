@@ -22,6 +22,7 @@ This workflow covers infrastructure, release, and operations work.
 - Preserve rollback paths and audit trails
 - Use the same non-destructive init rules as the feature workflow
 - Validate the release-notes header contract before push or tag; `scripts/check-release-notes-version.sh` fails the release if the header does not match `## @alo-labs/kay v<version>`, and hook remediation must refresh the checklist in the same session
+- On GitHub Actions release preflights, keep linker-heavy Rust tests off the root filesystem by freeing stale cargo/sccache metadata before workspace nextest and pointing `TMPDIR` at the data disk when one is mounted
 - For release/install audits, report only reproducible findings with exact refs; if interrupted before a full review loop completes, label the result as a low pass and list the completed checks.
 
 ## Finish
