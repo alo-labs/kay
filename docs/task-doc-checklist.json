@@ -1,8 +1,9 @@
 {
   "task_id": "release-install-update-paths",
   "task_granularity": 2,
-  "updated_at": "2026-06-11T20:47:30Z",
+  "updated_at": "2026-06-11T22:59:58Z",
   "_notes": [
+    "Refreshed during the release preflight disk-pressure fix in the current session so Linux workspace nextest now uses data-disk temp space and an early cache cleanup.",
     "Refreshed during the doc-scheme hook remediation for release-install-update-paths so the checklist, slash-command guidance, and DevOps release discipline docs are current in the same session.",
     "Refreshed during the release-notes header gate and Homebrew formula propagation fix in the current session.",
     "Refreshed during the audit-session doc-scheme hook remediation so slash-command Homebrew guidance and checklist freshness are recorded in the same session.",

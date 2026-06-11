@@ -74,13 +74,16 @@ jobs:
     runs-on: ubuntu-24.04
     env:
       CARGO_TARGET_DIR: /mnt/cargo-target
+      TMPDIR: /mnt/cargo-target/tmp
+      TEMP: /mnt/cargo-target/tmp
+      TMP: /mnt/cargo-target/tmp
     steps:
       - name: Prepare cargo target dir on data disk
         shell: bash
         run: |
           set -euo pipefail
-          sudo mkdir -p "$CARGO_TARGET_DIR"
-          sudo chown "$USER":"$USER" "$CARGO_TARGET_DIR"
+          sudo mkdir -p "$CARGO_TARGET_DIR/tmp"
+          sudo chown -R "$USER":"$USER" "$CARGO_TARGET_DIR"
 
       - name: Checkout code
         uses: actions/checkout@v4
@@ -149,6 +152,16 @@ jobs:
           rm -rf "$CARGO_TARGET_DIR"/dev-fast || true
           df -h
 
+      - name: Free disk before workspace tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Disk usage before cleanup" && df -h
+          rm -rf ~/.cache/sccache || true
+          rm -rf ~/.cargo/registry/index || true
+          rm -rf ~/.cargo/git/db || true
+          echo "Disk usage after cleanup" && df -h
+
       - name: Install cargo-nextest
         uses: taiki-e/install-action@v2
         with:
@@ -156,6 +169,8 @@ jobs:
 
       - name: Workspace tests (nextest)
         shell: bash
+        env:
+          CARGO_BUILD_JOBS: 2
         run: |
           cd kay-rs
           rustup run "$RUST_TOOLCHAIN" cargo nextest run --no-fail-fast --locked
@@ -168,7 +183,7 @@ jobs:
           rm -rf ~/.cache/sccache || true
           rm -rf ~/.cargo/registry/index || true
           rm -rf ~/.cargo/git/db || true
-          rm -rf "$CARGO_TARGET_DIR" || true
+          sudo rm -rf "$CARGO_TARGET_DIR" || true
           echo "Disk usage after cleanup" && df -h
 
   determine-version:
