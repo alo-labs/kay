@@ -10,12 +10,12 @@ Usage: ./build-fast.sh [env flags]
 Environment flags:
   PROFILE=dev-fast|dev|release-prod   Build profile (default: dev-fast)
   TRACE_BUILD=1                       Print toolchain/env and artifact SHA
-  KEEP_ENV=0                          Sanitize env for reproducible builds (default skips)
+  KEEP_ENV=0                          Sanitize env for reproducible builds (default: preserve caller env)
   DETERMINISTIC=1                     Add -C debuginfo=0; promotes to release-prod unless DETERMINISTIC_FORCE_RELEASE=0
   DETERMINISTIC_FORCE_RELEASE=0|1     Keep dev-fast (0) or switch to release-prod (1, default)
   DETERMINISTIC_NO_UUID=1             macOS only: strip LC_UUID on final executables
   BUILD_FAST_BINS="kay code code-tui"  Override bins to build (space or comma separated)
-  --workspace kay|kay-rs|code|code-rs|codex|both
+  --workspace kay|kay-rs|code|code-rs|codex|codex-rs|both
                                       Select workspace to build (default: kay)
 
 Examples:
@@ -244,7 +244,7 @@ case "$WORKSPACE_CHOICE" in
     CRATE_PREFIX="codex"
     ;;
   *)
-    echo "Error: Unknown workspace '${WORKSPACE_CHOICE}'. Use kay, kay-rs, code, code-rs, codex, or both." >&2
+    echo "Error: Unknown workspace '${WORKSPACE_CHOICE}'. Use kay, kay-rs, code, code-rs, codex, codex-rs, or both." >&2
     exit 1
     ;;
 esac
