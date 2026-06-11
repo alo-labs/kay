@@ -31337,7 +31337,7 @@ use code_core::protocol::OrderMeta;
                 | Op::QueueUserInput {
                     items,
                 } => return ChatWidget::combined_input_text(&items).unwrap_or_default(),
-                Op::AddPostTurnDeveloperInput { .. } | Op::AddToHistory { .. } => continue,
+                Op::PersistHistorySnapshot { .. } | Op::AddPostTurnDeveloperInput { .. } | Op::AddToHistory { .. } => continue,
                 other => panic!("expected UserInput, got {other:?}"),
             }
         }
@@ -31351,8 +31351,7 @@ use code_core::protocol::OrderMeta;
                     final_output_json_schema: None,
                     ..
                 }
-                | Op::QueueUserInput { .. }
-                | Op::AddToHistory { .. } => continue,
+                | Op::QueueUserInput { .. } | Op::PersistHistorySnapshot { .. } | Op::AddToHistory { .. } => continue,
                 other => panic!("expected AddPostTurnDeveloperInput, got {other:?}"),
             }
         }
