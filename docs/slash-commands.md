@@ -155,6 +155,9 @@ Implementation Notes
   release pipeline (`## @alo-labs/kay v<version>`) so release-note verification
   stays strict; hook remediation for release/install work should refresh this
   note in the same session as `docs/task-doc-checklist.json`.
+  GitHub Releases must carry detailed, categorized release notes directly in
+  the release body; `CHANGELOG.md` can supplement the release, but a generic
+  CHANGELOG-only pointer is not an acceptable release-note fallback.
   Release-monitoring instructions should stay aligned with
   `docs/upstream-merge-strategy.md` and `AGENTS.md`, including the required
   Google Chat announcement check after successful `main` releases.

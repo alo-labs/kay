@@ -932,12 +932,11 @@ jobs:
           JS
           fi
 
-          # If the agent forgot to write release notes, synthesize a minimal one from CHANGELOG.
+          # If the agent forgot to write release notes, synthesize categorized
+          # notes from the release range so the GitHub Release never falls back
+          # to a generic CHANGELOG pointer.
           if [ ! -s docs/release-notes/RELEASE_NOTES.md ]; then
-            awk -v v="${NEW_VERSION}" '/^## /{p=($2==("v"v)||$2==v)} p{print}' CHANGELOG.md > docs/release-notes/RELEASE_NOTES.md || true
-          fi
-          if [ ! -s docs/release-notes/RELEASE_NOTES.md ]; then
-            printf "## @alo-labs/kay v%s\n\nSee CHANGELOG.md for details." "${NEW_VERSION}" > docs/release-notes/RELEASE_NOTES.md
+            node scripts/generate-release-notes-fallback.mjs
           fi
 
           # Commit CHANGELOG changes if any.
@@ -968,20 +967,14 @@ jobs:
             fi
           fi
 
-      - name: Fallback release notes from CHANGELOG (no OPENAI_API_KEY)
+      - name: Fallback categorized release notes (no OPENAI_API_KEY)
         if: env.OPENAI_API_KEY == ''
         shell: bash
         env:
           NEW_VERSION: ${{ needs.determine-version.outputs.version }}
         run: |
           set -euo pipefail
-          mkdir -p docs/release-notes
-          if [ -f CHANGELOG.md ]; then
-            awk -v v="${NEW_VERSION}" '/^## /{p=($2==("v"v)||$2==v)} p{print}' CHANGELOG.md > docs/release-notes/RELEASE_NOTES.md || true
-          fi
-          if [ ! -s docs/release-notes/RELEASE_NOTES.md ]; then
-            printf "## @alo-labs/kay v%s\n\nSee CHANGELOG.md for details." "${NEW_VERSION}" > docs/release-notes/RELEASE_NOTES.md
-          fi
+          node scripts/generate-release-notes-fallback.mjs
 
       - name: Assert release notes exist
         shell: bash
