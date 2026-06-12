@@ -160,7 +160,7 @@ Implementation Notes
   exact refs, or state a clean low-pass verdict with the checks actually run.
   When a release-preflight failure is caused by runner resource pressure, cite
   the exact workflow step, the tempdir/disk strategy used to verify the fix,
-  and the observed log line so the report is reproducible.
+  and the observed log line so the report remains reproducible.
   When no `[[agents]]` are configured, the orchestrator advertises the
   following model slugs to the LLM for multi-agent runs: `code-gpt-5.4`,
   `code-gpt-5.3-codex`, `claude-opus-4.6`, `gemini-3-pro`,
