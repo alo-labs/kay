@@ -1,18 +1,17 @@
-## @alo-labs/kay v0.9.22
+## @alo-labs/kay v0.9.24
 
-This patch closes the remaining open reliability issues from the issue sweep and
-hardens headless provider workflows.
+This patch completes the release cleanup after v0.9.23 by normalizing the
+Silver Bullet doc-scheme checklist and publishing the follow-up package
+metadata bump. There are no runtime changes beyond the release metadata update.
 
 ### Changes
 
-- CLI: accept `--ask-for-approval` on `kay exec` and preserve explicit
-  approval-policy overrides while keeping headless defaults.
-- Runtime: repair MiniMax-M3's malformed `ls && -la && <path>` shell probes
-  before command execution.
-- Skills: make exact named skill/workflow requests binding so `silver:init`
-  cannot drift into adjacent scan or discovery paths.
-- Release hygiene: close obsolete v0.8.0 install-asset issue #13 after
-  confirming current releases publish installable assets.
+- Docs: normalize doc-scheme section checklist statuses to exact `updated`
+  tokens so the completion gate accepts the current-session release checklist.
+- Docs: refresh release/install audit guidance in slash-command and DevOps
+  workflow docs.
+- Release: publish the v0.9.24 package metadata bump and verify the local
+  `kay` command upgrades to the latest standalone package.
 
 ### Install
 
@@ -21,4 +20,4 @@ npm install -g @alo-labs/kay@latest
 kay
 ```
 
-Compare: https://github.com/alo-labs/kay/compare/v0.9.21...v0.9.22
+Compare: https://github.com/alo-labs/kay/compare/v0.9.23...v0.9.24
