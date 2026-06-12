@@ -1,8 +1,9 @@
 {
   "task_id": "release-install-update-paths",
   "task_granularity": 2,
-  "updated_at": "2026-06-11T22:59:58Z",
+  "updated_at": "2026-06-11T23:56:52Z",
   "_notes": [
+    "Normalized the section statuses to exact `updated` tokens after the current-session doc-scheme hook validation.",
     "Refreshed during the release preflight disk-pressure fix in the current session so Linux workspace nextest now uses data-disk temp space and an early cache cleanup.",
     "Refreshed during the doc-scheme hook remediation for release-install-update-paths so the checklist, slash-command guidance, and DevOps release discipline docs are current in the same session.",
     "Refreshed during the release-notes header gate and Homebrew formula propagation fix in the current session.",
@@ -113,7 +114,7 @@
     },
     "docs/slash-commands.md": {
       "Prompt-Expanding (Multi-Agent)": "not-needed: unchanged by workspace path migration",
-      "Implementation Notes": "updated: scoped audit reporting and release/install evidence guidance refreshed in this session"
+      "Implementation Notes": "updated"
     },
     "docs/task-doc-checklist.json": {
       "task_id": "updated",
@@ -171,7 +172,7 @@
     "docs/workflows/devops-cycle.md": {
       "Start": "not-needed: workflow entry steps unchanged by the scoped release/install audit",
       "Core Loop": "not-needed: execution loop unchanged by the scoped release/install audit",
-      "Release Discipline": "updated: low-pass release/install audit reporting guidance refreshed in this session"
+      "Release Discipline": "updated"
     }
   }
 }
