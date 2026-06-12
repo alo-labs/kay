@@ -1,8 +1,9 @@
 {
-  "task_id": "silver-init-migrate",
+  "task_id": "release-notes-body",
   "task_granularity": 2,
-  "updated_at": "2026-06-12T02:16:49Z",
+  "updated_at": "2026-06-12T05:23:15Z",
   "_notes": [
+    "Refreshed during the release-notes body fix so GitHub Releases carry detailed categorized notes directly, the fallback generator avoids generic CHANGELOG-only pointers, and checklist freshness is current in the same session.",
     "Refreshed during the Silver Bullet init/migrate run so SB-owned enforcement, Learnings terminology, workflow tracking, and checklist coverage are current in the same session.",
     "Normalized the section statuses to exact `updated` tokens after the current-session doc-scheme hook validation.",
     "Refreshed during the release preflight disk-pressure fix in the current session so Linux workspace nextest now uses data-disk temp space and an early cache cleanup.",
@@ -53,15 +54,15 @@
     "docs/authentication.md": "not-needed: authentication flow unchanged by the open-issue reliability sweep",
     "docs/auto-drive.md": "not-needed: unchanged by workspace path migration",
     "docs/config.md": "not-needed: provider configuration unchanged by the open-issue reliability sweep",
-    "docs/doc-scheme.md": "updated",
-    "docs/doc-scheme.json": "updated",
+    "docs/doc-scheme.md": "not-needed: governance inventory unchanged by the release-notes body fix",
+    "docs/doc-scheme.json": "not-needed: governance contract unchanged by the release-notes body fix",
     "docs/example-config.md": "not-needed: example provider configuration unchanged by the open-issue reliability sweep",
     "docs/exec.md": "not-needed: exec documentation unchanged; compatibility coverage is recorded in testing and changelog docs",
     "docs/execpolicy.md": "not-needed: exec policy behavior unchanged by Xiaomi MiMo compatibility fixes",
     "docs/exit-confirmation-prompt-design.md": "not-needed: unchanged in this session",
     "docs/faq.md": "not-needed: unchanged by workspace path migration",
     "docs/getting-started.md": "not-needed: getting-started flow unchanged by the open-issue reliability sweep",
-    "docs/homebrew.md": "updated",
+    "docs/homebrew.md": "not-needed: Homebrew release flow unchanged by the release-notes body fix",
     "docs/index.md": "not-needed: docs navigation unchanged for workspace path migration",
     "docs/install.md": "not-needed: install flow unchanged by Xiaomi MiMo compatibility fixes",
     "docs/integration-zed.md": "not-needed: unchanged by workspace path migration",
@@ -69,10 +70,10 @@
     "docs/kay-brand-renaming-policy.md": "not-needed: rename policy unchanged",
     "docs/knowledge/2026-05.md": "not-needed: monthly knowledge unchanged by Learnings path migration",
     "docs/knowledge/INDEX.md": "not-needed: knowledge index had no legacy learnings references",
-    "docs/learnings/2026-05.md": "updated",
+    "docs/learnings/2026-05.md": "not-needed: monthly learnings unchanged by the release-notes body fix",
     "docs/platform-sandboxing.md": "not-needed: unchanged in this session",
     "docs/prompts.md": "not-needed: unchanged in this session",
-    "docs/release-notes/RELEASE_NOTES.md": "not-needed: unchanged in this session",
+    "docs/release-notes/RELEASE_NOTES.md": "updated",
     "docs/sandbox.md": "not-needed: unchanged by workspace path migration",
     "docs/sessions/2026-05-11-19-07-24.md": "not-needed: unchanged in this session",
     "docs/settings.md": "not-needed: unchanged in this session",
@@ -93,15 +94,15 @@
   },
   "sections": {
     "docs/CHANGELOG.md": {
-      "2026-05-11": "not-needed: historical changelog section unchanged by Silver Bullet init/migrate"
+      "2026-05-11": "not-needed: historical changelog section unchanged by the release-notes body fix"
     },
     "docs/doc-scheme.md": {
-      "Current Shape": "updated",
-      "Governed Documents": "updated"
+      "Current Shape": "not-needed: governance shape unchanged by the release-notes body fix",
+      "Governed Documents": "not-needed: governed inventory unchanged by the release-notes body fix"
     },
     "docs/doc-scheme.json": {
       "version": "not-needed: contract version unchanged",
-      "required_docs": "updated"
+      "required_docs": "not-needed: required docs unchanged by the release-notes body fix"
     },
     "docs/knowledge/2026-05.md": {
       "Architecture Patterns": "not-needed: monthly knowledge unchanged by Learnings path migration",
@@ -109,9 +110,9 @@
       "Key Decisions": "not-needed: monthly knowledge unchanged by Learnings path migration"
     },
     "docs/learnings/2026-05.md": {
-      "practice:init": "updated",
-      "practice:docs": "updated",
-      "practice:planning": "not-needed: learnings entry unchanged in this pass"
+      "practice:init": "not-needed: learnings entry unchanged by the release-notes body fix",
+      "practice:docs": "not-needed: learnings entry unchanged by the release-notes body fix",
+      "practice:planning": "not-needed: learnings entry unchanged by the release-notes body fix"
     },
     "docs/slash-commands.md": {
       "Prompt-Expanding (Multi-Agent)": "not-needed: prompt expansion behavior unchanged by Silver Bullet init/migrate",
