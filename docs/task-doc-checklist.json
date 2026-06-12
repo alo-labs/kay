@@ -1,8 +1,9 @@
 {
-  "task_id": "release-install-update-paths",
+  "task_id": "silver-init-migrate",
   "task_granularity": 2,
-  "updated_at": "2026-06-11T23:56:52Z",
+  "updated_at": "2026-06-12T02:16:49Z",
   "_notes": [
+    "Refreshed during the Silver Bullet init/migrate run so SB-owned enforcement, Learnings terminology, workflow tracking, and checklist coverage are current in the same session.",
     "Normalized the section statuses to exact `updated` tokens after the current-session doc-scheme hook validation.",
     "Refreshed during the release preflight disk-pressure fix in the current session so Linux workspace nextest now uses data-disk temp space and an early cache cleanup.",
     "Refreshed during the doc-scheme hook remediation for release-install-update-paths so the checklist, slash-command guidance, and DevOps release discipline docs are current in the same session.",
@@ -29,7 +30,7 @@
     "Added docs/upstream-merge-strategy.md to capture Kay's Every Code-first merge strategy plus the mandatory direct OSS Codex review pass.",
     "Clarified that documentation-only changes are exempt from the ./build-fast.sh completion gate and should use targeted doc validation instead.",
     "Refreshed during doc-scheme hook remediation for the upstream-merge-strategy task so Architecture, Testing, slash-command notes, and checklist freshness all match the current session.",
-    "Refreshed for GitHub issue #23 so MiMo stalling mitigation, changelog, knowledge, lessons, and checklist coverage are recorded in the same session.",
+    "Refreshed for GitHub issue #23 so MiMo stalling mitigation, changelog, knowledge, learnings, and checklist coverage are recorded in the same session.",
     "Refreshed during Xiaomi MiMo compatibility hardening so shared MiMo apply-patch/tool-output guidance, direct Xiaomi live notes-app coverage, and doc-scheme freshness are recorded in the same session.",
     "Refreshed during final Xiaomi MiMo schema/tool compatibility work so output-schema routing, Chat Completions schema deferral, live notes-app acceptance, and checklist freshness are recorded in the same session.",
     "Refreshed after live Xiaomi mimo-v2.5 exposed string-form shell commands inside concatenated tool arguments, so the shared parser fix and docs coverage are recorded in the same session.",
@@ -44,16 +45,16 @@
     "Refreshed during the current scoped release/install audit hook remediation so slash-command audit scoping, DevOps low-pass reporting, and checklist freshness are recorded in the same session."
   ],
   "docs": {
-    "docs/ARCHITECTURE.md": "not-needed: architecture overview unchanged by final Xiaomi MiMo schema/tool compatibility fixes",
-    "docs/CHANGELOG.md": "not-needed: root CHANGELOG unchanged in this session",
-    "docs/TESTING.md": "not-needed: testing gates unchanged in this session",
+    "docs/ARCHITECTURE.md": "not-needed: architecture overview unchanged by Silver Bullet init/migrate",
+    "docs/CHANGELOG.md": "not-needed: changelog unchanged by Silver Bullet init/migrate",
+    "docs/TESTING.md": "not-needed: testing gates unchanged by Silver Bullet init/migrate",
     "docs/advanced.md": "not-needed: unchanged by workspace path migration",
     "docs/agents.md": "not-needed: unchanged by workspace path migration",
     "docs/authentication.md": "not-needed: authentication flow unchanged by the open-issue reliability sweep",
     "docs/auto-drive.md": "not-needed: unchanged by workspace path migration",
     "docs/config.md": "not-needed: provider configuration unchanged by the open-issue reliability sweep",
-    "docs/doc-scheme.md": "not-needed: governance contract unchanged for workspace path migration",
-    "docs/doc-scheme.json": "not-needed: governance contract unchanged for workspace path migration",
+    "docs/doc-scheme.md": "updated",
+    "docs/doc-scheme.json": "updated",
     "docs/example-config.md": "not-needed: example provider configuration unchanged by the open-issue reliability sweep",
     "docs/exec.md": "not-needed: exec documentation unchanged; compatibility coverage is recorded in testing and changelog docs",
     "docs/execpolicy.md": "not-needed: exec policy behavior unchanged by Xiaomi MiMo compatibility fixes",
@@ -66,9 +67,9 @@
     "docs/integration-zed.md": "not-needed: unchanged by workspace path migration",
     "docs/kay-brand-renaming-inventory.md": "not-needed: rename inventory unchanged by Xiaomi MiMo compatibility fixes",
     "docs/kay-brand-renaming-policy.md": "not-needed: rename policy unchanged",
-    "docs/knowledge/2026-05.md": "not-needed: unchanged in this session",
-    "docs/knowledge/INDEX.md": "not-needed: no docs index changes in this task",
-    "docs/lessons/2026-05.md": "not-needed: unchanged in this session",
+    "docs/knowledge/2026-05.md": "not-needed: monthly knowledge unchanged by Learnings path migration",
+    "docs/knowledge/INDEX.md": "not-needed: knowledge index had no legacy learnings references",
+    "docs/learnings/2026-05.md": "updated",
     "docs/platform-sandboxing.md": "not-needed: unchanged in this session",
     "docs/prompts.md": "not-needed: unchanged in this session",
     "docs/release-notes/RELEASE_NOTES.md": "not-needed: unchanged in this session",
@@ -85,35 +86,35 @@
     "docs/tui-stream-chunking-tuning.md": "not-needed: unchanged in this session",
     "docs/tui-stream-chunking-validation.md": "not-needed: unchanged in this session",
     "docs/upstream-merge-strategy.md": "not-needed: upstream merge policy unchanged by Xiaomi MiMo compatibility fixes",
-    "docs/workflows/devops-cycle.md": "updated",
-    "docs/workflows/full-dev-cycle.md": "not-needed: release workflow changed in .github/workflows/release.yml, but these docs did not",
+    "docs/workflows/devops-cycle.md": "not-needed: workflow steps unchanged by Silver Bullet init/migrate",
+    "docs/workflows/full-dev-cycle.md": "not-needed: workflow steps unchanged by Silver Bullet init/migrate",
     "README.md": "not-needed: README unchanged by the open-issue reliability sweep",
     "CHANGELOG.md": "not-needed: unchanged in this session"
   },
   "sections": {
     "docs/CHANGELOG.md": {
-      "2026-05-11": "not-needed: existing required historical section unchanged; Xiaomi MiMo compatibility entry added under 2026-05-31"
+      "2026-05-11": "not-needed: historical changelog section unchanged by Silver Bullet init/migrate"
     },
     "docs/doc-scheme.md": {
-      "Current Shape": "not-needed: governance contract unchanged for runtime model observability",
-      "Governed Documents": "not-needed: governance contract unchanged for runtime model observability"
+      "Current Shape": "updated",
+      "Governed Documents": "updated"
     },
     "docs/doc-scheme.json": {
-      "version": "not-needed: governance contract unchanged for runtime model observability",
-      "required_docs": "not-needed: governance contract unchanged for runtime model observability"
+      "version": "not-needed: contract version unchanged",
+      "required_docs": "updated"
     },
     "docs/knowledge/2026-05.md": {
-      "Architecture Patterns": "not-needed: monthly knowledge unchanged in this pass",
-      "Known Gotchas": "not-needed: monthly knowledge unchanged in this pass",
-      "Key Decisions": "not-needed: monthly knowledge unchanged in this pass"
+      "Architecture Patterns": "not-needed: monthly knowledge unchanged by Learnings path migration",
+      "Known Gotchas": "not-needed: monthly knowledge unchanged by Learnings path migration",
+      "Key Decisions": "not-needed: monthly knowledge unchanged by Learnings path migration"
     },
-    "docs/lessons/2026-05.md": {
-      "practice:init": "not-needed: lessons entry unchanged in this pass",
-      "practice:docs": "not-needed: lessons entry unchanged in this pass",
-      "practice:planning": "not-needed: lessons entry unchanged in this pass"
+    "docs/learnings/2026-05.md": {
+      "practice:init": "updated",
+      "practice:docs": "updated",
+      "practice:planning": "not-needed: learnings entry unchanged in this pass"
     },
     "docs/slash-commands.md": {
-      "Prompt-Expanding (Multi-Agent)": "not-needed: unchanged by workspace path migration",
+      "Prompt-Expanding (Multi-Agent)": "not-needed: prompt expansion behavior unchanged by Silver Bullet init/migrate",
       "Implementation Notes": "updated"
     },
     "docs/task-doc-checklist.json": {
@@ -122,8 +123,8 @@
       "docs": "updated"
     },
     "docs/ARCHITECTURE.md": {
-      "System Shape": "not-needed: architecture overview unchanged by final Xiaomi MiMo schema/tool compatibility fixes",
-      "Data Flow": "not-needed: data flow unchanged by final Xiaomi MiMo schema/tool compatibility fixes"
+      "System Shape": "not-needed: architecture overview unchanged by Silver Bullet init/migrate",
+      "Data Flow": "not-needed: data flow unchanged by Silver Bullet init/migrate"
     },
     "docs/config.md": {
       "model_providers": "not-needed: provider configuration unchanged by the open-issue reliability sweep",
@@ -133,9 +134,9 @@
       "Repository Governance": "not-needed: docs navigation unchanged for workspace path migration"
     },
     "docs/TESTING.md": {
-      "Required Gate": "not-needed: required build gate unchanged by Xiaomi MiMo compatibility fixes",
+      "Required Gate": "not-needed: required build gate unchanged by Silver Bullet init/migrate",
       "Reliability Grade": "not-needed: testing policy unchanged for workspace path migration",
-      "Recommended Checks": "not-needed: section unchanged in this session",
+      "Recommended Checks": "not-needed: recommended checks unchanged by Silver Bullet init/migrate",
       "Provider / Model Strategy": "not-needed: provider/model testing strategy unchanged by the open-issue reliability sweep",
       "Real Project Validation": "not-needed: real-project validation policy unchanged by the open-issue reliability sweep",
       "Upstream Sync Policy": "not-needed: upstream sync policy unchanged by Xiaomi MiMo compatibility fixes"
@@ -162,17 +163,17 @@
       "Acceptance Criteria": "not-needed: rename policy unchanged"
     },
     "docs/knowledge/INDEX.md": {
-      "Monthly Files": "not-needed: no docs index changes in this task"
+      "Monthly Files": "not-needed: knowledge index had no legacy learnings references"
     },
     "docs/workflows/full-dev-cycle.md": {
-      "Start": "not-needed: release workflow changed in .github/workflows/release.yml, but these docs did not",
-      "Core Loop": "not-needed: release workflow changed in .github/workflows/release.yml, but these docs did not",
-      "Supporting Commands": "not-needed: release workflow changed in .github/workflows/release.yml, but these docs did not"
+      "Start": "not-needed: workflow entry steps unchanged by Silver Bullet init/migrate",
+      "Core Loop": "not-needed: workflow loop unchanged by Silver Bullet init/migrate",
+      "Supporting Commands": "not-needed: workflow command list unchanged by Silver Bullet init/migrate"
     },
     "docs/workflows/devops-cycle.md": {
-      "Start": "not-needed: workflow entry steps unchanged by the scoped release/install audit",
-      "Core Loop": "not-needed: execution loop unchanged by the scoped release/install audit",
-      "Release Discipline": "updated"
+      "Start": "not-needed: workflow entry steps unchanged by Silver Bullet init/migrate",
+      "Core Loop": "not-needed: workflow loop unchanged by Silver Bullet init/migrate",
+      "Release Discipline": "not-needed: release discipline unchanged by Silver Bullet init/migrate"
     }
   }
 }

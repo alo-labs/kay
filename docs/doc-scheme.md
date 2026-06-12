@@ -21,7 +21,7 @@ The initial SB docs set for this init includes:
 - `docs/CHANGELOG.md`
 - `docs/knowledge/INDEX.md`
 - `docs/knowledge/2026-05.md`
-- `docs/lessons/2026-05.md`
+- `docs/learnings/2026-05.md`
 - `docs/workflows/full-dev-cycle.md`
 - `docs/workflows/devops-cycle.md`
 - `docs/doc-scheme.md`
@@ -31,7 +31,7 @@ The initial SB docs set for this init includes:
 
 ## Maintenance Rules
 
-- Keep monthly knowledge and lessons files append-only
+- Keep monthly knowledge and learnings files append-only
 - Update the docs scheme and checklist together
 - Do not delete user-authored docs during bootstrap or reconciliation
 - Refresh the governed docs in the same session as the checklist so `updated` means "touched now," not "listed only"
