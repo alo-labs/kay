@@ -141,6 +141,8 @@ Implementation Notes
   Kay built-in slash commands. Exact named workflow routing is enforced in the
   skills prompt renderer so those requests execute the named workflow instead
   of drifting into adjacent scan or discovery paths.
+  Silver Bullet init/migrate runs should preserve exact skill receipts and keep
+  docs/learnings terminology aligned with the governed doc-scheme keys.
   The end-user install and release docs should stay aligned with the shipped
   assets in GitHub Releases, not with the presence or absence of npm registry
   publication.

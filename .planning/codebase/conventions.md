@@ -16,4 +16,4 @@ The repo already has a strong operating contract. Preserve it rather than replac
 
 - Existing docs stay intact
 - New governance docs are added alongside them
-- Monthly knowledge and lessons files remain append-only
+- Monthly knowledge and learnings files remain append-only
