@@ -666,6 +666,60 @@ pub struct AffectedPaths {
     pub deleted: Vec<PathBuf>,
 }
 
+fn validate_express_route_placement(path: &Path, content: &str) -> anyhow::Result<()> {
+    if !looks_like_express_router_file(path, content) {
+        return Ok(());
+    }
+
+    let lower = content.to_ascii_lowercase();
+    let Some(export_pos) = lower.rfind("module.exports") else {
+        return Ok(());
+    };
+    let after_export = &content[export_pos..];
+    let after_export_line = after_export
+        .find('\n')
+        .map(|index| &after_export[index + 1..])
+        .unwrap_or("");
+    if after_export_line.trim().is_empty() {
+        return Ok(());
+    }
+
+    const ROUTE_PATTERNS: [&str; 6] = [
+        "router.get(",
+        "router.post(",
+        "router.put(",
+        "router.patch(",
+        "router.delete(",
+        "router.use(",
+    ];
+    let after_export_lower = after_export_line.to_ascii_lowercase();
+    if ROUTE_PATTERNS
+        .iter()
+        .any(|pattern| after_export_lower.contains(pattern))
+    {
+        anyhow::bail!(
+            "Express route registration appears after `module.exports` in {}. Register routes before export.",
+            path.display()
+        );
+    }
+
+    Ok(())
+}
+
+fn looks_like_express_router_file(path: &Path, content: &str) -> bool {
+    if path.extension().and_then(|ext| ext.to_str()) != Some("js") {
+        return false;
+    }
+
+    let path_text = path.to_string_lossy();
+    let looks_like_route_module = path_text.contains("/routes/")
+        || path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .is_some_and(|name| name.contains("route"));
+    looks_like_route_module && content.contains("module.exports") && content.contains("router.")
+}
+
 /// Apply the hunks to the filesystem, returning which files were added, modified, or deleted.
 /// Returns an error if the patch could not be applied.
 fn apply_hunks_to_files(hunks: &[Hunk]) -> anyhow::Result<AffectedPaths> {
@@ -688,6 +742,7 @@ fn apply_hunks_to_files(hunks: &[Hunk]) -> anyhow::Result<AffectedPaths> {
                 }
                 std::fs::write(path, contents)
                     .with_context(|| format!("Failed to write file {}", path.display()))?;
+                validate_express_route_placement(path, contents)?;
                 added.push(path.clone());
             }
             Hunk::DeleteFile { path } => {
@@ -710,14 +765,16 @@ fn apply_hunks_to_files(hunks: &[Hunk]) -> anyhow::Result<AffectedPaths> {
                             format!("Failed to create parent directories for {}", dest.display())
                         })?;
                     }
-                    std::fs::write(dest, new_contents)
+                    std::fs::write(dest, &new_contents)
                         .with_context(|| format!("Failed to write file {}", dest.display()))?;
+                    validate_express_route_placement(dest, &new_contents)?;
                     std::fs::remove_file(path)
                         .with_context(|| format!("Failed to remove original {}", path.display()))?;
                     modified.push(dest.clone());
                 } else {
-                    std::fs::write(path, new_contents)
+                    std::fs::write(path, &new_contents)
                         .with_context(|| format!("Failed to write file {}", path.display()))?;
+                    validate_express_route_placement(path, &new_contents)?;
                     modified.push(path.clone());
                 }
             }
@@ -1859,5 +1916,29 @@ g
         let mut stderr = Vec::new();
         let result = apply_patch(&patch, &mut stdout, &mut stderr);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_apply_patch_rejects_express_route_after_module_exports() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("src/routes/notes.js");
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(
+            &path,
+            "const router = require('express').Router();\nrouter.get('/', () => {});\nmodule.exports = router;\n",
+        )
+        .unwrap();
+
+        let patch = wrap_patch(&format!(
+            "*** Update File: {}\n@@\n module.exports = router;\n+router.patch('/:id/pin', () => {{}});\n",
+            path.display()
+        ));
+
+        let mut stdout = Vec::new();
+        let mut stderr = Vec::new();
+        let result = apply_patch(&patch, &mut stdout, &mut stderr);
+        assert!(result.is_err());
+        let err = String::from_utf8(stderr).unwrap();
+        assert!(err.contains("module.exports"));
     }
 }

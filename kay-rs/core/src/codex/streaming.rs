@@ -8066,6 +8066,7 @@ fn normalize_apply_patch_hunk_headers(mut command: Vec<String>) -> Vec<String> {
 }
 
 fn normalize_apply_patch_hunk_header_text(patch: &str) -> String {
+    let patch = strip_apply_patch_heredoc_wrapper(patch);
     let mut normalized = String::with_capacity(patch.len());
 
     for line in patch.split_inclusive('\n') {
@@ -8073,6 +8074,18 @@ fn normalize_apply_patch_hunk_header_text(patch: &str) -> String {
             .strip_suffix('\n')
             .map(|line| (line, "\n"))
             .unwrap_or((line, ""));
+        let trimmed = line_without_newline.trim();
+        if trimmed.starts_with("--- ") || trimmed.starts_with("+++ ") {
+            continue;
+        }
+        if trimmed.chars().all(|ch| ch.is_ascii_digit()) && trimmed.len() <= 4 {
+            continue;
+        }
+        if let Some(converted) = convert_unified_diff_hunk_header(trimmed) {
+            normalized.push_str(&converted);
+            normalized.push_str(newline);
+            continue;
+        }
         let trailing_ws_len = line_without_newline.len()
             - line_without_newline.trim_end_matches([' ', '\t']).len();
         let trimmed_end = &line_without_newline[..line_without_newline.len() - trailing_ws_len];
@@ -8088,11 +8101,74 @@ fn normalize_apply_patch_hunk_header_text(patch: &str) -> String {
         normalized.push_str(newline);
     }
 
-    normalized
+    ensure_codex_patch_framing(&normalized)
+}
+
+fn strip_apply_patch_heredoc_wrapper(patch: &str) -> &str {
+    let trimmed = patch.trim();
+    if trimmed.starts_with("<<") {
+        if let Some(body) = trimmed
+            .strip_prefix("<<")
+            .and_then(|rest| rest.strip_prefix(['\'', '"']))
+            .and_then(|rest| rest.split_once('\n'))
+            .map(|(body, _)| body)
+        {
+            return body.trim_end_matches("EOF").trim();
+        }
+    }
+    trimmed
+}
+
+fn convert_unified_diff_hunk_header(line: &str) -> Option<String> {
+    if !line.starts_with("@@") || !line.contains('+') {
+        return None;
+    }
+    if line.starts_with("@@ ") && line.ends_with(" @@") {
+        return None;
+    }
+
+    let context = line
+        .rsplit("@@")
+        .next()
+        .map(str::trim)
+        .filter(|context| !context.is_empty());
+    Some(match context {
+        Some(context) => format!("@@ {context} @@"),
+        None => "@@".to_string(),
+    })
+}
+
+fn ensure_codex_patch_framing(body: &str) -> String {
+    let trimmed = body.trim();
+    let has_codex_hunk = trimmed.contains("*** Add File:")
+        || trimmed.contains("*** Update File:")
+        || trimmed.contains("*** Delete File:");
+    if !has_codex_hunk {
+        return body.to_string();
+    }
+
+    let mut framed = String::new();
+    if !trimmed.starts_with("*** Begin Patch") {
+        framed.push_str("*** Begin Patch\n");
+    }
+    framed.push_str(trimmed);
+    if !trimmed.ends_with("*** End Patch") {
+        if !framed.ends_with('\n') {
+            framed.push('\n');
+        }
+        framed.push_str("*** End Patch");
+    }
+    framed
 }
 
 fn normalize_exec_command_argv(command: Vec<String>) -> Vec<String> {
     if let Some(repaired) = repair_malformed_ls_probe(&command) {
+        return repaired;
+    }
+    if let Some(repaired) = repair_malformed_git_probe(&command) {
+        return repaired;
+    }
+    if let Some(repaired) = repair_malformed_shell_wrapper_argv(&command) {
         return repaired;
     }
 
@@ -8117,7 +8193,44 @@ fn normalize_exec_command_argv(command: Vec<String>) -> Vec<String> {
     })
 }
 
-fn repair_malformed_ls_probe(command: &[String]) -> Option<Vec<String>> {
+fn repair_malformed_shell_wrapper_argv(command: &[String]) -> Option<Vec<String>> {
+    if command.len() != 3 {
+        return None;
+    }
+    let shell = command.first()?.as_str();
+    let flag = command.get(1)?.as_str();
+    if !matches!((shell, flag), ("bash", "-lc") | ("sh", "-c")) {
+        return None;
+    }
+
+    let normalized = crate::exec_command::normalize_model_malformed_shell_command(&command[2]);
+    if normalized == command[2] {
+        return None;
+    }
+
+    if let Some((shell, script)) = normalized.split_once(" -lc ") {
+        if shell == "bash" {
+            return Some(vec![
+                "bash".to_string(),
+                "-lc".to_string(),
+                script.to_string(),
+            ]);
+        }
+    }
+    if let Some((shell, script)) = normalized.split_once(" -c ") {
+        if shell == "sh" {
+            return Some(vec!["sh".to_string(), "-c".to_string(), script.to_string()]);
+        }
+    }
+
+    Some(vec![
+        command[0].clone(),
+        command[1].clone(),
+        normalized,
+    ])
+}
+
+fn extract_malformed_and_tokens(command: &[String]) -> Option<Vec<String>> {
     let parts = if command.len() == 1 {
         command
             .first()?
@@ -8139,6 +8252,29 @@ fn repair_malformed_ls_probe(command: &[String]) -> Option<Vec<String>> {
             .collect::<Vec<_>>()
     };
 
+    if parts.len() < 2 {
+        return None;
+    }
+    Some(parts)
+}
+
+fn repair_malformed_git_probe(command: &[String]) -> Option<Vec<String>> {
+    let parts = extract_malformed_and_tokens(command)?;
+    if parts.first().map(String::as_str) != Some("git") || parts.len() < 2 {
+        return None;
+    }
+    if command.len() == 1 && !command[0].contains("&&") {
+        return None;
+    }
+    if command.len() > 1 && !command.iter().any(|part| part.trim() == "&&") {
+        return None;
+    }
+
+    Some(parts)
+}
+
+fn repair_malformed_ls_probe(command: &[String]) -> Option<Vec<String>> {
+    let parts = extract_malformed_and_tokens(command)?;
     if parts.len() < 3 || parts.first().map(String::as_str) != Some("ls") {
         return None;
     }
@@ -8181,11 +8317,12 @@ fn to_exec_params_from_shell_command(params: ShellCommandToolCallParams, sess: &
         .sandbox_permissions
         .and_then(|p| p.requires_escalated_permissions().then_some(true));
     let use_login_shell = params.login.unwrap_or(true);
+    let command = crate::exec_command::normalize_model_malformed_shell_command(&params.command);
 
     ExecParams {
-        command: vec![params.command.clone()],
+        command: vec![command.clone()],
         shell_script: Some(crate::exec::DeferredShellScript {
-            command: params.command,
+            command,
             use_login_shell,
         }),
         cwd: sess.resolve_path(params.workdir.clone()),
@@ -11041,22 +11178,7 @@ async fn handle_container_exec_with_params(
     strip_leading_confirm_prefix(&mut params.command);
 
     if let Some(redundant) = detect_redundant_cd(&params.command, &params.cwd) {
-        let guidance = guidance_for_redundant_cd(&redundant);
-        let order = sess.next_background_order(&sub_id, attempt_req, output_index);
-        sess
-            .notify_background_event_with_order(
-                &sub_id,
-                order,
-                format!("Command guard: {}", guidance.clone()),
-            )
-            .await;
-
-        return ResponseInputItem::FunctionCallOutput {
-            call_id,
-            output: FunctionCallOutputPayload {
-                body: code_protocol::models::FunctionCallOutputBody::Text(guidance),
-                success: None},
-        };
+        params.command = redundant.suggested;
     }
 
     if let Some(cat_guard) = detect_cat_write(&params.command) {
@@ -11078,7 +11200,7 @@ async fn handle_container_exec_with_params(
         };
     }
 
-    if let Some(python_guard) = detect_python_write(&params.command) {
+    if let Some(python_guard) = detect_python_write(&params.command, &params.cwd) {
         let guidance = guidance_for_python_write(&python_guard);
         let order = sess.next_background_order(&sub_id, attempt_req, output_index);
         sess
@@ -14217,9 +14339,9 @@ struct PythonWriteSuggestion {
     original_value: String,
 }
 
-fn detect_python_write(argv: &[String]) -> Option<PythonWriteSuggestion> {
+fn detect_python_write(argv: &[String], cwd: &Path) -> Option<PythonWriteSuggestion> {
     if let Some((_, script)) = extract_shell_script(argv) {
-        if script_contains_python_write(&script) {
+        if script_contains_python_write(&script, cwd) {
             return Some(PythonWriteSuggestion {
                 label: "original_script",
                 original_value: script,
@@ -14227,10 +14349,10 @@ fn detect_python_write(argv: &[String]) -> Option<PythonWriteSuggestion> {
         }
     }
 
-    detect_python_write_in_argv(argv)
+    detect_python_write_in_argv(argv, cwd)
 }
 
-fn detect_python_write_in_argv(argv: &[String]) -> Option<PythonWriteSuggestion> {
+fn detect_python_write_in_argv(argv: &[String], cwd: &Path) -> Option<PythonWriteSuggestion> {
     if argv.is_empty() {
         return None;
     }
@@ -14241,7 +14363,7 @@ fn detect_python_write_in_argv(argv: &[String]) -> Option<PythonWriteSuggestion>
 
     if argv.len() >= 3 && argv[1] == "-c" {
         let code = &argv[2];
-        if python_code_writes_files(code) {
+        if python_code_writes_files(code) && !python_write_targets_workspace(code, cwd) {
             return Some(PythonWriteSuggestion {
                 label: "python_inline_script",
                 original_value: code.clone(),
@@ -14252,7 +14374,7 @@ fn detect_python_write_in_argv(argv: &[String]) -> Option<PythonWriteSuggestion>
     None
 }
 
-fn script_contains_python_write(script: &str) -> bool {
+fn script_contains_python_write(script: &str, cwd: &Path) -> bool {
     let lower = script.to_ascii_lowercase();
     if !(lower.contains("python ")
         || lower.contains("python3")
@@ -14260,11 +14382,57 @@ fn script_contains_python_write(script: &str) -> bool {
     {
         return false;
     }
-    contains_python_write_keywords(&lower)
+    python_code_writes_files(&lower) && !python_write_targets_workspace(&lower, cwd)
 }
 
 fn python_code_writes_files(code: &str) -> bool {
     contains_python_write_keywords(&code.to_ascii_lowercase())
+}
+
+fn python_write_targets_workspace(code: &str, cwd: &Path) -> bool {
+    if !python_code_writes_files(code) {
+        return false;
+    }
+
+    let paths = extract_python_path_literals(code);
+    if paths.is_empty() {
+        return false;
+    }
+
+    paths
+        .iter()
+        .all(|path| python_write_path_stays_in_workspace(path, cwd))
+}
+
+fn extract_python_path_literals(code: &str) -> Vec<String> {
+    let mut paths = Vec::new();
+    let mut rest = code;
+    while let Some(start) = rest.find("Path(") {
+        rest = &rest[start + "Path(".len()..];
+        let Some(quote) = rest.chars().next().filter(|ch| *ch == '\'' || *ch == '"') else {
+            break;
+        };
+        let quoted = &rest[1..];
+        if let Some(end) = quoted.find(quote) {
+            paths.push(quoted[..end].to_string());
+            rest = &quoted[end + 1..];
+        } else {
+            break;
+        }
+    }
+    paths
+}
+
+fn python_write_path_stays_in_workspace(path: &str, cwd: &Path) -> bool {
+    let trimmed = path.trim();
+    if trimmed.is_empty() || trimmed.starts_with('/') || trimmed.starts_with("..") {
+        return false;
+    }
+    cwd.join(trimmed)
+        .canonicalize()
+        .ok()
+        .is_some_and(|resolved| resolved.starts_with(cwd))
+        || !trimmed.contains("..")
 }
 
 fn contains_python_write_keywords(lower: &str) -> bool {
@@ -14460,20 +14628,6 @@ fn is_connector(token: &str) -> bool {
     matches!(token, "&&" | ";" | "||")
 }
 
-fn guidance_for_redundant_cd(suggestion: &RedundantCdSuggestion) -> String {
-    let suggested = serde_json::to_string(&suggestion.suggested)
-        .unwrap_or_else(|_| "<failed to serialize suggested argv>".to_string());
-    let target_display = shlex_try_join(std::iter::once(suggestion.target_arg.as_str()))
-        .unwrap_or_else(|_| suggestion.target_arg.clone());
-    format!(
-        "Leading cd {target_display} is redundant because the command already runs in {}. Drop the prefix before retrying.\n\n{}: {}\nresend_exact_argv: {}",
-        suggestion.cwd.display(),
-        suggestion.label,
-        suggestion.original_value,
-        suggested
-    )
-}
-
 #[cfg(test)]
 mod command_guard_detection_tests {
     use super::*;
@@ -14578,29 +14732,55 @@ mod command_guard_detection_tests {
     }
 
     #[test]
-    fn detects_python_here_doc_write() {
+    fn detects_python_here_doc_write_outside_workspace() {
         let argv = vec![
             "bash".to_string(),
             "-lc".to_string(),
-            "python3 - <<'PY'\nfrom pathlib import Path\nPath('docs.txt').write_text('hello')\nPY".to_string(),
+            "python3 - <<'PY'\nfrom pathlib import Path\nPath('/tmp/docs.txt').write_text('hello')\nPY"
+                .to_string(),
         ];
 
-        let suggestion = detect_python_write(&argv).expect("should flag python write");
+        let suggestion =
+            detect_python_write(&argv, Path::new("/workspace")).expect("should flag python write");
         assert_eq!(suggestion.label, "original_script");
         assert!(suggestion.original_value.contains("write_text"));
     }
 
     #[test]
-    fn detects_python_inline_write() {
+    fn allows_python_here_doc_write_inside_workspace() {
+        let argv = vec![
+            "bash".to_string(),
+            "-lc".to_string(),
+            "python3 - <<'PY'\nfrom pathlib import Path\nPath('docs.txt').write_text('hello')\nPY"
+                .to_string(),
+        ];
+
+        assert!(detect_python_write(&argv, Path::new("/workspace")).is_none());
+    }
+
+    #[test]
+    fn detects_python_inline_write_outside_workspace() {
+        let argv = vec![
+            "python3".to_string(),
+            "-c".to_string(),
+            "from pathlib import Path; Path('/tmp/foo.txt').write_text('hi')".to_string(),
+        ];
+
+        let suggestion = detect_python_write(&argv, Path::new("/workspace"))
+            .expect("should flag inline python write");
+        assert_eq!(suggestion.label, "python_inline_script");
+        assert!(suggestion.original_value.contains("write_text"));
+    }
+
+    #[test]
+    fn allows_python_inline_write_inside_workspace() {
         let argv = vec![
             "python3".to_string(),
             "-c".to_string(),
             "from pathlib import Path; Path('foo.txt').write_text('hi')".to_string(),
         ];
 
-        let suggestion = detect_python_write(&argv).expect("should flag inline python write");
-        assert_eq!(suggestion.label, "python_inline_script");
-        assert!(suggestion.original_value.contains("write_text"));
+        assert!(detect_python_write(&argv, Path::new("/workspace")).is_none());
     }
 
     #[test]
@@ -14611,7 +14791,7 @@ mod command_guard_detection_tests {
             "print('hello world')".to_string(),
         ];
 
-        assert!(detect_python_write(&argv).is_none());
+        assert!(detect_python_write(&argv, Path::new("/workspace")).is_none());
     }
 }
 

@@ -339,8 +339,13 @@ async fn exec(
 ) -> Result<RawExecToolCallOutput> {
     let timeout = params.maybe_timeout_duration();
     let ExecParams {
-        command, cwd, env, ..
+        mut command,
+        cwd,
+        mut env,
+        ..
     } = params;
+
+    merge_leading_env_assignments(&mut command, &mut env);
 
     preflight_exec(&command, &cwd, &env)?;
 
@@ -362,6 +367,30 @@ async fn exec(
     )
     .await?;
     consume_truncated_output(child, timeout, stdout_stream).await
+}
+
+fn merge_leading_env_assignments(command: &mut Vec<String>, env: &mut HashMap<String, String>) {
+    while let Some(first) = command.first() {
+        if let Some((key, value)) = parse_env_assignment(first) {
+            env.entry(key).or_insert(value);
+            command.remove(0);
+        } else {
+            break;
+        }
+    }
+}
+
+pub(crate) fn parse_env_assignment(arg: &str) -> Option<(String, String)> {
+    let (key, value) = arg.split_once('=')?;
+    if key.is_empty()
+        || key.starts_with('-')
+        || !key
+            .chars()
+            .all(|ch| ch.is_ascii_alphanumeric() || ch == '_')
+    {
+        return None;
+    }
+    Some((key.to_string(), value.to_string()))
 }
 
 fn preflight_exec(command: &[String], cwd: &Path, env: &HashMap<String, String>) -> io::Result<()> {
@@ -860,7 +889,7 @@ fn synthetic_exit_status(code: i32) -> ExitStatus {
 
 #[cfg(test)]
 mod tests {
-    use super::{command_program_resolves, preflight_exec};
+    use super::{command_program_resolves, merge_leading_env_assignments, preflight_exec};
     use std::collections::HashMap;
     use std::fs;
 
@@ -919,5 +948,21 @@ mod tests {
         fs::remove_dir_all(&cwd).expect("remove temp dir");
 
         assert!(err.is_ok(), "expected relative program to resolve in cwd");
+    }
+
+    #[test]
+    fn merge_leading_env_assignments_strips_prefix_before_preflight() {
+        let cwd = std::env::current_dir().expect("cwd");
+        let mut command = vec![
+            "PORT=3457".to_string(),
+            "/bin/sh".to_string(),
+            "-c".to_string(),
+            "echo hi".to_string(),
+        ];
+        let mut env = HashMap::new();
+        merge_leading_env_assignments(&mut command, &mut env);
+        assert_eq!(env.get("PORT").map(String::as_str), Some("3457"));
+        assert_eq!(command.first().map(String::as_str), Some("/bin/sh"));
+        assert!(preflight_exec(&command, &cwd, &env).is_ok());
     }
 }

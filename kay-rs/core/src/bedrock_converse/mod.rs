@@ -26,7 +26,7 @@ use crate::error::RetryLimitReachedError;
 use crate::error::UnexpectedResponseError;
 use crate::model_family::find_family_for_model;
 use crate::model_family::ModelFamily;
-use crate::model_family::provider_model_slug;
+use crate::model_family::wire_model_slug;
 use crate::util::backoff;
 
 use request::bedrock_converse_url;
@@ -60,8 +60,8 @@ pub(crate) async fn stream_bedrock_converse(
         .model_override
         .as_deref()
         .unwrap_or(request.model);
-    let wire_model_slug = provider_model_slug(request.model_provider_id, request_model);
-    let request_model = wire_model_slug.as_ref();
+    let wire_slug = wire_model_slug(request.model_provider_id, request_model);
+    let request_model = wire_slug.as_str();
     let request_family = request
         .prompt
         .model_family_override

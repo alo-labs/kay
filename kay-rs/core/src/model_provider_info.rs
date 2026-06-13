@@ -458,6 +458,10 @@ impl ModelProviderInfo {
             return Ok(Some(CodexAuth::from_api_key(&token)));
         }
 
+        if let Ok(Some(key)) = self.api_key() {
+            return Ok(Some(CodexAuth::from_api_key(&key)));
+        }
+
         if let Some(key) = provider_api_key
             .map(str::trim)
             .filter(|key| !key.is_empty())
@@ -466,7 +470,7 @@ impl ModelProviderInfo {
         }
 
         match self.api_key() {
-            Ok(Some(key)) => Ok(Some(CodexAuth::from_api_key(&key))),
+            Ok(Some(_)) => unreachable!("env key handled above"),
             Ok(None) => {
                 if self.credential_ref.is_some() {
                     Err(self.missing_provider_credential_error())
@@ -1343,6 +1347,47 @@ env_http_headers = { "X-Example-Env-Header" = "EXAMPLE_ENV_VAR" }
             ChatCompletionsFormat::OpenAi
         );
         assert!(!opencode_go.requires_openai_auth);
+    }
+
+    #[tokio::test]
+    async fn env_key_overrides_stored_provider_credential() {
+        let provider = ModelProviderInfo {
+            name: "OpenCode Go".into(),
+            base_url: Some(OPENCODE_GO_DEFAULT_BASE_URL.into()),
+            env_key: Some("OPENCODE_GO_API_KEY".into()),
+            env_key_instructions: None,
+            experimental_bearer_token: None,
+            auth: None,
+            credential_ref: Some(OPENCODE_GO_PROVIDER_ID.to_string()),
+            wire_api: WireApi::Chat,
+            chat_completions_format: ChatCompletionsFormat::OpenAi,
+            query_params: None,
+            http_headers: None,
+            env_http_headers: None,
+            request_max_retries: None,
+            stream_max_retries: None,
+            stream_idle_timeout_ms: None,
+            websocket_connect_timeout_ms: None,
+            requires_openai_auth: false,
+            openrouter: None,
+        };
+
+        let stored_auth = Some(CodexAuth::from_api_key("sk-stored"));
+        // SAFETY: test runs single-threaded and restores env immediately after.
+        unsafe {
+            std::env::set_var("OPENCODE_GO_API_KEY", "sk-env");
+        }
+        let auth = provider
+            .effective_auth_with_provider_key(&stored_auth, Some("sk-stored"))
+            .await
+            .expect("env key should resolve");
+        unsafe {
+            std::env::remove_var("OPENCODE_GO_API_KEY");
+        }
+        assert_eq!(
+            auth.expect("env auth").get_token().await.unwrap(),
+            "sk-env"
+        );
     }
 
     #[tokio::test]

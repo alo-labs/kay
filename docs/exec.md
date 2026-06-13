@@ -115,6 +115,18 @@ kay exec --model gpt-5.1 --json "Review the change, look for use-after-free issu
 kay exec --model gpt-5.1 --json resume --last "Fix use-after-free issues"
 ```
 
+### Time limits and final status
+
+`--max-seconds` stops a run when the wall-clock budget is exhausted. Kay writes
+`STATUS: BLOCKED` to `--output-last-message` (when configured) and exits with
+code 1. Host wrappers that use `timeout`/`gtimeout` may still surface exit code
+124; read the last-message file to see whether partial work is salvageable.
+
+Delegated prompts that require a final status line (for example `Final message
+must include STATUS: SUCCESS` or `STATUS: BLOCKED`) are enforced at process
+exit: Kay returns exit code 1 when the last agent message does not satisfy the
+contract.
+
 ## Authentication
 
 By default, `kay exec` uses the same authentication method as the TUI and VSCode extension. You can override the API key by setting the `CODEX_API_KEY` environment variable.
