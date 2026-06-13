@@ -14382,7 +14382,7 @@ fn script_contains_python_write(script: &str, cwd: &Path) -> bool {
     {
         return false;
     }
-    python_code_writes_files(&lower) && !python_write_targets_workspace(&lower, cwd)
+    python_code_writes_files(&lower) && !python_write_targets_workspace(script, cwd)
 }
 
 fn python_code_writes_files(code: &str) -> bool {
