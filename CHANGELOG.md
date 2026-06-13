@@ -4,6 +4,25 @@
 
 ### Bug Fixes
 
+- Auth: provider env keys such as `OPENCODE_GO_API_KEY` now override stored
+  `~/.kay/auth.json` provider credentials.
+- Models: wire requests canonicalize OpenCode Go aliases such as
+  `MiniMax-M3` → `minimax-m3`.
+- Exec: `kay exec --full-auto` enables workspace-write network access by
+  default for package registries, GitHub APIs, and local test servers.
+- Runtime: normalize malformed model shell commands (`git && -C && …`, `bash &&
+  -lc && …`) before execution.
+- Runtime: normalize `apply_patch` bodies missing `*** Begin Patch`, unified-diff
+  hunk headers, and stray numeric hunk lines.
+- Runtime: reject Express route handlers registered after `module.exports` in
+  `routes/*.js` modules.
+- Runtime: allow in-workspace `python3 -c` pathlib writes while still blocking
+  writes outside the session cwd.
+- Exec: normalize leading `KEY=value` argv prefixes before exec preflight and merge
+  them into the child environment.
+- Runtime: auto-strip redundant leading `cd <workspace>` instead of blocking.
+- Exec: enforce Sidekick-style final `STATUS:` contracts and write
+  `STATUS: BLOCKED` on `--max-seconds` timeout to `--output-last-message`.
 - Exec: accept `--ask-for-approval` on `kay exec` and preserve explicit
   approval-policy overrides while keeping headless default behavior.
 - Runtime: repair MiniMax-M3's malformed `ls && -la && <path>` shell probe

@@ -67,7 +67,7 @@ use crate::error::RetryLimitReachedError;
 use crate::error::UnexpectedResponseError;
 use crate::error::UsageLimitReachedError;
 use crate::flags::CODEX_RS_SSE_FIXTURE;
-use crate::model_family::{find_family_for_model, provider_model_slug, ModelFamily};
+use crate::model_family::{find_family_for_model, wire_model_slug, ModelFamily};
 #[cfg(test)]
 use crate::model_provider_info::ChatCompletionsFormat;
 use crate::model_provider_info::ModelProviderInfo;
@@ -656,8 +656,8 @@ impl ModelClient {
                     .model_override
                     .as_deref()
                     .unwrap_or(self.config.model.as_str());
-                let wire_model_slug = provider_model_slug(&self.config.model_provider_id, request_model);
-                let request_model = wire_model_slug.as_ref();
+                let wire_slug = wire_model_slug(&self.config.model_provider_id, request_model);
+                let request_model = wire_slug.as_str();
                 let effective_family = prompt
                     .model_family_override
                     .clone()
@@ -753,8 +753,8 @@ impl ModelClient {
             .model_override
             .as_deref()
             .unwrap_or(self.config.model.as_str());
-        let wire_model_slug = provider_model_slug(&self.config.model_provider_id, request_model);
-        let request_model = wire_model_slug.as_ref();
+        let wire_slug = wire_model_slug(&self.config.model_provider_id, request_model);
+        let request_model = wire_slug.as_str();
         let effective_effort = clamp_reasoning_effort_for_model(request_model, self.effort);
         let request_family = prompt
             .model_family_override
@@ -1211,8 +1211,8 @@ impl ModelClient {
             .model_override
             .as_deref()
             .unwrap_or(self.config.model.as_str());
-        let wire_model_slug = provider_model_slug(&self.config.model_provider_id, request_model);
-        let request_model = wire_model_slug.as_ref();
+        let wire_slug = wire_model_slug(&self.config.model_provider_id, request_model);
+        let request_model = wire_slug.as_str();
         let effective_effort = clamp_reasoning_effort_for_model(request_model, self.effort);
         let request_family = prompt
             .model_family_override
@@ -1983,8 +1983,8 @@ impl ModelClient {
             .model_override
             .as_deref()
             .unwrap_or(self.config.model.as_str());
-        let wire_model_slug = provider_model_slug(&self.config.model_provider_id, request_model);
-        let request_model = wire_model_slug.as_ref();
+        let wire_slug = wire_model_slug(&self.config.model_provider_id, request_model);
+        let request_model = wire_slug.as_str();
         let family = prompt
             .model_family_override
             .clone()

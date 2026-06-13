@@ -30,10 +30,10 @@ Yes, you can disable all approval prompts with `--ask-for-approval never`. This 
 | Safe read-only browsing            | `--sandbox read-only --ask-for-approval on-request`                                         | Kay can read files and answer questions. Kay requires approval to make edits, run commands, or access network.                                      |
 | Read-only non-interactive (CI)     | `--sandbox read-only --ask-for-approval never`                                              | Reads only; never escalates                                                                                                                           |
 | Let it edit the repo, ask if risky | `--sandbox workspace-write --ask-for-approval on-request`                                   | Kay can read files, make edits, and run commands in the workspace. Kay requires approval for actions outside the workspace or for network access.   |
-| Auto (preset)                      | `--full-auto` (equivalent to `--sandbox workspace-write` + `--ask-for-approval on-failure`) | Kay can read files, make edits, and run commands in the workspace. Kay requires approval when a sandboxed command fails or needs escalation.        |
+| Auto (preset)                      | `--full-auto` (equivalent to `--sandbox workspace-write` + `--ask-for-approval on-failure`) | Kay can read files, make edits, and run commands in the workspace with network access enabled for `kay exec --full-auto`. Kay requires approval when a sandboxed command fails or needs escalation.        |
 | YOLO (not recommended)             | `--dangerously-bypass-approvals-and-sandbox` (alias: `--yolo`)                              | No sandbox; no prompts                                                                                                                                |
 
-> Note: In `workspace-write`, network is disabled by default unless enabled in config (`[sandbox_workspace_write].network_access = true`).
+> Note: In `workspace-write`, network is disabled by default unless enabled in config (`[sandbox_workspace_write].network_access = true`) or when using `kay exec --full-auto`.
 
 #### Fine-tuning in `config.toml`
 

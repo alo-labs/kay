@@ -106,6 +106,18 @@ pub fn provider_model_slug<'a>(provider_id: &str, model_slug: &'a str) -> Cow<'a
     Cow::Borrowed(model_slug)
 }
 
+/// Canonicalize provider-facing model slugs for wire requests.
+pub fn wire_model_slug(provider_id: &str, model_slug: &str) -> String {
+    let stripped = provider_model_slug(provider_id, model_slug);
+    let canonical = stripped.as_ref();
+    if provider_id == OPENCODE_GO_PROVIDER_ID || provider_id == MINIMAX_PROVIDER_ID {
+        if canonical.eq_ignore_ascii_case("MiniMax-M3") {
+            return "minimax-m3".to_string();
+        }
+    }
+    canonical.to_string()
+}
+
 /// Infer the provider id from a model slug when the slug clearly belongs to a
 /// non-OpenAI provider.
 ///

@@ -549,17 +549,57 @@ async fn create_exec_command_session(
     Ok((session, initial_output_rx, exit_rx))
 }
 
-fn normalize_model_malformed_shell_command(cmd: &str) -> String {
+pub(crate) fn normalize_model_malformed_shell_command(cmd: &str) -> String {
     let trimmed = cmd.trim();
+    if let Some(repaired) = repair_malformed_shell_wrapper(trimmed) {
+        return repaired;
+    }
     if !looks_like_argv_split_with_and(trimmed) {
         return cmd.to_string();
     }
 
-    trimmed
-        .split("&&")
+    join_malformed_and_tokens(trimmed)
+}
+
+fn join_malformed_and_tokens(cmd: &str) -> String {
+    cmd.split("&&")
         .map(str::trim)
+        .filter(|part| !part.is_empty())
         .collect::<Vec<_>>()
         .join(" ")
+}
+
+fn repair_malformed_shell_wrapper(cmd: &str) -> Option<String> {
+    if !cmd.contains("&&") {
+        return None;
+    }
+
+    let parts = cmd
+        .split("&&")
+        .map(str::trim)
+        .filter(|part| !part.is_empty())
+        .collect::<Vec<_>>();
+    let (shell, flag, rest) = match parts.as_slice() {
+        ["bash", "-lc", rest @ ..] => ("bash", "-lc", rest),
+        ["sh", "-c", rest @ ..] => ("sh", "-c", rest),
+        _ => return None,
+    };
+    if rest.is_empty() {
+        return None;
+    }
+
+    let inner = join_malformed_and_tokens(&rest.join(" && "));
+    Some(format!("{shell} {flag} {}", shell_word_for_flag(inner.as_str())))
+}
+
+fn shell_word_for_flag(script: &str) -> String {
+    if script.is_empty() {
+        return "''".to_string();
+    }
+    if !script.chars().any(char::is_whitespace) && !script.contains('\'') {
+        return script.to_string();
+    }
+    format!("'{}'", script.replace('\'', "'\\''"))
 }
 
 fn looks_like_argv_split_with_and(cmd: &str) -> bool {
@@ -795,6 +835,14 @@ abc"#;
     }
 
     #[test]
+    fn normalizes_git_with_c_flag_split_by_and() {
+        assert_eq!(
+            normalize_model_malformed_shell_command("git && -C && /tmp/repo && status"),
+            "git -C /tmp/repo status"
+        );
+    }
+
+    #[test]
     fn normalizes_model_commands_split_with_shell_and() {
         assert_eq!(
             normalize_model_malformed_shell_command("git && status && --short"),
@@ -803,6 +851,12 @@ abc"#;
         assert_eq!(
             normalize_model_malformed_shell_command("bash && -lc && cargo:test"),
             "bash -lc cargo:test"
+        );
+        assert_eq!(
+            normalize_model_malformed_shell_command(
+                "bash && -lc && git && -C && /tmp/repo && status"
+            ),
+            "bash -lc 'git -C /tmp/repo status'"
         );
         assert_eq!(
             normalize_model_malformed_shell_command("cat && /tmp/SKILL.md"),

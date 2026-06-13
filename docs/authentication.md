@@ -79,6 +79,10 @@ What still works:
 
 Project `.env` provider keys are always ignored — there is no opt‑in.
 
+Provider-specific environment variables such as `OPENCODE_GO_API_KEY`,
+`MINIMAX_API_KEY`, and `XIAOMI_API_KEY` override stored
+`auth.json` `provider_credentials` entries when set in the process environment.
+
 UI clarity:
 
 - When Kay is using an API key, the chat footer shows a bold “Auth: API key” badge so it’s obvious which mode you’re in.

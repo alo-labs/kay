@@ -18,6 +18,7 @@ pub use responses_api::create_exec_command_tool_for_responses_api;
 pub use responses_api::create_write_stdin_tool_for_responses_api;
 #[allow(unused_imports)]
 pub use session_manager::result_into_payload;
+pub(crate) use session_manager::normalize_model_malformed_shell_command;
 
 // Provide a stable type alias used by the rest of the codebase.
 // Upstream removed the global SESSION_MANAGER; we now manage a per-session

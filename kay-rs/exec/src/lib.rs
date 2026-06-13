@@ -103,6 +103,16 @@ fn is_fatal_error_event(event: &Event) -> bool {
     )
 }
 
+fn enable_workspace_write_network_for_full_auto(config: &mut Config, full_auto: bool) {
+    if !full_auto {
+        return;
+    }
+
+    if let SandboxPolicy::WorkspaceWrite { network_access, .. } = &mut config.sandbox_policy {
+        *network_access = true;
+    }
+}
+
 fn resolve_exec_policy_overrides(
     full_auto: bool,
     dangerously_bypass_approvals_and_sandbox: bool,
@@ -347,6 +357,7 @@ pub async fn run_main(cli: Cli, code_linux_sandbox_exe: Option<PathBuf>) -> anyh
     };
 
     let mut config = Config::load_with_cli_overrides(cli_kv_overrides, overrides)?;
+    enable_workspace_write_network_for_full_auto(&mut config, full_auto);
     config.max_run_seconds = max_seconds;
     config.max_run_deadline = run_deadline_std;
     config.demo_developer_message = cli.demo_developer_message.clone();
@@ -813,6 +824,11 @@ pub async fn run_main(cli: Cli, code_linux_sandbox_exe: Option<PathBuf>) -> anyh
                 }
             } => {
                 eprintln!("Time budget exceeded (--max-seconds={})", max_seconds.unwrap_or_default());
+                record_time_budget_blocked_message(
+                    &mut final_last_message,
+                    &last_message_file,
+                    max_seconds,
+                );
                 error_seen = true;
                 let _ = conversation.submit(Op::Interrupt).await;
                 let _ = conversation.submit(Op::Shutdown).await;
@@ -1255,6 +1271,9 @@ pub async fn run_main(cli: Cli, code_linux_sandbox_exe: Option<PathBuf>) -> anyh
     if review_runs > 0 {
         eprintln!("Review runs: {} (auto_resolve={} max_attempts={})", review_runs, config.tui.review_auto_resolve, max_auto_resolve_attempts);
     }
+    if let Some(path) = last_message_file.as_deref() {
+        handle_last_message(final_last_message.as_deref(), path);
+    }
     if final_status_contract_missing(&final_status_contract_prompt, final_last_message.as_deref()) {
         eprintln!(
             "Final status contract was required by the prompt, but the last agent message did not start with `STATUS:`."
@@ -1381,9 +1400,15 @@ async fn run_auto_drive_session(
                             "Time budget exceeded (--max-seconds={})",
                             config.max_run_seconds.unwrap_or_default()
                         );
+                        record_time_budget_blocked_message(
+                            &mut final_last_message,
+                            &last_message_path,
+                            config.max_run_seconds,
+                        );
                         let _ = conversation.submit(Op::Interrupt).await;
                         let _ = conversation.submit(Op::Shutdown).await;
-                        return Err(anyhow::anyhow!("Time budget exceeded"));
+                        error_seen = true;
+                        break;
                     }
                 }
             } else {
@@ -1404,9 +1429,12 @@ async fn run_auto_drive_session(
         }
     }
 
+    let mut auto_drive_pid_guard: Option<AutoDrivePidFile> = None;
+
+    if !error_seen {
     let mut history = AutoDriveHistory::new();
 
-    let mut auto_drive_pid_guard =
+    auto_drive_pid_guard =
         AutoDrivePidFile::write(&config.code_home, Some(goal.as_str()), AutoDriveMode::Exec);
 
 	    let auto_config = build_auto_drive_exec_config(&config);
@@ -1433,9 +1461,17 @@ async fn run_auto_drive_session(
                 Err(_) => {
                     let _ = handle.send(AutoCoordinatorCommand::Stop);
                     handle.cancel();
-                    let _ = conversation.submit(Op::Interrupt).await;
-                    let _ = conversation.submit(Op::Shutdown).await;
-                    return Err(anyhow::anyhow!("Time budget exceeded"));
+                    eprintln!(
+                        "Time budget exceeded (--max-seconds={})",
+                        config.max_run_seconds.unwrap_or_default()
+                    );
+                    record_time_budget_blocked_message(
+                        &mut final_last_message,
+                        &last_message_path,
+                        config.max_run_seconds,
+                    );
+                    error_seen = true;
+                    break;
                 }
             }
         } else {
@@ -1491,6 +1527,7 @@ async fn run_auto_drive_session(
                             &mut auto_review_tracker,
                             prompt_text.to_string(),
                             run_deadline,
+                            config.max_run_seconds,
                         )
                         .await
                         {
@@ -1557,6 +1594,7 @@ async fn run_auto_drive_session(
                     &mut auto_review_tracker,
                     prompt_text,
                     run_deadline,
+                    config.max_run_seconds,
                 )
                 .await
                 {
@@ -1627,9 +1665,15 @@ async fn run_auto_drive_session(
                             "Time budget exceeded (--max-seconds={})",
                             config.max_run_seconds.unwrap_or_default()
                         );
+                        record_time_budget_blocked_message(
+                            &mut final_last_message,
+                            &last_message_path,
+                            config.max_run_seconds,
+                        );
                         let _ = conversation.submit(Op::Interrupt).await;
                         let _ = conversation.submit(Op::Shutdown).await;
-                        return Err(anyhow::anyhow!("Time budget exceeded"));
+                        error_seen = true;
+                        break;
                     }
                 }
             } else {
@@ -1667,9 +1711,15 @@ async fn run_auto_drive_session(
                         "Time budget exceeded (--max-seconds={})",
                         config.max_run_seconds.unwrap_or_default()
                     );
+                    record_time_budget_blocked_message(
+                        &mut final_last_message,
+                        &last_message_path,
+                        config.max_run_seconds,
+                    );
                     let _ = conversation.submit(Op::Interrupt).await;
                     let _ = conversation.submit(Op::Shutdown).await;
-                    return Err(anyhow::anyhow!("Time budget exceeded"));
+                    error_seen = true;
+                    break;
                 }
             }
         } else {
@@ -1690,6 +1740,9 @@ async fn run_auto_drive_session(
         if matches!(status, CodexStatus::Shutdown) {
             break;
         }
+    }
+
+    handle.cancel();
     }
 
     if let Some(path) = last_message_path.as_deref() {
@@ -1727,24 +1780,62 @@ fn final_status_contract_missing(prompt: &str, last_agent_message: Option<&str>)
         return false;
     }
 
-    !last_agent_message
-        .map(|message| {
-            message
-                .trim_start_matches(|ch: char| ch.is_whitespace() || ch == '`')
-                .to_ascii_uppercase()
-                .starts_with("STATUS:")
-        })
-        .unwrap_or(false)
+    match last_agent_message {
+        Some(message) => !final_status_contract_satisfied(prompt, message),
+        None => true,
+    }
+}
+
+fn final_status_contract_satisfied(prompt: &str, message: &str) -> bool {
+    let trimmed = message.trim_start_matches(|ch: char| ch.is_whitespace() || ch == '`');
+    let upper = trimmed.to_ascii_uppercase();
+    if upper.starts_with("STATUS:") {
+        return true;
+    }
+
+    let lower_prompt = prompt.to_ascii_lowercase();
+    if lower_prompt.contains("must include")
+        || lower_prompt.contains("include status")
+    {
+        return upper.contains("STATUS: SUCCESS") || upper.contains("STATUS: BLOCKED");
+    }
+
+    false
 }
 
 fn prompt_requires_final_status(prompt: &str) -> bool {
     let lower = prompt.to_ascii_lowercase();
-    let mentions_final_response =
-        lower.contains("final response") || lower.contains("final answer");
+    let mentions_final = lower.contains("final response")
+        || lower.contains("final answer")
+        || lower.contains("final message");
     let mentions_required_status = lower.contains("status:");
-    let requires_prefix = lower.contains("begin") || lower.contains("start");
+    let requires_status_contract = lower.contains("begin")
+        || lower.contains("start")
+        || lower.contains("must include")
+        || lower.contains("include status");
 
-    mentions_final_response && mentions_required_status && requires_prefix
+    mentions_final && mentions_required_status && requires_status_contract
+}
+
+fn time_budget_blocked_status(max_seconds: Option<u64>) -> String {
+    let limit = max_seconds
+        .map(|seconds| seconds.to_string())
+        .unwrap_or_else(|| "unknown".to_string());
+    format!(
+        "STATUS: BLOCKED kay exec time budget exceeded (--max-seconds={limit}); partial work may remain on disk for host verification."
+    )
+}
+
+fn record_time_budget_blocked_message(
+    final_last_message: &mut Option<String>,
+    last_message_file: &Option<PathBuf>,
+    max_seconds: Option<u64>,
+) {
+    let status = time_budget_blocked_status(max_seconds);
+    *final_last_message = Some(status.clone());
+    if let Some(path) = last_message_file.as_deref() {
+        handle_last_message(Some(&status), path);
+    }
 }
 
 fn merge_developer_message(existing: Option<String>, extra: &str) -> Option<String> {
@@ -2625,6 +2716,7 @@ async fn submit_and_wait(
     auto_review_tracker: &mut AutoReviewTracker,
     prompt_text: String,
     run_deadline: Option<Instant>,
+    max_run_seconds: Option<u64>,
 ) -> anyhow::Result<TurnResult> {
     let mut error_seen = false;
 
@@ -2649,7 +2741,10 @@ async fn submit_and_wait(
                         Err(_) => {
                             let _ = conversation.submit(Op::Interrupt).await;
                             let _ = conversation.submit(Op::Shutdown).await;
-                            return Err(anyhow::anyhow!("Time budget exceeded"));
+                            return Ok(TurnResult {
+                                last_agent_message: Some(time_budget_blocked_status(max_run_seconds)),
+                                error_seen: true,
+                            });
                         }
                     }
                 }
@@ -3118,6 +3213,26 @@ mod tests {
         // move HEAD back to check false case
         run_git(["checkout", "HEAD~1"].as_slice());
         assert!(!head_is_ancestor_of_base(temp.path(), "deadbeef"));
+    }
+
+    #[test]
+    fn final_status_contract_detects_sidekick_final_message_requirement() {
+        let prompt = "Final message must include STATUS: SUCCESS only if all open issues are addressed locally. If blocked, use STATUS: BLOCKED with the exact blocker.";
+        assert!(final_status_contract_missing(
+            prompt,
+            Some("**Issue #219** - not yet verified.")
+        ));
+        assert!(!final_status_contract_missing(
+            prompt,
+            Some("STATUS: BLOCKED waiting on tests")
+        ));
+    }
+
+    #[test]
+    fn time_budget_blocked_status_includes_limit() {
+        let status = time_budget_blocked_status(Some(480));
+        assert!(status.starts_with("STATUS: BLOCKED"));
+        assert!(status.contains("480"));
     }
 
     #[test]
