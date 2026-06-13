@@ -26,6 +26,7 @@ The initial SB docs set for this init includes:
 - `docs/workflows/devops-cycle.md`
 - `docs/doc-scheme.md`
 - `docs/doc-scheme.json`
+- `docs/release-notes/RELEASE_NOTES.md`
 - `docs/slash-commands.md`
 - `docs/task-doc-checklist.json`
 

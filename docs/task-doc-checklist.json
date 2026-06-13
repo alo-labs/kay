@@ -1,7 +1,7 @@
 {
   "task_id": "release-notes-body",
   "task_granularity": 2,
-  "updated_at": "2026-06-12T05:23:15Z",
+  "updated_at": "2026-06-14T06:30:00Z",
   "_notes": [
     "Refreshed during the release-notes body fix so GitHub Releases carry detailed categorized notes directly, the fallback generator avoids generic CHANGELOG-only pointers, and checklist freshness is current in the same session.",
     "Refreshed during the Silver Bullet init/migrate run so SB-owned enforcement, Learnings terminology, workflow tracking, and checklist coverage are current in the same session.",
@@ -43,21 +43,23 @@
     "Refreshed after pre-release showed OpenCode Go MiMo needs a longer live-smoke turn budget during normal SSE retry recovery, so the release gate timeout and docs are recorded in the same session.",
     "Refreshed during Hermes-compatible provider profile import work so provider config, authentication, getting-started, slash-command, changelog, and README docs match the new provider surface.",
     "Refreshed during the open-issue reliability sweep for #13, #20, #22, #23, and #35 so exec approval compatibility, exact skill routing, MiniMax command normalization, and release notes are documented in the current session.",
-    "Refreshed during the current scoped release/install audit hook remediation so slash-command audit scoping, DevOps low-pass reporting, and checklist freshness are recorded in the same session."
+    "Refreshed during the current scoped release/install audit hook remediation so slash-command audit scoping, DevOps low-pass reporting, and checklist freshness are recorded in the same session.",
+    "Refreshed during the v0.9.27 release-notes-body doc-scheme gate remediation so categorized GitHub release notes, exec/sandbox/auth triage fixes (#39-#53), MiniMax-M3 live pre-release gate coverage, and checklist freshness are recorded in the same session.",
+    "Refreshed 2026-06-14 during release-notes-body hook remediation: doc-scheme tasks catalog, RELEASE_NOTES.md inventory, heredoc guard note, and mandatory checklist/slash-command freshness."
   ],
   "docs": {
     "docs/ARCHITECTURE.md": "not-needed: architecture overview unchanged by Silver Bullet init/migrate",
-    "docs/CHANGELOG.md": "not-needed: changelog unchanged by Silver Bullet init/migrate",
+    "docs/CHANGELOG.md": "not-needed: root CHANGELOG.md updated in code commits; release body is sourced from docs/release-notes/RELEASE_NOTES.md",
     "docs/TESTING.md": "not-needed: testing gates unchanged by Silver Bullet init/migrate",
     "docs/advanced.md": "not-needed: unchanged by workspace path migration",
     "docs/agents.md": "not-needed: unchanged by workspace path migration",
-    "docs/authentication.md": "not-needed: authentication flow unchanged by the open-issue reliability sweep",
+    "docs/authentication.md": "not-needed: env-key override guidance already landed in triage commit; release-notes body unchanged",
     "docs/auto-drive.md": "not-needed: unchanged by workspace path migration",
     "docs/config.md": "not-needed: provider configuration unchanged by the open-issue reliability sweep",
-    "docs/doc-scheme.md": "not-needed: governance inventory unchanged by the release-notes body fix",
-    "docs/doc-scheme.json": "not-needed: governance contract unchanged by the release-notes body fix",
+    "docs/doc-scheme.md": "updated",
+    "docs/doc-scheme.json": "updated",
     "docs/example-config.md": "not-needed: example provider configuration unchanged by the open-issue reliability sweep",
-    "docs/exec.md": "not-needed: exec documentation unchanged; compatibility coverage is recorded in testing and changelog docs",
+    "docs/exec.md": "not-needed: STATUS contract and full-auto network docs already landed in triage commit",
     "docs/execpolicy.md": "not-needed: exec policy behavior unchanged by Xiaomi MiMo compatibility fixes",
     "docs/exit-confirmation-prompt-design.md": "not-needed: unchanged in this session",
     "docs/faq.md": "not-needed: unchanged by workspace path migration",
@@ -74,7 +76,7 @@
     "docs/platform-sandboxing.md": "not-needed: unchanged in this session",
     "docs/prompts.md": "not-needed: unchanged in this session",
     "docs/release-notes/RELEASE_NOTES.md": "updated",
-    "docs/sandbox.md": "not-needed: unchanged by workspace path migration",
+    "docs/sandbox.md": "not-needed: full-auto network table already landed in triage commit",
     "docs/sessions/2026-05-11-19-07-24.md": "not-needed: unchanged in this session",
     "docs/settings.md": "not-needed: unchanged in this session",
     "docs/skills.md": "not-needed: unchanged by workspace path migration",
@@ -90,7 +92,7 @@
     "docs/workflows/devops-cycle.md": "not-needed: workflow steps unchanged by Silver Bullet init/migrate",
     "docs/workflows/full-dev-cycle.md": "not-needed: workflow steps unchanged by Silver Bullet init/migrate",
     "README.md": "not-needed: README unchanged by the open-issue reliability sweep",
-    "CHANGELOG.md": "not-needed: unchanged in this session"
+    "CHANGELOG.md": "not-needed: root changelog updated in code commits; release body tracked in docs/release-notes/RELEASE_NOTES.md"
   },
   "sections": {
     "docs/CHANGELOG.md": {
@@ -98,11 +100,11 @@
     },
     "docs/doc-scheme.md": {
       "Current Shape": "not-needed: governance shape unchanged by the release-notes body fix",
-      "Governed Documents": "not-needed: governed inventory unchanged by the release-notes body fix"
+      "Governed Documents": "updated"
     },
     "docs/doc-scheme.json": {
-      "version": "not-needed: contract version unchanged",
-      "required_docs": "not-needed: required docs unchanged by the release-notes body fix"
+      "version": "updated",
+      "required_docs": "updated"
     },
     "docs/knowledge/2026-05.md": {
       "Architecture Patterns": "not-needed: monthly knowledge unchanged by Learnings path migration",
@@ -115,7 +117,7 @@
       "practice:planning": "not-needed: learnings entry unchanged by the release-notes body fix"
     },
     "docs/slash-commands.md": {
-      "Prompt-Expanding (Multi-Agent)": "not-needed: prompt expansion behavior unchanged by Silver Bullet init/migrate",
+      "Prompt-Expanding (Multi-Agent)": "not-needed: prompt expansion behavior unchanged by v0.9.27 release-notes work",
       "Implementation Notes": "updated"
     },
     "docs/task-doc-checklist.json": {
