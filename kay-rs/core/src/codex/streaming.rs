@@ -7877,17 +7877,55 @@ async fn handle_gh_run_wait(
 }
 
 // Kill a background shell execution by call_id.
+#[derive(serde::Deserialize, Clone)]
+struct KillParams {
+    call_id: String,
+}
+
+fn parse_kill_params(arguments: &str) -> Result<KillParams, String> {
+    if let Ok(params) = serde_json::from_str::<KillParams>(arguments) {
+        if !params.call_id.trim().is_empty() {
+            return Ok(params);
+        }
+    }
+
+    let mut stream =
+        serde_json::Deserializer::from_str(arguments).into_iter::<serde_json::Value>();
+    if let Some(Ok(value)) = stream.next() {
+        if let Ok(params) = serde_json::from_value::<KillParams>(value.clone()) {
+            if !params.call_id.trim().is_empty() {
+                return Ok(params);
+            }
+        }
+        if let Some(call_id) = value.get("call_id").and_then(serde_json::Value::as_str) {
+            if !call_id.trim().is_empty() {
+                return Ok(KillParams {
+                    call_id: call_id.to_string(),
+                });
+            }
+        }
+    }
+
+    let trimmed = arguments.trim();
+    if let Ok(call_id) = serde_json::from_str::<String>(trimmed) {
+        if !call_id.trim().is_empty() {
+            return Ok(KillParams { call_id });
+        }
+    }
+    if !trimmed.contains('{') && !trimmed.is_empty() {
+        return Ok(KillParams {
+            call_id: trimmed.to_string(),
+        });
+    }
+
+    Err("could not parse kill arguments".to_string())
+}
+
 async fn handle_kill(
     sess: &Session,
     ctx: &ToolCallCtx,
     arguments: String,
 ) -> ResponseInputItem {
-    use serde::Deserialize;
-    #[derive(Deserialize, Clone)]
-    struct Params {
-        call_id: String,
-    }
-
     let mut params_for_event = serde_json::from_str::<serde_json::Value>(&arguments).ok();
     let arguments_clone = arguments.clone();
     let ctx_clone = ToolCallCtx::new(ctx.sub_id.clone(), ctx.call_id.clone(), ctx.seq_hint, ctx.output_index);
@@ -7901,7 +7939,7 @@ async fn handle_kill(
         params_for_event.take(),
         move || async move {
             let ctx_inner = ctx_for_closure.clone();
-            let parsed: Params = match serde_json::from_str(&arguments_clone) {
+            let parsed: KillParams = match parse_kill_params(&arguments_clone) {
                 Ok(p) => p,
                 Err(e) => {
                     return ResponseInputItem::FunctionCallOutput {
@@ -8162,6 +8200,9 @@ fn ensure_codex_patch_framing(body: &str) -> String {
 }
 
 fn normalize_exec_command_argv(command: Vec<String>) -> Vec<String> {
+    if let Some(repaired) = repair_malformed_apply_patch_command(&command) {
+        return repaired;
+    }
     if let Some(repaired) = repair_malformed_ls_probe(&command) {
         return repaired;
     }
@@ -8191,6 +8232,42 @@ fn normalize_exec_command_argv(command: Vec<String>) -> Vec<String> {
     shlex_split(trimmed).unwrap_or_else(|| {
         vec!["bash".to_string(), "-lc".to_string(), trimmed.to_string()]
     })
+}
+
+fn repair_malformed_apply_patch_command(command: &[String]) -> Option<Vec<String>> {
+    if let [bash, flag, script] = command {
+        if bash == "bash" && flag == "-lc" {
+            if let Some(repaired) = repair_apply_patch_shell_misuse(script) {
+                return Some(repaired);
+            }
+        }
+    }
+    if command.len() == 1 {
+        if let Some(repaired) = repair_apply_patch_shell_misuse(&command[0]) {
+            return Some(repaired);
+        }
+    }
+
+    let parts = extract_malformed_and_tokens(command)?;
+    if parts.first().map(String::as_str) != Some("apply_patch") {
+        return None;
+    }
+    let patch_idx = parts.iter().position(|part| part.contains("*** Begin Patch"))?;
+    let patch_body = parts[patch_idx..].join("\n");
+    Some(vec![
+        "apply_patch".to_string(),
+        normalize_apply_patch_hunk_header_text(&patch_body),
+    ])
+}
+
+fn repair_apply_patch_shell_misuse(script: &str) -> Option<Vec<String>> {
+    const MARKER: &str = "*** Begin Patch";
+    if !script.contains("apply_patch") || !script.contains(MARKER) {
+        return None;
+    }
+    let idx = script.find(MARKER)?;
+    let patch_body = normalize_apply_patch_hunk_header_text(&script[idx..]);
+    Some(vec!["apply_patch".to_string(), patch_body])
 }
 
 fn repair_malformed_shell_wrapper_argv(command: &[String]) -> Option<Vec<String>> {
@@ -8838,6 +8915,47 @@ mod kay_runtime_regression_tests {
                 "rg foo | head -20".to_string()
             ]
         );
+    }
+
+    #[test]
+    fn minimax_malformed_apply_patch_shell_pipeline_is_repaired() {
+        let patch = "*** Begin Patch\n*** Update File: src/routes/notes.js\n@@\n-old\n+new\n*** End Patch\n";
+        let repaired = normalize_exec_command_argv(vec![
+            "bash".to_string(),
+            "-lc".to_string(),
+            format!("apply_patch && {patch}"),
+        ]);
+        assert_eq!(repaired[0], "apply_patch");
+        assert!(repaired[1].starts_with("*** Begin Patch"));
+        assert!(repaired[1].contains("src/routes/notes.js"));
+        assert!(repaired[1].contains("*** End Patch"));
+    }
+
+    #[test]
+    fn minimax_malformed_apply_patch_argv_is_repaired() {
+        let patch = "*** Begin Patch\n*** Update File: src/routes/notes.js\n*** End Patch";
+        assert_eq!(
+            normalize_exec_command_argv(vec![
+                "apply_patch".to_string(),
+                "&&".to_string(),
+                patch.to_string(),
+            ]),
+            vec!["apply_patch".to_string(), patch.to_string()]
+        );
+    }
+
+    #[test]
+    fn parses_minimax_kill_arguments_with_trailing_json() {
+        let arguments = r#"{"call_id":"call_bg_lsof_probe_12345"}{"ignored":"trailing"}"#;
+        let parsed = super::parse_kill_params(arguments).expect("kill args should parse");
+        assert_eq!(parsed.call_id, "call_bg_lsof_probe_12345");
+    }
+
+    #[test]
+    fn parses_minimax_kill_arguments_as_bare_call_id() {
+        let parsed = super::parse_kill_params("call_bg_lsof_probe_12345")
+            .expect("bare call_id should parse");
+        assert_eq!(parsed.call_id, "call_bg_lsof_probe_12345");
     }
 
     #[test]
