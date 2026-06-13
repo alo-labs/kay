@@ -176,3 +176,9 @@ Implementation Notes
   `[[agents]]` or per-command `[[subagents.commands]].agents`.
   Set `[subagents].enabled = false` to remove the runtime `agent` tool when a
   run must stay pinned to one provider/model.
+  v0.9.27 release-note bodies must list categorized fixes directly in the
+  GitHub Release text (exec/sandbox/auth triage blockers #39–#53, runtime guard
+  normalization, heredoc workspace guards that preserve `Path()` case, and the
+  MiniMax-M3 live gate exercised in `./pre-release.sh`); hook remediation for
+  `release-notes-body` should refresh this note and
+  `docs/task-doc-checklist.json` in the same session (2026-06-14).

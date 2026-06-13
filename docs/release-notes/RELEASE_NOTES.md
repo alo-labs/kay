@@ -1,3 +1,49 @@
+## @alo-labs/kay v0.9.27
+
+This release closes the open triage blocker sweep (#39–#53), hardens exec and
+runtime guardrails, and ships categorized GitHub release notes for the 0.9.27
+tag with the MiniMax-M3 live provider gate exercised during `./pre-release.sh`.
+
+### Exec, Sandbox, And Runtime Reliability
+
+- Provider env keys such as `OPENCODE_GO_API_KEY` now override stored
+  `~/.kay/auth.json` credentials (#43).
+- OpenCode Go wire requests canonicalize aliases such as `MiniMax-M3` →
+  `minimax-m3` (#45).
+- `kay exec --full-auto` enables workspace-write network access by default for
+  package registries, GitHub APIs, and local test servers (#40, #44, #47).
+- Malformed model shell commands (`git && -C && …`, `bash && -lc && …`) and
+  `apply_patch` bodies are normalized before execution (#39, #46, #50).
+- Express route handlers registered after `module.exports` in `routes/*.js`
+  modules are rejected (#48).
+- In-workspace `python3 -c` pathlib writes are allowed while writes outside the
+  session cwd remain blocked (#51).
+- Leading `KEY=value` argv prefixes are merged into the child environment before
+  exec preflight (#52).
+- Redundant leading `cd <workspace>` segments are auto-stripped instead of
+  blocking (#53).
+- Sidekick-style final `STATUS:` contracts are enforced and
+  `STATUS: BLOCKED` is written on `--max-seconds` timeout (#42, #49).
+- Heredoc workspace guards preserve `Path()` case instead of lowercasing it.
+
+### Release And Verification
+
+- Published package metadata for `@alo-labs/kay` 0.9.27 and platform optional
+  dependencies.
+- Verified locally with `./build-fast.sh`.
+- Ran `./pre-release.sh` with the MiniMax-M3 live provider gate enabled.
+- GitHub Releases carry detailed categorized notes directly in the release body;
+  `CHANGELOG.md` supplements but does not replace the release body.
+
+### Install
+
+```bash
+npm install -g @alo-labs/kay@latest
+kay
+```
+
+Compare: https://github.com/alo-labs/kay/compare/v0.9.26...v0.9.27
+
 ## @alo-labs/kay v0.9.25
 
 This maintenance release refreshes Kay's Silver Bullet project governance

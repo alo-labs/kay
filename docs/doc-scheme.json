@@ -1,9 +1,20 @@
 {
   "version": 1,
-  "updated_at": "2026-05-14T21:49:32Z",
+  "updated_at": "2026-06-14T06:30:00Z",
   "sync": {
     "doc_scheme_md_path": "docs/doc-scheme.md",
     "task_checklist_path": "docs/task-doc-checklist.json"
+  },
+  "tasks": {
+    "release-notes-body": {
+      "granularity": 2,
+      "summary": "v0.9.27 GitHub Release body: exec/sandbox/auth triage (#39-#53), MiniMax-M3 pre-release gate, heredoc workspace guard",
+      "touch_docs": [
+        "docs/release-notes/RELEASE_NOTES.md",
+        "docs/slash-commands.md",
+        "docs/task-doc-checklist.json"
+      ]
+    }
   },
   "enforcement": {
     "enabled": true,
@@ -94,6 +105,11 @@
         "version",
         "required_docs"
       ]
+    },
+    {
+      "key": "docs/release-notes/RELEASE_NOTES.md",
+      "mandatory_updated": false,
+      "required_sections": []
     },
     {
       "key": "docs/slash-commands.md",
