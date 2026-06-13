@@ -436,6 +436,7 @@ async fn create_exec_command_session(
         additional_permissions,
         justification: _,
     } = params;
+    let cmd = normalize_model_malformed_shell_command(&cmd);
 
     if additional_permissions.is_some() {
         tracing::debug!(
@@ -546,6 +547,39 @@ async fn create_exec_command_session(
         initial_output_rx,
     );
     Ok((session, initial_output_rx, exit_rx))
+}
+
+fn normalize_model_malformed_shell_command(cmd: &str) -> String {
+    let trimmed = cmd.trim();
+    if !looks_like_argv_split_with_and(trimmed) {
+        return cmd.to_string();
+    }
+
+    trimmed
+        .split("&&")
+        .map(str::trim)
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn looks_like_argv_split_with_and(cmd: &str) -> bool {
+    if !cmd.contains("&&") {
+        return false;
+    }
+
+    let parts = cmd.split("&&").map(str::trim).collect::<Vec<_>>();
+    if parts.len() < 2 || parts.iter().any(|part| part.is_empty()) {
+        return false;
+    }
+
+    parts.iter().all(|part| is_plain_shell_word(part))
+}
+
+fn is_plain_shell_word(word: &str) -> bool {
+    !word.is_empty()
+        && word
+            .chars()
+            .all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '_' | '-' | '.' | '/' | ':' | '='))
 }
 
 /// Truncate the middle of a UTF-8 string to at most `max_bytes` bytes,
@@ -758,5 +792,33 @@ abc"#;
         let expected_tokens = (input.len() as u64).div_ceil(4);
         assert_eq!(out, format!("…{expected_tokens} tokens truncated…"));
         assert_eq!(original, Some(expected_tokens));
+    }
+
+    #[test]
+    fn normalizes_model_commands_split_with_shell_and() {
+        assert_eq!(
+            normalize_model_malformed_shell_command("git && status && --short"),
+            "git status --short"
+        );
+        assert_eq!(
+            normalize_model_malformed_shell_command("bash && -lc && cargo:test"),
+            "bash -lc cargo:test"
+        );
+        assert_eq!(
+            normalize_model_malformed_shell_command("cat && /tmp/SKILL.md"),
+            "cat /tmp/SKILL.md"
+        );
+    }
+
+    #[test]
+    fn leaves_real_shell_sequences_alone() {
+        assert_eq!(
+            normalize_model_malformed_shell_command("cargo test && cargo clippy"),
+            "cargo test && cargo clippy"
+        );
+        assert_eq!(
+            normalize_model_malformed_shell_command("printf 'a&&b'"),
+            "printf 'a&&b'"
+        );
     }
 }

@@ -722,6 +722,7 @@ pub async fn run_main(cli: Cli, code_linux_sandbox_exe: Option<PathBuf>) -> anyh
 
     // Send the prompt.
     let mut _review_guard: Option<code_core::review_coord::ReviewGuard> = None;
+    let final_status_contract_prompt = prompt_to_send.clone();
 
     // Clear stale review lock in case a prior process crashed.
     let _ = clear_stale_lock_if_dead(Some(&config.cwd));
@@ -796,6 +797,7 @@ pub async fn run_main(cli: Cli, code_linux_sandbox_exe: Option<PathBuf>) -> anyh
     // Track whether a fatal error was reported by the server so we can
     // exit with a non-zero status for automation-friendly signaling.
     let mut error_seen = false;
+    let mut final_last_message: Option<String> = None;
     let mut shutdown_pending = false;
     let mut shutdown_sent = false;
     let mut shutdown_deadline: Option<Instant> = None;
@@ -929,6 +931,10 @@ pub async fn run_main(cli: Cli, code_linux_sandbox_exe: Option<PathBuf>) -> anyh
                 }
             }
             EventMsg::TaskComplete(TaskCompleteEvent { last_agent_message }) => {
+                if let Some(text) = last_agent_message.clone() {
+                    final_last_message = Some(text);
+                }
+
                 if let Some(state_snapshot) = auto_resolve_state.clone() {
                     let current_epoch = current_snapshot_epoch_for(&config.cwd);
                     match state_snapshot.phase {
@@ -1248,6 +1254,12 @@ pub async fn run_main(cli: Cli, code_linux_sandbox_exe: Option<PathBuf>) -> anyh
     }
     if review_runs > 0 {
         eprintln!("Review runs: {} (auto_resolve={} max_attempts={})", review_runs, config.tui.review_auto_resolve, max_auto_resolve_attempts);
+    }
+    if final_status_contract_missing(&final_status_contract_prompt, final_last_message.as_deref()) {
+        eprintln!(
+            "Final status contract was required by the prompt, but the last agent message did not start with `STATUS:`."
+        );
+        error_seen = true;
     }
     if error_seen {
         std::process::exit(1);
@@ -1684,6 +1696,13 @@ async fn run_auto_drive_session(
         handle_last_message(final_last_message.as_deref(), path);
     }
 
+    if final_status_contract_missing(&goal, final_last_message.as_deref()) {
+        eprintln!(
+            "Final status contract was required by the prompt, but the last agent message did not start with `STATUS:`."
+        );
+        error_seen = true;
+    }
+
     if error_seen {
         if let Some(guard) = auto_drive_pid_guard.take() {
             guard.cleanup();
@@ -1701,6 +1720,31 @@ fn append_timeboxed_auto_drive_goal(goal: &str) -> String {
     }
 
     format!("{trimmed_goal}\n\n{AUTO_EXEC_TIMEBOXED_GOAL_SUFFIX}")
+}
+
+fn final_status_contract_missing(prompt: &str, last_agent_message: Option<&str>) -> bool {
+    if !prompt_requires_final_status(prompt) {
+        return false;
+    }
+
+    !last_agent_message
+        .map(|message| {
+            message
+                .trim_start_matches(|ch: char| ch.is_whitespace() || ch == '`')
+                .to_ascii_uppercase()
+                .starts_with("STATUS:")
+        })
+        .unwrap_or(false)
+}
+
+fn prompt_requires_final_status(prompt: &str) -> bool {
+    let lower = prompt.to_ascii_lowercase();
+    let mentions_final_response =
+        lower.contains("final response") || lower.contains("final answer");
+    let mentions_required_status = lower.contains("status:");
+    let requires_prefix = lower.contains("begin") || lower.contains("start");
+
+    mentions_final_response && mentions_required_status && requires_prefix
 }
 
 fn merge_developer_message(existing: Option<String>, extra: &str) -> Option<String> {
@@ -3074,6 +3118,22 @@ mod tests {
         // move HEAD back to check false case
         run_git(["checkout", "HEAD~1"].as_slice());
         assert!(!head_is_ancestor_of_base(temp.path(), "deadbeef"));
+    }
+
+    #[test]
+    fn final_status_contract_detects_missing_required_prefix() {
+        let prompt = "Final response must begin STATUS: pass or fail.";
+        assert!(final_status_contract_missing(prompt, Some("Done.")));
+        assert!(final_status_contract_missing(prompt, None));
+        assert!(!final_status_contract_missing(prompt, Some("STATUS: pass")));
+    }
+
+    #[test]
+    fn final_status_contract_ignores_prompts_without_prefix_requirement() {
+        assert!(!final_status_contract_missing(
+            "Report normal task status when done.",
+            Some("Done.")
+        ));
     }
 
     fn test_config(code_home: &Path) -> Config {
