@@ -34,8 +34,8 @@ jq --arg now "$NOW" --argjson open_numbers "$(echo "$OPEN_JSON" | jq '[.[].numbe
 ' "$STATE_FILE" >"$STATE_FILE.tmp" && mv "$STATE_FILE.tmp" "$STATE_FILE"
 
 {
-  printf '%s cycle open_issues=%s pending_issues=%s pending=%s\n' \
-    "$NOW" "$OPEN_COUNT" "$PENDING_COUNT" "$(echo "$PENDING" | jq -c '.[].number')"
+  printf '%s cycle open_issues=%s pending_issues=%s handled=%s pending=%s\n' \
+    "$NOW" "$OPEN_COUNT" "$PENDING_COUNT" "$HANDLED" "$(echo "$PENDING" | jq -c '[.[].number]')"
 } >>"$LOG_FILE"
 
 echo "$PENDING"
