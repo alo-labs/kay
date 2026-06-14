@@ -193,10 +193,12 @@ TUI header shows the selected model, runs one live notes-app inspection turn,
 and verifies Kay's session log recorded the expected `model_provider_id` and
 `model` in the outbound session configuration. OpenAI API-key live testing is
 intentionally excluded from this smoke for now; OpenAI coverage should use a
-separate OAuth-mode smoke. Direct MiniMax.io provider testing is also excluded
-from the release gate; MiniMax M2.7 coverage runs through OpenCode Go. The model
-response is only used to prove live work completed; model/provider identity is
-verified from Kay-side metadata, not from model self-reporting.
+separate OAuth-mode smoke. Direct MiniMax.io `MiniMax-M3` coverage runs through
+the `minimax-m3` pre-release gate profile, not the default OpenCode Go matrix.
+MiniMax M2.7 in the default gate still routes through OpenCode Go
+(`opencode-go/minimax-m2.7`). The model response is only used to prove live
+work completed; model/provider identity is verified from Kay-side metadata, not
+from model self-reporting.
 
 Xiaomi direct-provider release coverage runs through
 `provider_model_acceptance`:
@@ -206,10 +208,35 @@ XIAOMI_LIVE_API_KEY=... \
 cargo test -p code-cli --test provider_model_acceptance xiaomi_provider_model_acceptance_matrix -- --nocapture
 ```
 
+MiniMax.io `MiniMax-M3` release coverage uses the `minimax-m3` gate profile.
+All three checks route through the built-in `minimax` provider id
+(`api.minimax.io`), never OpenCode Go:
+
+```bash
+KAY_PRE_RELEASE_LIVE_PROVIDER_GATE=minimax-m3 MINIMAX_LIVE_API_KEY=... ./pre-release.sh
+```
+
+Focused commands (same credential: `MINIMAX_LIVE_API_KEY`, `MINIMAX_API_KEY`, or
+`provider_credentials.minimax.api_key` in `$KAY_HOME/auth.json`):
+
+```bash
+KAY_ONBOARDING_LIVE_SMOKE=1 \
+MINIMAX_LIVE_API_KEY=... \
+KAY_ONBOARDING_LIVE_SMOKE_MODEL_FILTER=MiniMax-M3 \
+cargo test -p code-cli --test onboarding_provider_notes_app_live_smoke -- --nocapture
+
+MINIMAX_LIVE_API_KEY=... \
+cargo test -p code-cli --test minimax_live_e2e minimax_m3_live_exec_edge_cases -- --nocapture
+
+MINIMAX_LIVE_API_KEY=... \
+cargo test -p code-cli --test provider_model_acceptance minimax_provider_model_acceptance_matrix -- --nocapture
+```
+
 This smoke is a required pre-release gate. `./pre-release.sh` runs it after the
-dev-fast build, CLI smokes, and workspace nextest suite. The release gate uses
-the curated OpenCode Go matrix above plus Xiaomi direct-provider acceptance. It
-accepts credentials from
+dev-fast build, CLI smokes, and workspace nextest suite. The default gate uses
+the curated OpenCode Go matrix above plus Xiaomi direct-provider acceptance.
+Set `KAY_PRE_RELEASE_LIVE_PROVIDER_GATE=minimax-m3` for MiniMax.io `MiniMax-M3`
+coverage instead. The default gate accepts credentials from
 `OPENCODE_GO_LIVE_API_KEY`, falls back to the normal `OPENCODE_GO_API_KEY` env
 var, and finally falls back to `provider_credentials.opencode-go.api_key` in
 `$KAY_HOME/auth.json`. Xiaomi accepts `XIAOMI_LIVE_API_KEY`, falls back to

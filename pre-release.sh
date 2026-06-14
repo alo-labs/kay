@@ -85,7 +85,7 @@ run_live_provider_gate() {
     return
   fi
 
-  echo "[pre-release] running live provider/model release gate"
+  echo "[pre-release] running live provider/model release gate (KAY_PRE_RELEASE_LIVE_PROVIDER_GATE=${KAY_PRE_RELEASE_LIVE_PROVIDER_GATE:-default})"
   CARGO_TARGET_DIR="$BASE_CARGO_TARGET_DIR/pre-release-live-provider" \
     bash "$ROOT_DIR/scripts/pre-release-live-provider-gate.sh"
 }

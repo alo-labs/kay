@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# Live provider release gate profiles (KAY_PRE_RELEASE_LIVE_PROVIDER_GATE):
+#   default | release — OpenCode Go onboarding notes-app smoke + Xiaomi acceptance
+#   minimax | minimax-m3 — MiniMax.io MiniMax-M3 only (onboarding smoke, exec E2E, acceptance)
+#
+# MiniMax-M3 live tests always use the built-in `minimax` provider (api.minimax.io),
+# never OpenCode Go (`opencode-go`).
 set -euo pipefail
 
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
@@ -117,13 +123,23 @@ run_minimax_m3_gate() {
   require_minimax_key
   fail_if_missing_keys
 
-  echo "[pre-release/live-provider-gate] running MiniMax M3 live E2E"
+  echo "[pre-release/live-provider-gate] running MiniMax.io MiniMax-M3 onboarding notes-app live smoke"
   cd "$ROOT_DIR/kay-rs"
 
+  minimax_live_env=(
+    "KAY_ONBOARDING_LIVE_SMOKE=1"
+    "MINIMAX_LIVE_API_KEY=$MINIMAX_LIVE_API_KEY"
+    "KAY_ONBOARDING_LIVE_SMOKE_TURN_TIMEOUT_SECS=${KAY_ONBOARDING_LIVE_SMOKE_TURN_TIMEOUT_SECS:-1800}"
+    "KAY_ONBOARDING_LIVE_SMOKE_MODEL_FILTER=MiniMax-M3"
+  )
+
+  env "${minimax_live_env[@]}" cargo test -p code-cli --test onboarding_provider_notes_app_live_smoke -- --nocapture
+
+  echo "[pre-release/live-provider-gate] running MiniMax.io MiniMax-M3 live exec E2E"
   env MINIMAX_LIVE_API_KEY="$MINIMAX_LIVE_API_KEY" \
     cargo test -p code-cli --test minimax_live_e2e minimax_m3_live_exec_edge_cases -- --nocapture
 
-  echo "[pre-release/live-provider-gate] running MiniMax provider acceptance"
+  echo "[pre-release/live-provider-gate] running MiniMax.io provider acceptance"
   env MINIMAX_LIVE_API_KEY="$MINIMAX_LIVE_API_KEY" \
     cargo test -p code-cli --test provider_model_acceptance minimax_provider_model_acceptance_matrix -- --nocapture
 }
