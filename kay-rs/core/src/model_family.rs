@@ -40,7 +40,8 @@ const MIMO_SYNTHESIS_CHECKPOINT_INSTRUCTIONS: &str = r#"MiMo investigation disci
 - When enough evidence has been gathered, provide the diagnosis or next concrete code change instead of another preamble.
 - In `scripts/verify-*.sh`, default the port with `PORT="${PORT:-3458}"` and export it before starting the app; never use `PORT="${PORT:?PORT is required}"`.
 - For `src/public/notes-ui.js`, HTML, and `scripts/verify-*.sh`, use `apply_patch` Add/Update File hunks — never `printf`, `cat >`, or `&&`-chained shell to write source files.
-- When a task names `scripts/verify-*.sh`, create or update those files with `apply_patch`, run them with `PORT` exported, then end with `STATUS: SUCCESS` and `TESTS_RUN:` listing both scripts."#;
+- When a task names `scripts/verify-*.sh`, create or update those files with `apply_patch`, run them with `PORT` exported, then end with `STATUS: SUCCESS` and `TESTS_RUN:` listing both scripts.
+- Match Sidekick verify script greps exactly: bulk-archive UI needs `bulkArchiveButton`, `note-checkbox`, `selectedIds`, and `bulk-archive` in notes-ui.js; sort UI needs `sortSelect` in HTML/JS and `params.set('sort'` in notes-ui.js."#;
 const MINIMAX_TOOL_DISCIPLINE_INSTRUCTIONS: &str = r#"MiniMax tool discipline:
 - Call `apply_patch` with exactly one argument: the full patch string from `*** Begin Patch` through `*** End Patch`.
 - Do not pass patch lines as separate shell arguments and do not insert `&&` between argv tokens.
@@ -48,7 +49,8 @@ const MINIMAX_TOOL_DISCIPLINE_INSTRUCTIONS: &str = r#"MiniMax tool discipline:
 - Prefer the `apply_patch` tool or a heredoc for file edits instead of empty redirections like `cat > /tmp/file` without content.
 - In `scripts/verify-*.sh`, default the port with `PORT="${PORT:-3458}"` and export it before starting the app; never use `PORT="${PORT:?PORT is required}"`.
 - For `src/public/notes-ui.js`, HTML, and `scripts/verify-*.sh`, use `apply_patch` Add/Update File hunks — never `printf`, `cat >`, or `&&`-chained shell to write source files.
-- When a task names `scripts/verify-*.sh`, create or update those files with `apply_patch`, run them with `PORT` exported, then end with `STATUS: SUCCESS` and `TESTS_RUN:` listing both scripts."#;
+- When a task names `scripts/verify-*.sh`, create or update those files with `apply_patch`, run them with `PORT` exported, then end with `STATUS: SUCCESS` and `TESTS_RUN:` listing both scripts.
+- Match Sidekick verify script greps exactly: bulk-archive UI needs `bulkArchiveButton`, `note-checkbox`, `selectedIds`, and `bulk-archive` in notes-ui.js; sort UI needs `sortSelect` in HTML/JS and `params.set('sort'` in notes-ui.js."#;
 const DEFAULT_PERSONALITY_HEADER: &str = "You are Codex, a coding agent based on GPT-5. You and the user share the same workspace and collaborate to achieve the user's goals.";
 const LOCAL_FRIENDLY_TEMPLATE: &str =
     "You optimize for team morale and being a supportive teammate as much as code quality.";
