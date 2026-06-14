@@ -551,6 +551,9 @@ async fn create_exec_command_session(
 
 pub(crate) fn normalize_model_malformed_shell_command(cmd: &str) -> String {
     let trimmed = cmd.trim();
+    if let Some(repaired) = repair_apply_patch_and_separated_patch(trimmed) {
+        return repaired;
+    }
     if let Some(repaired) = repair_malformed_shell_wrapper(trimmed) {
         return repaired;
     }
@@ -573,6 +576,21 @@ fn join_malformed_and_tokens(cmd: &str) -> String {
         .filter(|part| !part.is_empty())
         .collect::<Vec<_>>()
         .join(" ")
+}
+
+fn repair_apply_patch_and_separated_patch(cmd: &str) -> Option<String> {
+    const MARKER: &str = "*** Begin Patch";
+    if !cmd.contains(MARKER) || !cmd.contains("apply_patch") {
+        return None;
+    }
+    if cmd.contains("apply_patch <<") {
+        return None;
+    }
+    let patch = cmd.get(cmd.find(MARKER)?..)?.trim_end();
+    if patch.is_empty() {
+        return None;
+    }
+    Some(format!("apply_patch <<'PATCH'\n{patch}\nPATCH"))
 }
 
 fn repair_malformed_shell_wrapper(cmd: &str) -> Option<String> {
@@ -867,6 +885,15 @@ abc"#;
         assert_eq!(
             normalize_model_malformed_shell_command("cat && /tmp/SKILL.md"),
             "cat /tmp/SKILL.md"
+        );
+    }
+
+    #[test]
+    fn normalizes_apply_patch_and_separated_patch_to_heredoc() {
+        let patch = "*** Begin Patch\n*** Update File: src/a.js\n@@\n-old\n+new\n*** End Patch";
+        assert_eq!(
+            normalize_model_malformed_shell_command(&format!("apply_patch && {patch}")),
+            format!("apply_patch <<'PATCH'\n{patch}\nPATCH")
         );
     }
 
