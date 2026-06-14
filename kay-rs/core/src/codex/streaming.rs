@@ -26,6 +26,10 @@ use crate::auth_accounts;
 use crate::account_switching::RateLimitSwitchState;
 use crate::agent_tool::current_agent_spawn_depth;
 use crate::agent_tool::external_agent_command_exists;
+use crate::final_status_contract::{
+    final_status_contract_missing, final_status_repair_input, prompt_requires_final_status,
+    status_contract_prompt_from_input, try_salvage_last_task_message,
+};
 use crate::protocol::McpListToolsResponseEvent;
 use crate::protocol::TaskLifecycleEvent;
 use crate::protocol::TaskLifecyclePhase;
@@ -2497,6 +2501,8 @@ async fn run_agent(
     let is_review_mode = turn_context.is_review_mode;
     let repairs_final_output_contracts =
         turn_context.client.get_model_family().family.as_str() == "mimo";
+    let status_contract_prompt = status_contract_prompt_from_input(&input);
+    let requires_status_contract = prompt_requires_final_status(&status_contract_prompt);
     let mut review_history: Vec<ResponseItem> = Vec::new();
     let mut review_messages: Vec<String> = Vec::new();
     let mut review_exit_emitted = false;
@@ -2546,6 +2552,7 @@ async fn run_agent(
 
     let mut last_task_message: Option<String> = None;
     let mut final_output_schema_repair_attempts = 0usize;
+    let mut final_status_repair_attempts = 0usize;
     // Although from the perspective of codex.rs, TurnDiffTracker has the lifecycle of a Agent which contains
     // many turns, from the perspective of the user, it is a single turn.
     let mut turn_diff_tracker = TurnDiffTracker::new();
@@ -2901,6 +2908,8 @@ async fn run_agent(
                 }
 
                 if responses.is_empty() {
+                    try_salvage_last_task_message(&mut last_task_message);
+
                     if !is_review_mode
                         && repairs_final_output_contracts
                         && final_output_schema_repair_attempts < 2
@@ -2914,6 +2923,21 @@ async fn run_agent(
                         sess.add_pending_input(final_output_schema_repair_input(
                             schema,
                             final_output_schema_repair_attempts,
+                        ));
+                        continue;
+                    }
+
+                    if !is_review_mode
+                        && requires_status_contract
+                        && final_status_repair_attempts < 2
+                        && final_status_contract_missing(
+                            &status_contract_prompt,
+                            last_task_message.as_deref(),
+                        )
+                    {
+                        final_status_repair_attempts += 1;
+                        sess.add_pending_input(final_status_repair_input(
+                            final_status_repair_attempts,
                         ));
                         continue;
                     }
@@ -2970,6 +2994,7 @@ async fn run_agent(
     }
 
     sess.remove_task(&sub_id);
+    try_salvage_last_task_message(&mut last_task_message);
     let lifecycle = sess.make_event(
         &sub_id,
         EventMsg::TaskLifecycle(TaskLifecycleEvent {
@@ -4611,6 +4636,38 @@ async fn handle_response_item(
             .await,
             )
         }
+        ResponseItem::CustomToolCall {
+            call_id,
+            name,
+            input,
+            ..
+        } if name == "apply_patch" => {
+            let params = ShellToolCallParams {
+                command: normalize_shell_tool_command(vec![
+                    "apply_patch".to_string(),
+                    normalize_apply_patch_hunk_header_text(&input),
+                ]),
+                workdir: None,
+                timeout_ms: None,
+                sandbox_permissions: None,
+                prefix_rule: None,
+                additional_permissions: None,
+                justification: None,
+            };
+            Some(
+                handle_container_exec_with_params(
+                    to_exec_params(params, sess),
+                    sess,
+                    turn_diff_tracker,
+                    sub_id.to_string(),
+                    call_id,
+                    seq_hint,
+                    output_index,
+                    attempt_req,
+                )
+                .await,
+            )
+        }
         ResponseItem::CustomToolCall { call_id, name, .. } => {
             // Minimal placeholder: custom tools are not handled here.
             Some(ResponseInputItem::FunctionCallOutput {
@@ -5014,6 +5071,23 @@ async fn handle_function_call(
         "gh_run_wait" => handle_gh_run_wait(sess, &ctx, arguments).await,
         "kill" => handle_kill(sess, &ctx, arguments).await,
         "kay_bridge" | "kay_bridge_subscription" => handle_kay_bridge(sess, &ctx, arguments).await,
+        "apply_patch" => {
+            let params = match parse_apply_patch_function_arguments(arguments, sess, &call_id) {
+                Ok(params) => params,
+                Err(output) => return *output,
+            };
+            handle_container_exec_with_params(
+                params,
+                sess,
+                turn_diff_tracker,
+                sub_id,
+                call_id,
+                seq_hint,
+                output_index,
+                attempt_req,
+            )
+            .await
+        }
         TOOL_SEARCH_TOOL_NAME | LEGACY_SEARCH_TOOL_BM25_TOOL_NAME => {
             let arguments = match serde_json::from_str::<serde_json::Value>(&arguments) {
                 Ok(arguments) => arguments,
@@ -8504,12 +8578,72 @@ fn parse_container_exec_arguments(
             let output = ResponseInputItem::FunctionCallOutput {
                 call_id: call_id.to_string(),
                 output: FunctionCallOutputPayload {
-                    body: code_protocol::models::FunctionCallOutputBody::Text(format!("failed to parse function arguments: {e}")),
-                    success: None},
+                    body: code_protocol::models::FunctionCallOutputBody::Text(format!(
+                        "failed to parse function arguments: {e}"
+                    )),
+                    success: None,
+                },
             };
             Err(Box::new(output))
         }
     }
+}
+
+fn parse_apply_patch_function_arguments(
+    arguments: String,
+    sess: &Session,
+    call_id: &str,
+) -> Result<ExecParams, Box<ResponseInputItem>> {
+    if let Some(patch) = extract_apply_patch_text_from_function_arguments(&arguments) {
+        return Ok(to_exec_params(
+            ShellToolCallParams {
+                command: vec!["apply_patch".to_string(), patch],
+                workdir: None,
+                timeout_ms: None,
+                sandbox_permissions: None,
+                prefix_rule: None,
+                additional_permissions: None,
+                justification: None,
+            },
+            sess,
+        ));
+    }
+
+    if let Ok(value) = serde_json::from_str::<serde_json::Value>(&arguments)
+        && let Some(command) = value.get("command")
+    {
+        let params = shell_tool_call_params_from_value(command.clone())
+            .map_err(|err| err.to_string())
+            .and_then(|params| {
+                to_exec_params_from_shell_tool_call_params(vec![params], sess)
+            });
+        if let Ok(params) = params {
+            return Ok(params);
+        }
+    }
+
+    parse_container_exec_arguments(arguments, sess, call_id)
+}
+
+fn extract_apply_patch_text_from_function_arguments(arguments: &str) -> Option<String> {
+    if let Ok(value) = serde_json::from_str::<serde_json::Value>(arguments) {
+        if let Some(patch) = value
+            .get("input")
+            .or_else(|| value.get("patch"))
+            .and_then(|value| value.as_str())
+        {
+            return Some(normalize_apply_patch_hunk_header_text(patch));
+        }
+        if let Some(patch) = value.as_str() {
+            return Some(normalize_apply_patch_hunk_header_text(patch));
+        }
+    }
+
+    if arguments.contains("*** Begin Patch") {
+        return Some(normalize_apply_patch_hunk_header_text(arguments));
+    }
+
+    None
 }
 
 fn parse_shell_tool_call_params_values(
@@ -8886,6 +9020,7 @@ mod kay_runtime_regression_tests {
     use super::final_output_schema_repair_input;
     use super::remember_last_task_message_from_turn;
     use super::normalize_exec_command_argv;
+    use super::extract_apply_patch_text_from_function_arguments;
     use super::parse_shell_tool_call_params_values;
     use super::shell_tool_call_params_to_script;
     use super::ContentItem;
@@ -9048,6 +9183,23 @@ mod kay_runtime_regression_tests {
             ]
         );
         assert_eq!(params[0].workdir.as_deref(), Some("/tmp"));
+    }
+
+    #[test]
+    fn mimo_apply_patch_function_arguments_accept_patch_key() {
+        let patch = extract_apply_patch_text_from_function_arguments(r#"{"patch":"*** Begin Patch\n*** Update File: src/a.js\n@@\n-old\n+new\n*** End Patch"}"#)
+            .expect("patch key should parse");
+        assert!(patch.contains("*** Update File: src/a.js"));
+        assert!(patch.contains("*** End Patch"));
+    }
+
+    #[test]
+    fn mimo_apply_patch_function_arguments_accept_input_key() {
+        let patch = extract_apply_patch_text_from_function_arguments(
+            r#"{"input":"*** Begin Patch\n*** Add File: notes.txt\n+hello\n*** End Patch"}"#,
+        )
+        .expect("input key should parse");
+        assert!(patch.contains("*** Add File: notes.txt"));
     }
 
     #[test]
