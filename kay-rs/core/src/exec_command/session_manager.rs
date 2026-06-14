@@ -554,6 +554,12 @@ pub(crate) fn normalize_model_malformed_shell_command(cmd: &str) -> String {
     if let Some(repaired) = repair_malformed_shell_wrapper(trimmed) {
         return repaired;
     }
+    let repaired_cat = trimmed
+        .replace("cat -An ", "cat -n ")
+        .replace("cat -A ", "cat -n ");
+    if repaired_cat != trimmed {
+        return repaired_cat;
+    }
     if !looks_like_argv_split_with_and(trimmed) {
         return cmd.to_string();
     }

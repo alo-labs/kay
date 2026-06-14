@@ -37,7 +37,14 @@ const MIMO_SYNTHESIS_CHECKPOINT_INSTRUCTIONS: &str = r#"MiMo investigation disci
 - Consolidate findings before ending an investigation turn.
 - If you have read or searched the same files repeatedly, stop rereading and summarize what is already known.
 - Before taking another exploratory tool action, state the current hypothesis, the evidence for it, and the single next observation that would change it.
-- When enough evidence has been gathered, provide the diagnosis or next concrete code change instead of another preamble."#;
+- When enough evidence has been gathered, provide the diagnosis or next concrete code change instead of another preamble.
+- In `scripts/verify-*.sh`, default the port with `PORT="${PORT:-3458}"` and export it before starting the app; never use `PORT="${PORT:?PORT is required}"`."#;
+const MINIMAX_TOOL_DISCIPLINE_INSTRUCTIONS: &str = r#"MiniMax tool discipline:
+- Call `apply_patch` with exactly one argument: the full patch string from `*** Begin Patch` through `*** End Patch`.
+- Do not pass patch lines as separate shell arguments and do not insert `&&` between argv tokens.
+- On macOS, use `cat -n`, not `cat -An` or `cat -A`.
+- Prefer the `apply_patch` tool or a heredoc for file edits instead of empty redirections like `cat > /tmp/file` without content.
+- In `scripts/verify-*.sh`, default the port with `PORT="${PORT:-3458}"` and export it before starting the app; never use `PORT="${PORT:?PORT is required}"`."#;
 const DEFAULT_PERSONALITY_HEADER: &str = "You are Codex, a coding agent based on GPT-5. You and the user share the same workspace and collaborate to achieve the user's goals.";
 const LOCAL_FRIENDLY_TEMPLATE: &str =
     "You optimize for team morale and being a supportive teammate as much as code quality.";
@@ -460,6 +467,20 @@ fn with_mimo_synthesis_checkpoint(mut family: ModelFamily) -> ModelFamily {
     family
 }
 
+fn with_minimax_tool_discipline(mut family: ModelFamily) -> ModelFamily {
+    family.repairs_malformed_apply_patch_tool_calls = true;
+    if !family
+        .base_instructions
+        .contains("MiniMax tool discipline")
+    {
+        family.base_instructions.push_str("\n\n");
+        family
+            .base_instructions
+            .push_str(MINIMAX_TOOL_DISCIPLINE_INSTRUCTIONS);
+    }
+    family
+}
+
 /// Returns a `ModelFamily` for the given model slug, or `None` if the slug
 /// does not match any known model family.
 pub fn find_family_for_model(slug: &str) -> Option<ModelFamily> {
@@ -483,6 +504,7 @@ pub fn find_family_for_model(slug: &str) -> Option<ModelFamily> {
             context_window: Some(1_000_000),
             truncation_policy: TruncationPolicy::Tokens(10_000),
         )
+        .map(with_minimax_tool_discipline)
     } else if matches!(
         slug_lower.as_str(),
         "minimax-m2.7" | "codex-minimax-m2.7"
@@ -495,6 +517,7 @@ pub fn find_family_for_model(slug: &str) -> Option<ModelFamily> {
             context_window: Some(204_800),
             truncation_policy: TruncationPolicy::Tokens(10_000),
         )
+        .map(with_minimax_tool_discipline)
     } else if slug.starts_with("o3") {
         model_family!(
             slug, "o3",
@@ -715,14 +738,18 @@ pub fn find_family_for_model(slug: &str) -> Option<ModelFamily> {
             context_window: Some(1_000_000),
             needs_special_apply_patch_instructions: true,
             repairs_malformed_apply_patch_tool_calls: true,
+            base_instructions: BASE_INSTRUCTIONS_WITH_APPLY_PATCH.to_string(),
         )
+        .map(with_minimax_tool_discipline)
     } else if slug.starts_with("minimax-m2.7") {
         model_family!(
             slug, "minimax-m2.7",
             context_window: Some(204_800),
             needs_special_apply_patch_instructions: true,
             repairs_malformed_apply_patch_tool_calls: true,
+            base_instructions: BASE_INSTRUCTIONS_WITH_APPLY_PATCH.to_string(),
         )
+        .map(with_minimax_tool_discipline)
     } else if slug_lower.contains("glm") {
         model_family!(
             slug, "glm",
@@ -946,6 +973,12 @@ mod tests {
         assert!(!family.repairs_final_output_json_schema);
         assert!(family.routes_apply_patch_function_call());
         assert!(family.routes_apply_patch_freeform_call());
+        assert!(
+            family
+                .base_instructions
+                .contains("MiniMax tool discipline"),
+            "MiniMax models need explicit apply_patch argv guidance"
+        );
     }
 
     #[test]

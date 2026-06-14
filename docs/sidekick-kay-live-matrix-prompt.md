@@ -30,18 +30,18 @@ Deliver a final host message with matrix score, delta vs baseline, per-parent is
 
 **Checkout:** If Sidekick is not present, clone `https://github.com/alo-exp/sidekick.git` and work from that root. This prompt does not require a specific branch name; use the branch that contains the matrix scripts you intend to run.
 
-### CURRENT STATUS (headline — 2026-06-14)
+### CURRENT STATUS (headline — 2026-06-15)
 
 Use this as the **baseline** when interpreting your run; update the headline in this doc after a confirmed retest.
 
 | Signal | Value |
 |--------|--------|
-| Kay under test | **local build** (`kay 0.0.0` from `cargo build -p code-cli --release`) at `~/.local/bin/kay`; prior matrix baseline used **0.9.33** |
-| Matrix prefix (latest local retest) | `local-fix-r3` → **11/20 PASS** (prior: r2 **9/20**, r1 **5/20**, v0.9.31 **4/20**) |
-| Baseline comparison | **Δ +6** vs v0.9.31; **Δ +2** vs r2 |
-| **#42** (STATUS contract) | **Strong on OCG profiles:** `ocg-mimo-pro` **5/5 PASS**; `ocg-minimax-m3`+`ocg-mimo` pass task7/task10/e2e; FAIL task8/task9 on `ocg-mimo`+`ocg-minimax-m3`; `minimax-m3` direct profile 0/5 |
-| **#46**, **#49** | **#49 cleared** (no rc 124/143 on OCG paths); task8 FAIL on some profiles = model incomplete / apply_patch (#46), not timeout |
-| **#39**, **#52**, **#54** | **#39** observed on `minimax-m3` e2e (`cat -An` / empty patch); **#52** one spurious hit on `ocg-mimo-pro` task9 PASS |
+| Kay under test | **local build** (`kay 0.0.0` from `cargo build -p code-cli --release`) at `~/.local/bin/kay` |
+| Matrix prefix (latest local retest) | `local-fix-r5` → **15/20 PASS** (prior: r4 **13/20**, r3 **11/20**, v0.9.31 **4/20**) |
+| Baseline comparison | **Δ +11** vs v0.9.31; **Δ +2** vs r4 |
+| **#42** (STATUS contract) | **Strong overall:** ocg-mimo-pro **5/5**; minimax-m3 direct **e2e/task7/task10 PASS**; remaining FAILs emit `STATUS: BLOCKED` (contract present) but miss SUCCESS — task8/task9 incomplete work |
+| **#46**, **#49** | **#49 cleared**; **#46** narrowed to task8 bulk-archive incomplete patches / multi-arg apply_patch (minimax-m3 e2e now PASS) |
+| **#39**, **#52**, **#54** | **#39** mitigated (`cat -An` → `cat -n` repair); **#52** PORT default guidance added to MiMo/MiniMax profiles |
 | Parent issues (active) | [#42](https://github.com/alo-labs/kay/issues/42), [#46](https://github.com/alo-labs/kay/issues/46), [#49](https://github.com/alo-labs/kay/issues/49), [#39](https://github.com/alo-labs/kay/issues/39), [#52](https://github.com/alo-labs/kay/issues/52), [#54](https://github.com/alo-labs/kay/issues/54), [#56](https://github.com/alo-labs/kay/issues/56) (Vision Delegate enhancement) |
 | Deduped closures | [#57](https://github.com/alo-labs/kay/issues/57)–[#71](https://github.com/alo-labs/kay/issues/71), [#72](https://github.com/alo-labs/kay/issues/72), [#73](https://github.com/alo-labs/kay/issues/73) closed as duplicates/mis-triage |
 
