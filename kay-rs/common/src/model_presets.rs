@@ -168,6 +168,19 @@ static PRESETS: Lazy<Vec<ModelPreset>> = Lazy::new(|| {
             show_in_picker: true,
         },
         ModelPreset {
+            id: "MiniMax-M3".to_string(),
+            model: "MiniMax-M3".to_string(),
+            display_name: "MiniMax-M3".to_string(),
+            description: "Latest MiniMax coding model.".to_string(),
+            default_reasoning_effort: ReasoningEffort::Medium,
+            supported_reasoning_efforts: Vec::new(),
+            supported_text_verbosity: &[TextVerbosityConfig::Medium],
+            is_default: false,
+            upgrade: None,
+            pro_only: false,
+            show_in_picker: true,
+        },
+        ModelPreset {
             id: "MiniMax-M2.7".to_string(),
             model: "MiniMax-M2.7".to_string(),
             display_name: "MiniMax-M2.7".to_string(),
@@ -757,6 +770,7 @@ mod tests {
     #[test]
     fn minimax_available_for_api_key_auth() {
         let presets = builtin_model_presets(Some(AuthMode::ApiKey), false);
+        assert!(presets.iter().any(|preset| preset.id == "MiniMax-M3"));
         assert!(presets.iter().any(|preset| preset.id == "MiniMax-M2.7"));
     }
 
@@ -794,6 +808,7 @@ mod tests {
     fn third_party_presets_do_not_advertise_openai_reasoning_effort() {
         let presets = builtin_model_presets(Some(AuthMode::ApiKey), false);
         for model in [
+            "MiniMax-M3",
             "MiniMax-M2.7",
             "xiaomi/mimo-v2.5-pro",
             "xiaomi/mimo-v2.5",
