@@ -1,3 +1,36 @@
+## @alo-labs/kay v0.9.31
+
+Patch release after v0.9.30: improves Sidekick `STATUS:` detection for compact
+final prompts and extends the GitHub issue monitor so post-close activity on
+already-handled issues is tracked instead of silently ignored.
+
+### Exec Reliability
+
+- Detect compact Sidekick `STATUS:` prompts in final assistant messages so
+  `kay exec` honors `STATUS: SUCCESS` / `STATUS: BLOCKED` contracts when the
+  model omits the usual multi-line framing (`ef2ae84e`).
+
+### Operations
+
+- `scripts/issue-monitor-check.sh` tracks `closed_activity` on issues that were
+  already in `handled_issue_numbers`, so follow-up comments after a fix lands do
+  not leave the monitor blind (`5b98a8b3`).
+
+### Release And Verification
+
+- Published package metadata for `@alo-labs/kay` 0.9.31 (`f554de1c`).
+- Verified locally with `./build-fast.sh` and `./pre-release.sh` (MiniMax-M3 live
+  provider gate).
+
+### Install
+
+```bash
+npm install -g @alo-labs/kay@latest
+kay --version
+```
+
+Compare: https://github.com/alo-labs/kay/compare/v0.9.30...v0.9.31
+
 ## @alo-labs/kay v0.9.27
 
 This release closes the open triage blocker sweep (#39–#53), hardens exec and
