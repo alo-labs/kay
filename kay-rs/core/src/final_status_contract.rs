@@ -195,7 +195,7 @@ pub fn prompt_requires_final_status(prompt: &str) -> bool {
     mentions_final && mentions_required_status && requires_status_contract
 }
 
-pub const TURN_CONTINUE_NUDGE_PROMPT: &str = "Continue the task with tool calls. Do not stop for narration—apply the required code changes, run verification scripts, then end with a STATUS block when done.";
+pub const TURN_CONTINUE_NUDGE_PROMPT: &str = "Continue the task with tool calls. Do not stop for narration—finish wiring (including notes-ui.js if needed), ensure scripts/verify-*.sh exist via apply_patch, run both verify scripts with PORT exported, then reply with only STATUS: SUCCESS (or STATUS: BLOCKED if truly stuck) plus FILES_CHANGED and TESTS_RUN.";
 
 pub fn turn_continue_nudge_input() -> ResponseInputItem {
     ResponseInputItem::Message {
