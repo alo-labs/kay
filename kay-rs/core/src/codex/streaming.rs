@@ -2499,8 +2499,8 @@ async fn run_agent(
     // Continue with our fork's history and input handling.
 
     let is_review_mode = turn_context.is_review_mode;
-    let repairs_final_output_contracts =
-        turn_context.client.get_model_family().family.as_str() == "mimo";
+    let model_family = turn_context.client.get_model_family();
+    let repairs_final_output_contracts = model_family.repairs_final_output_json_schema;
     let status_contract_prompt = status_contract_prompt_from_input(&input);
     let requires_status_contract = prompt_requires_final_status(&status_contract_prompt);
     let mut review_history: Vec<ResponseItem> = Vec::new();
@@ -4641,7 +4641,7 @@ async fn handle_response_item(
             name,
             input,
             ..
-        } if name == "apply_patch" => {
+        } if name == "apply_patch" && sess.client.get_model_family().routes_apply_patch_freeform_call() => {
             let params = ShellToolCallParams {
                 command: normalize_shell_tool_command(vec![
                     "apply_patch".to_string(),
@@ -5071,7 +5071,7 @@ async fn handle_function_call(
         "gh_run_wait" => handle_gh_run_wait(sess, &ctx, arguments).await,
         "kill" => handle_kill(sess, &ctx, arguments).await,
         "kay_bridge" | "kay_bridge_subscription" => handle_kay_bridge(sess, &ctx, arguments).await,
-        "apply_patch" => {
+        "apply_patch" if sess.client.get_model_family().routes_apply_patch_function_call() => {
             let params = match parse_apply_patch_function_arguments(arguments, sess, &call_id) {
                 Ok(params) => params,
                 Err(output) => return *output,
