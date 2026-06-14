@@ -37,7 +37,7 @@ Use this as the **baseline** when interpreting your run; update the headline in 
 | Signal | Value |
 |--------|--------|
 | Kay under test | **local build** (`kay 0.0.0` from `cargo build -p code-cli --release`) at `~/.local/bin/kay` |
-| Matrix prefix (latest local retest) | `local-fix-r5` → **15/20 PASS** (prior: r4 **13/20**, r3 **11/20**, v0.9.31 **4/20**) |
+| Matrix prefix (latest local retest) | `local-fix-r6` (targeted task8/9) → **1/6 PASS** on former FAIL cells; projected **16/20** full matrix (+1: `ocg-mimo` task8); prior r5 **15/20** |
 | Baseline comparison | **Δ +11** vs v0.9.31; **Δ +2** vs r4 |
 | **#42** (STATUS contract) | **Strong overall:** ocg-mimo-pro **5/5**; minimax-m3 direct **e2e/task7/task10 PASS**; remaining FAILs emit `STATUS: BLOCKED` (contract present) but miss SUCCESS — task8/task9 incomplete work |
 | **#46**, **#49** | **#49 cleared**; **#46** narrowed to task8 bulk-archive incomplete patches / multi-arg apply_patch (minimax-m3 e2e now PASS) |
