@@ -1,4 +1,4 @@
-//! Sidekick-style final STATUS block detection, salvage, and repair prompts.
+//! Prompt-driven final STATUS block detection, salvage, and repair prompts.
 
 use code_protocol::models::ContentItem;
 use code_protocol::models::ResponseInputItem;
@@ -169,7 +169,7 @@ mod tests {
     }
 
     #[test]
-    fn detects_sidekick_task9_success_criteria() {
+    fn detects_success_criteria_status_requirement() {
         let prompt = "SUCCESS CRITERIA:\n- Both verify scripts exit 0.\n- STATUS: SUCCESS with FILES_CHANGED and TESTS_RUN in final message.";
         assert!(prompt_requires_final_status(prompt));
         assert!(final_status_contract_missing(
