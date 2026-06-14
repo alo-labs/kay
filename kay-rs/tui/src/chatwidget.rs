@@ -31815,7 +31815,7 @@ use code_core::protocol::OrderMeta;
 
             assert_eq!(chat.config.model_provider_id, MINIMAX_PROVIDER_ID);
             assert_eq!(chat.config.model_provider.name, "MiniMax");
-            assert_eq!(chat.config.model, "MiniMax-M2.7");
+            assert_eq!(chat.config.model, "MiniMax-M3");
         });
     }
 
