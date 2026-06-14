@@ -38,13 +38,17 @@ const MIMO_SYNTHESIS_CHECKPOINT_INSTRUCTIONS: &str = r#"MiMo investigation disci
 - If you have read or searched the same files repeatedly, stop rereading and summarize what is already known.
 - Before taking another exploratory tool action, state the current hypothesis, the evidence for it, and the single next observation that would change it.
 - When enough evidence has been gathered, provide the diagnosis or next concrete code change instead of another preamble.
-- In `scripts/verify-*.sh`, default the port with `PORT="${PORT:-3458}"` and export it before starting the app; never use `PORT="${PORT:?PORT is required}"`."#;
+- In `scripts/verify-*.sh`, default the port with `PORT="${PORT:-3458}"` and export it before starting the app; never use `PORT="${PORT:?PORT is required}"`.
+- For `src/public/notes-ui.js`, HTML, and `scripts/verify-*.sh`, use `apply_patch` Add/Update File hunks — never `printf`, `cat >`, or `&&`-chained shell to write source files.
+- When a task names `scripts/verify-*.sh`, create or update those files with `apply_patch`, run them with `PORT` exported, then end with `STATUS: SUCCESS` and `TESTS_RUN:` listing both scripts."#;
 const MINIMAX_TOOL_DISCIPLINE_INSTRUCTIONS: &str = r#"MiniMax tool discipline:
 - Call `apply_patch` with exactly one argument: the full patch string from `*** Begin Patch` through `*** End Patch`.
 - Do not pass patch lines as separate shell arguments and do not insert `&&` between argv tokens.
 - On macOS, use `cat -n`, not `cat -An` or `cat -A`.
 - Prefer the `apply_patch` tool or a heredoc for file edits instead of empty redirections like `cat > /tmp/file` without content.
-- In `scripts/verify-*.sh`, default the port with `PORT="${PORT:-3458}"` and export it before starting the app; never use `PORT="${PORT:?PORT is required}"`."#;
+- In `scripts/verify-*.sh`, default the port with `PORT="${PORT:-3458}"` and export it before starting the app; never use `PORT="${PORT:?PORT is required}"`.
+- For `src/public/notes-ui.js`, HTML, and `scripts/verify-*.sh`, use `apply_patch` Add/Update File hunks — never `printf`, `cat >`, or `&&`-chained shell to write source files.
+- When a task names `scripts/verify-*.sh`, create or update those files with `apply_patch`, run them with `PORT` exported, then end with `STATUS: SUCCESS` and `TESTS_RUN:` listing both scripts."#;
 const DEFAULT_PERSONALITY_HEADER: &str = "You are Codex, a coding agent based on GPT-5. You and the user share the same workspace and collaborate to achieve the user's goals.";
 const LOCAL_FRIENDLY_TEMPLATE: &str =
     "You optimize for team morale and being a supportive teammate as much as code quality.";
@@ -959,6 +963,12 @@ mod tests {
                 .contains("Never write hunk labels like `@@ hint paragraph @@`"),
             "MiMo models need explicit apply_patch hunk header guidance"
         );
+        assert!(
+            family
+                .base_instructions
+                .contains("never `printf`, `cat >`, or `&&`-chained shell"),
+            "MiMo models need notes-ui.js apply_patch guidance"
+        );
         assert!(family.repairs_malformed_apply_patch_tool_calls);
         assert!(family.repairs_final_output_json_schema);
         assert!(family.routes_apply_patch_function_call());
@@ -978,6 +988,12 @@ mod tests {
                 .base_instructions
                 .contains("MiniMax tool discipline"),
             "MiniMax models need explicit apply_patch argv guidance"
+        );
+        assert!(
+            family
+                .base_instructions
+                .contains("never `printf`, `cat >`, or `&&`-chained shell"),
+            "MiniMax models need notes-ui.js apply_patch guidance"
         );
     }
 
