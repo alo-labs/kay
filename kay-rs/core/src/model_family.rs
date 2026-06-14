@@ -288,6 +288,14 @@ pub struct ModelFamily {
     /// a tool call instead of just a bash command
     pub apply_patch_tool_type: Option<ApplyPatchToolType>,
 
+    /// Route malformed `apply_patch` FunctionCall / CustomToolCall items through
+    /// patch normalization instead of rejecting them as unsupported tool calls.
+    pub repairs_malformed_apply_patch_tool_calls: bool,
+
+    /// Retry turns when the final assistant message does not satisfy
+    /// `final_output_json_schema` on the turn context.
+    pub repairs_final_output_json_schema: bool,
+
     /// This should be set when the model expects a `shell_command` tool that
     /// accepts a shell script string instead of argv-style arguments.
     pub uses_shell_command_tool: bool,
@@ -363,6 +371,8 @@ macro_rules! model_family {
             prefer_websockets: false,
             uses_local_shell_tool: false,
             apply_patch_tool_type: None,
+            repairs_malformed_apply_patch_tool_calls: false,
+            repairs_final_output_json_schema: false,
             uses_shell_command_tool: false,
             web_search_tool_type: WebSearchToolType::Text,
             supports_image_detail_original: false,
@@ -436,6 +446,8 @@ fn apply_upstream_model_overrides(mut family: ModelFamily) -> ModelFamily {
 }
 
 fn with_mimo_synthesis_checkpoint(mut family: ModelFamily) -> ModelFamily {
+    family.repairs_malformed_apply_patch_tool_calls = true;
+    family.repairs_final_output_json_schema = true;
     if !family
         .base_instructions
         .contains("Consolidate findings before ending an investigation turn")
@@ -466,6 +478,7 @@ pub fn find_family_for_model(slug: &str) -> Option<ModelFamily> {
         model_family!(
             slug, "minimax-m3",
             needs_special_apply_patch_instructions: true,
+            repairs_malformed_apply_patch_tool_calls: true,
             base_instructions: BASE_INSTRUCTIONS_WITH_APPLY_PATCH.to_string(),
             context_window: Some(1_000_000),
             truncation_policy: TruncationPolicy::Tokens(10_000),
@@ -477,6 +490,7 @@ pub fn find_family_for_model(slug: &str) -> Option<ModelFamily> {
         model_family!(
             slug, "minimax-m2.7",
             needs_special_apply_patch_instructions: true,
+            repairs_malformed_apply_patch_tool_calls: true,
             base_instructions: BASE_INSTRUCTIONS_WITH_APPLY_PATCH.to_string(),
             context_window: Some(204_800),
             truncation_policy: TruncationPolicy::Tokens(10_000),
@@ -700,12 +714,14 @@ pub fn find_family_for_model(slug: &str) -> Option<ModelFamily> {
             slug, "minimax-m3",
             context_window: Some(1_000_000),
             needs_special_apply_patch_instructions: true,
+            repairs_malformed_apply_patch_tool_calls: true,
         )
     } else if slug.starts_with("minimax-m2.7") {
         model_family!(
             slug, "minimax-m2.7",
             context_window: Some(204_800),
             needs_special_apply_patch_instructions: true,
+            repairs_malformed_apply_patch_tool_calls: true,
         )
     } else if slug_lower.contains("glm") {
         model_family!(
@@ -744,6 +760,8 @@ pub fn derive_default_model_family(model: &str) -> ModelFamily {
         prefer_websockets: false,
         uses_local_shell_tool: false,
         apply_patch_tool_type: None,
+        repairs_malformed_apply_patch_tool_calls: false,
+        repairs_final_output_json_schema: false,
         uses_shell_command_tool: false,
         web_search_tool_type: WebSearchToolType::Text,
         supports_image_detail_original: false,
@@ -914,6 +932,27 @@ mod tests {
                 .contains("Never write hunk labels like `@@ hint paragraph @@`"),
             "MiMo models need explicit apply_patch hunk header guidance"
         );
+        assert!(family.repairs_malformed_apply_patch_tool_calls);
+        assert!(family.repairs_final_output_json_schema);
+        assert!(family.routes_apply_patch_function_call());
+        assert!(family.routes_apply_patch_freeform_call());
+    }
+
+    #[test]
+    fn minimax_family_repairs_malformed_apply_patch_tool_calls() {
+        let family = find_family_for_model("opencode-go/minimax-m2.7")
+            .expect("known MiniMax model");
+        assert!(family.repairs_malformed_apply_patch_tool_calls);
+        assert!(!family.repairs_final_output_json_schema);
+        assert!(family.routes_apply_patch_function_call());
+        assert!(family.routes_apply_patch_freeform_call());
+    }
+
+    #[test]
+    fn gpt_oss_routes_native_apply_patch_function_tool() {
+        let family = find_family_for_model("gpt-oss-120b").expect("gpt-oss family");
+        assert!(family.routes_apply_patch_function_call());
+        assert!(!family.routes_apply_patch_freeform_call());
     }
 
     #[test]
@@ -1151,6 +1190,24 @@ impl ModelFamily {
     pub fn auto_compact_token_limit(&self) -> Option<i64> {
         self.auto_compact_token_limit
             .or(self.context_window.map(Self::default_auto_compact_limit))
+    }
+
+    /// Whether `apply_patch` FunctionCall items should be routed through patch
+    /// normalization (native function tool or model-family recovery).
+    pub fn routes_apply_patch_function_call(&self) -> bool {
+        matches!(
+            self.apply_patch_tool_type,
+            Some(ApplyPatchToolType::Function)
+        ) || self.repairs_malformed_apply_patch_tool_calls
+    }
+
+    /// Whether `apply_patch` CustomToolCall items should be routed through patch
+    /// normalization (native freeform tool or model-family recovery).
+    pub fn routes_apply_patch_freeform_call(&self) -> bool {
+        matches!(
+            self.apply_patch_tool_type,
+            Some(ApplyPatchToolType::Freeform)
+        ) || self.repairs_malformed_apply_patch_tool_calls
     }
 
     pub fn set_auto_compact_token_limit(&mut self, limit: Option<i64>) {
