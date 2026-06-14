@@ -28,7 +28,8 @@ use crate::agent_tool::current_agent_spawn_depth;
 use crate::agent_tool::external_agent_command_exists;
 use crate::final_status_contract::{
     final_status_contract_missing, final_status_repair_input, prompt_requires_final_status,
-    status_contract_prompt_from_input, try_salvage_last_task_message,
+    should_defer_turn_final_status_repair, status_contract_prompt_from_input,
+    turn_continue_nudge_input, try_salvage_last_task_message,
 };
 use crate::protocol::McpListToolsResponseEvent;
 use crate::protocol::TaskLifecycleEvent;
@@ -2553,6 +2554,7 @@ async fn run_agent(
     let mut last_task_message: Option<String> = None;
     let mut final_output_schema_repair_attempts = 0usize;
     let mut final_status_repair_attempts = 0usize;
+    let mut turn_continue_nudge_attempts = 0usize;
     // Although from the perspective of codex.rs, TurnDiffTracker has the lifecycle of a Agent which contains
     // many turns, from the perspective of the user, it is a single turn.
     let mut turn_diff_tracker = TurnDiffTracker::new();
@@ -2924,6 +2926,16 @@ async fn run_agent(
                             schema,
                             final_output_schema_repair_attempts,
                         ));
+                        continue;
+                    }
+
+                    if !is_review_mode
+                        && requires_status_contract
+                        && turn_continue_nudge_attempts < 3
+                        && should_defer_turn_final_status_repair(last_task_message.as_deref())
+                    {
+                        turn_continue_nudge_attempts += 1;
+                        sess.add_pending_input(turn_continue_nudge_input());
                         continue;
                     }
 
@@ -8277,6 +8289,12 @@ fn normalize_exec_command_argv(command: Vec<String>) -> Vec<String> {
     if let Some(repaired) = repair_malformed_apply_patch_command(&command) {
         return repaired;
     }
+    if let Some(repaired) = repair_malformed_redirection_argv(&command) {
+        return repaired;
+    }
+    if let Some(repaired) = repair_macos_cat_flags_argv(&command) {
+        return repaired;
+    }
     if let Some(repaired) = repair_malformed_ls_probe(&command) {
         return repaired;
     }
@@ -8322,6 +8340,19 @@ fn repair_malformed_apply_patch_command(command: &[String]) -> Option<Vec<String
         }
     }
 
+    if command.first().map(String::as_str) == Some("apply_patch") && command.len() > 1 {
+        let patch_idx = command
+            .iter()
+            .position(|part| part.contains("*** Begin Patch"))?;
+        if patch_idx > 0 || command.len() > 2 {
+            let patch_body = command[patch_idx..].join("\n");
+            return Some(vec![
+                "apply_patch".to_string(),
+                normalize_apply_patch_hunk_header_text(&patch_body),
+            ]);
+        }
+    }
+
     let parts = extract_malformed_and_tokens(command)?;
     if parts.first().map(String::as_str) != Some("apply_patch") {
         return None;
@@ -8334,14 +8365,54 @@ fn repair_malformed_apply_patch_command(command: &[String]) -> Option<Vec<String
     ])
 }
 
-fn repair_apply_patch_shell_misuse(script: &str) -> Option<Vec<String>> {
-    const MARKER: &str = "*** Begin Patch";
-    if !script.contains("apply_patch") || !script.contains(MARKER) {
+fn repair_malformed_redirection_argv(command: &[String]) -> Option<Vec<String>> {
+    let parts = extract_malformed_and_tokens(command)?;
+    if parts.first().map(String::as_str) != Some("cat") || parts.len() < 3 {
         return None;
     }
-    let idx = script.find(MARKER)?;
-    let patch_body = normalize_apply_patch_hunk_header_text(&script[idx..]);
-    Some(vec!["apply_patch".to_string(), patch_body])
+    if parts.get(1).map(String::as_str) != Some(">") {
+        return None;
+    }
+    let target = parts.get(2)?.clone();
+    Some(vec!["touch".to_string(), target])
+}
+
+fn repair_macos_cat_flags_argv(command: &[String]) -> Option<Vec<String>> {
+    if command.first().map(String::as_str) != Some("cat") {
+        return None;
+    }
+    let repaired: Vec<String> = command
+        .iter()
+        .map(|arg| {
+            if arg == "-An" || arg == "-A" {
+                "-n".to_string()
+            } else {
+                arg.clone()
+            }
+        })
+        .collect();
+    if repaired == *command {
+        return None;
+    }
+    Some(repaired)
+}
+
+fn repair_apply_patch_shell_misuse(script: &str) -> Option<Vec<String>> {
+    const MARKER: &str = "*** Begin Patch";
+    if !script.contains(MARKER) {
+        return None;
+    }
+    if script.contains("apply_patch") {
+        let idx = script.find(MARKER)?;
+        let patch_body = normalize_apply_patch_hunk_header_text(&script[idx..]);
+        return Some(vec!["apply_patch".to_string(), patch_body]);
+    }
+    if script.contains("| apply_patch") || script.contains("| apply-patch") {
+        let idx = script.find(MARKER)?;
+        let patch_body = normalize_apply_patch_hunk_header_text(&script[idx..]);
+        return Some(vec!["apply_patch".to_string(), patch_body]);
+    }
+    None
 }
 
 fn repair_malformed_shell_wrapper_argv(command: &[String]) -> Option<Vec<String>> {
@@ -9077,6 +9148,66 @@ mod kay_runtime_regression_tests {
             ]),
             vec!["apply_patch".to_string(), patch.to_string()]
         );
+    }
+
+    #[test]
+    fn minimax_multi_arg_apply_patch_without_and_is_repaired() {
+        let repaired = normalize_exec_command_argv(vec![
+            "apply_patch".to_string(),
+            "*** Begin Patch".to_string(),
+            "*** Update File: src/server.js".to_string(),
+            "@@ app.get('/api/health', (req, res) => {".to_string(),
+            "-  res.json({ status: 'broken', timestamp: new Date().toISOString() });".to_string(),
+            "+  res.json({ status: 'ok', timestamp: new Date().toISOString() });".to_string(),
+            "*** End Patch".to_string(),
+        ]);
+        assert_eq!(repaired.len(), 2);
+        assert_eq!(repaired[0], "apply_patch");
+        assert!(repaired[1].starts_with("*** Begin Patch"));
+        assert!(repaired[1].contains("src/server.js"));
+        assert!(repaired[1].contains("*** End Patch"));
+    }
+
+    #[test]
+    fn minimax_malformed_cat_redirection_is_repaired() {
+        assert_eq!(
+            normalize_exec_command_argv(vec![
+                "cat".to_string(),
+                "&&".to_string(),
+                ">".to_string(),
+                "&&".to_string(),
+                "/tmp/patch.txt".to_string(),
+            ]),
+            vec!["touch".to_string(), "/tmp/patch.txt".to_string()]
+        );
+    }
+
+    #[test]
+    fn minimax_macos_cat_an_flag_is_repaired() {
+        assert_eq!(
+            normalize_exec_command_argv(vec![
+                "cat".to_string(),
+                "-An".to_string(),
+                "/tmp/patch.txt".to_string(),
+            ]),
+            vec![
+                "cat".to_string(),
+                "-n".to_string(),
+                "/tmp/patch.txt".to_string()
+            ]
+        );
+    }
+
+    #[test]
+    fn printf_patch_pipe_to_apply_patch_is_repaired() {
+        let patch = "*** Begin Patch\n*** Update File: src/server.js\n@@\n-old\n+new\n*** End Patch";
+        let repaired = normalize_exec_command_argv(vec![
+            "bash".to_string(),
+            "-lc".to_string(),
+            format!("printf '%s' \"{patch}\" | apply_patch"),
+        ]);
+        assert_eq!(repaired[0], "apply_patch");
+        assert!(repaired[1].contains("src/server.js"));
     }
 
     #[test]
