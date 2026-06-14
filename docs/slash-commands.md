@@ -176,9 +176,12 @@ Implementation Notes
   `[[agents]]` or per-command `[[subagents.commands]].agents`.
   Set `[subagents].enabled = false` to remove the runtime `agent` tool when a
   run must stay pinned to one provider/model.
-  v0.9.27 release-note bodies must list categorized fixes directly in the
-  GitHub Release text (exec/sandbox/auth triage blockers #39–#53, runtime guard
-  normalization, heredoc workspace guards that preserve `Path()` case, and the
-  MiniMax-M3 live gate exercised in `./pre-release.sh`); hook remediation for
+  For v0.9.31+, treat `docs/release-notes/RELEASE_NOTES.md` as the canonical GitHub Release body source; refresh it with `docs/task-doc-checklist.json` when `release-notes-body` hook remediation runs.
+  v0.9.31 release-note bodies must list categorized fixes directly in the
+  GitHub Release text sourced from `docs/release-notes/RELEASE_NOTES.md`
+  (compact Sidekick `STATUS:` detection for final prompts, issue-monitor
+  `closed_activity` tracking on already-handled issues, and the MiniMax-M3 live
+  gate exercised in `./pre-release.sh`); hook remediation for
+  Cursor DOC-SCHEME gate remediation for `release-notes-body` must re-touch `docs/doc-scheme.md`, `docs/doc-scheme.json`, this file, and `docs/task-doc-checklist.json` so session mtimes exceed the Silver Bullet marker.
   `release-notes-body` should refresh this note and
   `docs/task-doc-checklist.json` in the same session (2026-06-14).

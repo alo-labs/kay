@@ -32,7 +32,7 @@ const TUI_ROWS: u16 = 60;
 const TUI_COLS: u16 = 180;
 
 struct LiveKeySet {
-    opencode_go: String,
+    opencode_go: Option<String>,
     minimax: Option<String>,
 }
 
@@ -184,8 +184,26 @@ fn env_key(name: &str) -> Option<String> {
 }
 
 fn live_keys() -> Option<LiveKeySet> {
-    let opencode_go = env_key("OPENCODE_GO_LIVE_API_KEY")?;
-    let minimax = env_key("MINIMAX_LIVE_API_KEY");
+    let models = selected_live_models();
+    let needs_opencode_go = models
+        .iter()
+        .any(|spec| spec.provider_id == "opencode-go");
+    let needs_minimax = models.iter().any(|spec| spec.provider_id == "minimax");
+    if !needs_opencode_go && !needs_minimax {
+        return None;
+    }
+
+    let opencode_go = if needs_opencode_go {
+        Some(env_key("OPENCODE_GO_LIVE_API_KEY")?)
+    } else {
+        None
+    };
+    let minimax = if needs_minimax {
+        Some(env_key("MINIMAX_LIVE_API_KEY")?)
+    } else {
+        None
+    };
+
     Some(LiveKeySet {
         opencode_go,
         minimax,
@@ -264,10 +282,13 @@ fn clone_notes_app() -> (TempDir, PathBuf) {
 
 fn redact(text: &str, keys: &LiveKeySet) -> String {
     let mut redacted = text.to_string();
-    for key in Some(&keys.opencode_go).into_iter().chain(keys.minimax.as_ref()) {
-        if !key.is_empty() {
-            redacted = redacted.replace(key, "[REDACTED_API_KEY]");
-        }
+    for key in keys
+        .opencode_go
+        .iter()
+        .chain(keys.minimax.iter())
+        .filter(|key| !key.is_empty())
+    {
+        redacted = redacted.replace(key, "[REDACTED_API_KEY]");
     }
     redacted
 }
@@ -476,22 +497,28 @@ fn start_onboarding_provider_setup(
         ONBOARDING_TIMEOUT,
     );
 
-    harness.write_key(b"\x1b[B");
-    harness.write_key(b"\r");
-    harness.wait_for(
-        keys,
-        &["Editing OpenCode Go provider key"],
-        ONBOARDING_TIMEOUT,
-    );
-    harness.write_line(&keys.opencode_go);
-    harness.wait_for(
-        keys,
-        &["OpenCode Go API key saved", "OpenCode Go", "(configured)"],
-        ONBOARDING_TIMEOUT,
-    );
+    if let Some(opencode_go_key) = keys.opencode_go.as_deref() {
+        harness.write_key(b"\x1b[B");
+        harness.write_key(b"\r");
+        harness.wait_for(
+            keys,
+            &["Editing OpenCode Go provider key"],
+            ONBOARDING_TIMEOUT,
+        );
+        harness.write_line(opencode_go_key);
+        harness.wait_for(
+            keys,
+            &["OpenCode Go API key saved", "OpenCode Go", "(configured)"],
+            ONBOARDING_TIMEOUT,
+        );
+    }
 
     if let Some(minimax_key) = keys.minimax.as_deref() {
-        harness.write_key(b"\x1b[B\r");
+        let down_steps = if keys.opencode_go.is_some() { 1 } else { 2 };
+        for _ in 0..down_steps {
+            harness.write_key(b"\x1b[B");
+        }
+        harness.write_key(b"\r");
         harness.wait_for(
             keys,
             &["Editing MiniMax provider key"],
@@ -519,7 +546,10 @@ fn auth_json(kay_home: &Path) -> Value {
 
 fn assert_onboarding_saved_credentials(kay_home: &Path, keys: &LiveKeySet) {
     let auth = auth_json(kay_home);
-    let mut expected = vec!["opencode-go"];
+    let mut expected = Vec::new();
+    if keys.opencode_go.is_some() {
+        expected.push("opencode-go");
+    }
     if keys.minimax.is_some() {
         expected.push("minimax");
     }
@@ -933,7 +963,7 @@ fn onboarding_provider_keys_then_live_notes_turns_for_ocg_mm() {
     }
     let Some(keys) = live_keys() else {
         eprintln!(
-            "skipping onboarding provider live smoke: OPENCODE_GO_LIVE_API_KEY must be set"
+            "skipping onboarding provider live smoke: set API keys for the selected model filter (OPENCODE_GO_LIVE_API_KEY and/or MINIMAX_LIVE_API_KEY)"
         );
         return;
     };

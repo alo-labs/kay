@@ -59,6 +59,7 @@ use std::backtrace::Backtrace;
 use std::io::IsTerminal;
 use std::io::Read;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::sync::Once;
 use supports_color::Stream;
@@ -608,9 +609,11 @@ pub async fn run_main(cli: Cli, code_linux_sandbox_exe: Option<PathBuf>) -> anyh
         .await;
     }
 
+    let host_termination_hooks = ExecHostTerminationHooks::new(last_message_file.clone(), max_seconds);
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<Event>();
     {
         let conversation = conversation.clone();
+        let host_termination_hooks = host_termination_hooks.clone();
         tokio::spawn(async move {
             #[cfg(unix)]
             let mut sigterm_stream = match tokio::signal::unix::signal(
@@ -632,6 +635,7 @@ pub async fn run_main(cli: Cli, code_linux_sandbox_exe: Option<PathBuf>) -> anyh
                         tokio::select! {
                             _ = stream.recv() => {
                                 tracing::debug!("SIGTERM received; requesting shutdown");
+                                host_termination_hooks.on_sigterm();
                                 conversation.submit(Op::Shutdown).await.ok();
                                 sigterm_requested = true;
                                 break;
@@ -814,6 +818,8 @@ pub async fn run_main(cli: Cli, code_linux_sandbox_exe: Option<PathBuf>) -> anyh
     let mut shutdown_deadline: Option<Instant> = None;
     let auto_review_grace_enabled = config.tui.auto_review_enabled;
     let mut auto_review_tracker = AutoReviewTracker::new(&config.cwd);
+    let mut status_repair_attempted = false;
+    let mut suppress_shutdown_for_status_repair = false;
     loop {
         tokio::select! {
             _ = async {
@@ -950,6 +956,7 @@ pub async fn run_main(cli: Cli, code_linux_sandbox_exe: Option<PathBuf>) -> anyh
                 if let Some(text) = last_agent_message.clone() {
                     final_last_message = Some(text);
                 }
+                try_salvage_final_status(&mut final_last_message, &last_message_file);
 
                 if let Some(state_snapshot) = auto_resolve_state.clone() {
                     let current_epoch = current_snapshot_epoch_for(&config.cwd);
@@ -1203,21 +1210,44 @@ pub async fn run_main(cli: Cli, code_linux_sandbox_exe: Option<PathBuf>) -> anyh
 
                 if auto_resolve_state.is_none() && !shutdown_sent {
                     auto_resolve_base_snapshot = None;
-                    request_shutdown(
-                        &conversation,
-                        &auto_review_tracker,
-                        &mut shutdown_pending,
-                        &mut shutdown_sent,
-                        &mut shutdown_deadline,
-                        auto_review_grace_enabled,
-                    )
-                    .await?;
+                    if should_request_final_status_repair(
+                        &final_status_contract_prompt,
+                        final_last_message.as_deref(),
+                        status_repair_attempted,
+                    ) {
+                        status_repair_attempted = true;
+                        suppress_shutdown_for_status_repair = true;
+                        let _ = conversation
+                            .submit(Op::UserInput {
+                                items: vec![InputItem::Text {
+                                    text: FINAL_STATUS_REPAIR_PROMPT.to_string(),
+                                }],
+                                final_output_json_schema: None,
+                            })
+                            .await;
+                    } else {
+                        request_shutdown(
+                            &conversation,
+                            &auto_review_tracker,
+                            &mut shutdown_pending,
+                            &mut shutdown_sent,
+                            &mut shutdown_deadline,
+                            auto_review_grace_enabled,
+                        )
+                        .await?;
+                    }
                 }
             }
             _ => {}
         }
 
-        let shutdown: CodexStatus = event_processor.process_event(event);
+        let shutdown: CodexStatus = if suppress_shutdown_for_status_repair {
+            suppress_shutdown_for_status_repair = false;
+            event_processor.process_event(event);
+            CodexStatus::Running
+        } else {
+            event_processor.process_event(event)
+        };
         match shutdown {
             CodexStatus::Running => {}
             CodexStatus::InitiateShutdown => {
@@ -1271,6 +1301,15 @@ pub async fn run_main(cli: Cli, code_linux_sandbox_exe: Option<PathBuf>) -> anyh
     if review_runs > 0 {
         eprintln!("Review runs: {} (auto_resolve={} max_attempts={})", review_runs, config.tui.review_auto_resolve, max_auto_resolve_attempts);
     }
+    if host_termination_hooks.sigterm_requested() {
+        record_host_timeout_blocked_message(
+            &mut final_last_message,
+            &last_message_file,
+            max_seconds,
+        );
+        error_seen = true;
+    }
+    try_salvage_final_status(&mut final_last_message, &last_message_file);
     if let Some(path) = last_message_file.as_deref() {
         handle_last_message(final_last_message.as_deref(), path);
     }
@@ -1745,6 +1784,7 @@ async fn run_auto_drive_session(
     handle.cancel();
     }
 
+    try_salvage_final_status(&mut final_last_message, &last_message_path);
     if let Some(path) = last_message_path.as_deref() {
         handle_last_message(final_last_message.as_deref(), path);
     }
@@ -1773,6 +1813,118 @@ fn append_timeboxed_auto_drive_goal(goal: &str) -> String {
     }
 
     format!("{trimmed_goal}\n\n{AUTO_EXEC_TIMEBOXED_GOAL_SUFFIX}")
+}
+
+const FINAL_STATUS_REPAIR_PROMPT: &str = "STOP. Your last reply did not begin with STATUS:. Reply with ONLY a final status block—no narration or tool calls. Start the first line with STATUS: SUCCESS or STATUS: BLOCKED. Include FILES_CHANGED: and TESTS_RUN: lines when the original task required them.";
+
+#[derive(Clone)]
+struct ExecHostTerminationHooks {
+    sigterm_requested: Arc<AtomicBool>,
+    last_message_file: Option<PathBuf>,
+    max_seconds: Option<u64>,
+}
+
+impl ExecHostTerminationHooks {
+    fn new(last_message_file: Option<PathBuf>, max_seconds: Option<u64>) -> Self {
+        Self {
+            sigterm_requested: Arc::new(AtomicBool::new(false)),
+            last_message_file,
+            max_seconds,
+        }
+    }
+
+    fn sigterm_requested(&self) -> bool {
+        self.sigterm_requested.load(Ordering::SeqCst)
+    }
+
+    fn on_sigterm(&self) {
+        self.sigterm_requested.store(true, Ordering::SeqCst);
+        if let Some(path) = self.last_message_file.as_deref() {
+            let status = host_timeout_blocked_status(self.max_seconds);
+            handle_last_message(Some(&status), path);
+        }
+    }
+}
+
+fn message_starts_with_status(message: &str) -> bool {
+    message
+        .trim_start_matches(|ch: char| ch.is_whitespace() || ch == '`')
+        .to_ascii_uppercase()
+        .starts_with("STATUS:")
+}
+
+fn salvage_final_status_message(message: &str) -> Option<String> {
+    if message_starts_with_status(message) {
+        return None;
+    }
+
+    let upper = message.to_ascii_uppercase();
+    let status_idx = upper.find("STATUS:")?;
+    let tail = message[status_idx..].trim_start();
+    let mut lines: Vec<&str> = Vec::new();
+
+    for line in tail.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            if !lines.is_empty() {
+                break;
+            }
+            continue;
+        }
+
+        let upper_line = trimmed.to_ascii_uppercase();
+        if lines.is_empty() {
+            if upper_line.starts_with("STATUS:") {
+                lines.push(trimmed);
+            } else {
+                return None;
+            }
+            continue;
+        }
+
+        if upper_line.starts_with("FILES_CHANGED:")
+            || upper_line.starts_with("TESTS_RUN:")
+            || upper_line.starts_with("BLOCKER:")
+            || upper_line.starts_with("NOTES:")
+        {
+            lines.push(trimmed);
+            continue;
+        }
+
+        break;
+    }
+
+    if lines.is_empty() {
+        return None;
+    }
+
+    Some(lines.join("\n"))
+}
+
+fn try_salvage_final_status(
+    final_last_message: &mut Option<String>,
+    last_message_file: &Option<PathBuf>,
+) {
+    let Some(message) = final_last_message.as_ref() else {
+        return;
+    };
+    let Some(salvaged) = salvage_final_status_message(message) else {
+        return;
+    };
+    *final_last_message = Some(salvaged.clone());
+    if let Some(path) = last_message_file.as_deref() {
+        handle_last_message(Some(&salvaged), path);
+    }
+}
+
+fn should_request_final_status_repair(
+    prompt: &str,
+    last_agent_message: Option<&str>,
+    status_repair_attempted: bool,
+) -> bool {
+    !status_repair_attempted
+        && prompt_requires_final_status(prompt)
+        && final_status_contract_missing(prompt, last_agent_message)
 }
 
 fn final_status_contract_missing(prompt: &str, last_agent_message: Option<&str>) -> bool {
@@ -1830,12 +1982,33 @@ fn time_budget_blocked_status(max_seconds: Option<u64>) -> String {
     )
 }
 
+fn host_timeout_blocked_status(max_seconds: Option<u64>) -> String {
+    let limit = max_seconds
+        .map(|seconds| seconds.to_string())
+        .unwrap_or_else(|| "unknown".to_string());
+    format!(
+        "STATUS: BLOCKED kay exec host timeout (SIGTERM; --max-seconds={limit}); partial work may remain on disk for host verification."
+    )
+}
+
 fn record_time_budget_blocked_message(
     final_last_message: &mut Option<String>,
     last_message_file: &Option<PathBuf>,
     max_seconds: Option<u64>,
 ) {
     let status = time_budget_blocked_status(max_seconds);
+    *final_last_message = Some(status.clone());
+    if let Some(path) = last_message_file.as_deref() {
+        handle_last_message(Some(&status), path);
+    }
+}
+
+fn record_host_timeout_blocked_message(
+    final_last_message: &mut Option<String>,
+    last_message_file: &Option<PathBuf>,
+    max_seconds: Option<u64>,
+) {
+    let status = host_timeout_blocked_status(max_seconds);
     *final_last_message = Some(status.clone());
     if let Some(path) = last_message_file.as_deref() {
         handle_last_message(Some(&status), path);
@@ -3265,6 +3438,51 @@ mod tests {
         assert!(!final_status_contract_missing(
             prompt,
             Some("STATUS: SUCCESS\nFILES_CHANGED: src/routes/notes.js")
+        ));
+    }
+
+    #[test]
+    fn salvage_promotes_mid_message_status_to_prefix() {
+        let message = "Rewriting routes file cleanly.\n\nSTATUS: SUCCESS\nFILES_CHANGED: src/routes/notes.js";
+        let salvaged = salvage_final_status_message(message).expect("status block");
+        assert!(message_starts_with_status(&salvaged));
+        assert!(salvaged.contains("FILES_CHANGED:"));
+        assert!(!final_status_contract_missing(
+            "Final message STATUS: SUCCESS with FILES_CHANGED and TESTS_RUN.",
+            Some(&salvaged),
+        ));
+    }
+
+    #[test]
+    fn salvage_ignores_messages_that_already_start_with_status() {
+        assert!(salvage_final_status_message("STATUS: SUCCESS").is_none());
+    }
+
+    #[test]
+    fn host_timeout_blocked_status_starts_with_status() {
+        let status = host_timeout_blocked_status(Some(900));
+        assert!(message_starts_with_status(&status));
+        assert!(status.contains("900"));
+        assert!(status.contains("SIGTERM"));
+    }
+
+    #[test]
+    fn should_request_final_status_repair_when_contract_unsatisfied() {
+        let prompt = "Final message STATUS: SUCCESS with FILES_CHANGED and TESTS_RUN.";
+        assert!(should_request_final_status_repair(
+            prompt,
+            Some("Still working on verify scripts."),
+            false,
+        ));
+        assert!(!should_request_final_status_repair(
+            prompt,
+            Some("STATUS: SUCCESS"),
+            false,
+        ));
+        assert!(!should_request_final_status_repair(
+            prompt,
+            Some("Still working on verify scripts."),
+            true,
         ));
     }
 

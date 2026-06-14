@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated_at": "2026-06-14T06:30:00Z",
+  "updated_at": "2026-06-14T05:03:38Z",
   "sync": {
     "doc_scheme_md_path": "docs/doc-scheme.md",
     "task_checklist_path": "docs/task-doc-checklist.json"
@@ -8,17 +8,22 @@
   "tasks": {
     "release-notes-body": {
       "granularity": 2,
-      "summary": "v0.9.27 GitHub Release body: exec/sandbox/auth triage (#39-#53), MiniMax-M3 pre-release gate, heredoc workspace guard",
+      "summary": "v0.9.31 GitHub Release body: Sidekick STATUS detection, issue-monitor closed_activity, DOC-SCHEME gate remediation via docs/release-notes/RELEASE_NOTES.md",
       "touch_docs": [
         "docs/release-notes/RELEASE_NOTES.md",
         "docs/slash-commands.md",
-        "docs/task-doc-checklist.json"
+        "docs/task-doc-checklist.json",
+        "docs/doc-scheme.md",
+        "docs/doc-scheme.json"
       ]
     }
   },
   "enforcement": {
     "enabled": true,
-    "granularity_levels": [2, 3]
+    "granularity_levels": [
+      2,
+      3
+    ]
   },
   "mandatory_updated_docs": [
     "docs/slash-commands.md",
