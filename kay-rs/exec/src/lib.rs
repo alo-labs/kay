@@ -820,6 +820,7 @@ pub async fn run_main(cli: Cli, code_linux_sandbox_exe: Option<PathBuf>) -> anyh
     let mut auto_review_tracker = AutoReviewTracker::new(&config.cwd);
     let mut status_repair_attempted = false;
     let mut suppress_shutdown_for_status_repair = false;
+    let mut host_timeout_exit = false;
     loop {
         tokio::select! {
             _ = async {
@@ -836,6 +837,7 @@ pub async fn run_main(cli: Cli, code_linux_sandbox_exe: Option<PathBuf>) -> anyh
                     max_seconds,
                 );
                 error_seen = true;
+                host_timeout_exit = true;
                 let _ = conversation.submit(Op::Interrupt).await;
                 let _ = conversation.submit(Op::Shutdown).await;
                 break;
@@ -1308,6 +1310,7 @@ pub async fn run_main(cli: Cli, code_linux_sandbox_exe: Option<PathBuf>) -> anyh
             max_seconds,
         );
         error_seen = true;
+        host_timeout_exit = true;
     }
     try_salvage_final_status(&mut final_last_message, &last_message_file);
     if let Some(path) = last_message_file.as_deref() {
@@ -1320,6 +1323,9 @@ pub async fn run_main(cli: Cli, code_linux_sandbox_exe: Option<PathBuf>) -> anyh
         error_seen = true;
     }
     if error_seen {
+        if host_timeout_exit {
+            std::process::exit(124);
+        }
         std::process::exit(1);
     }
 
@@ -1959,16 +1965,20 @@ fn prompt_requires_final_status(prompt: &str) -> bool {
     let lower = prompt.to_ascii_lowercase();
     let mentions_final = lower.contains("final response")
         || lower.contains("final answer")
-        || lower.contains("final message");
+        || lower.contains("final message")
+        || lower.contains("emit status block")
+        || lower.contains("delegation closeout");
     let mentions_required_status = lower.contains("status:");
     let requires_status_contract = lower.contains("begin")
         || lower.contains("start")
         || lower.contains("must include")
+        || lower.contains("must be exactly")
         || lower.contains("include status")
         || lower.contains("status: success")
         || lower.contains("status: blocked")
         || lower.contains("status: pass")
-        || lower.contains("status: fail");
+        || lower.contains("status: fail")
+        || (lower.contains("success criteria") && lower.contains("status:"));
 
     mentions_final && mentions_required_status && requires_status_contract
 }
@@ -3464,6 +3474,20 @@ mod tests {
         assert!(message_starts_with_status(&status));
         assert!(status.contains("900"));
         assert!(status.contains("SIGTERM"));
+    }
+
+    #[test]
+    fn final_status_contract_detects_sidekick_task7_exact_block_requirement() {
+        let prompt = "Your final message MUST be exactly this block (fill in real lists):\n  STATUS: SUCCESS";
+        assert!(prompt_requires_final_status(prompt));
+        assert!(final_status_contract_missing(prompt, Some("Done without status.")));
+    }
+
+    #[test]
+    fn final_status_contract_detects_sidekick_task9_success_criteria() {
+        let prompt = "SUCCESS CRITERIA:\n- Both verify scripts exit 0.\n- STATUS: SUCCESS with FILES_CHANGED and TESTS_RUN in final message.";
+        assert!(prompt_requires_final_status(prompt));
+        assert!(final_status_contract_missing(prompt, Some("Still implementing sort API.")));
     }
 
     #[test]
