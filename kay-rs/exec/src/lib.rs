@@ -1812,7 +1812,11 @@ fn prompt_requires_final_status(prompt: &str) -> bool {
     let requires_status_contract = lower.contains("begin")
         || lower.contains("start")
         || lower.contains("must include")
-        || lower.contains("include status");
+        || lower.contains("include status")
+        || lower.contains("status: success")
+        || lower.contains("status: blocked")
+        || lower.contains("status: pass")
+        || lower.contains("status: fail");
 
     mentions_final && mentions_required_status && requires_status_contract
 }
@@ -3248,6 +3252,19 @@ mod tests {
         assert!(!final_status_contract_missing(
             "Report normal task status when done.",
             Some("Done.")
+        ));
+    }
+
+    #[test]
+    fn final_status_contract_detects_sidekick_compact_final_message_status() {
+        let prompt = "Final message STATUS: SUCCESS with FILES_CHANGED and TESTS_RUN.";
+        assert!(final_status_contract_missing(
+            prompt,
+            Some("Rewriting routes file cleanly.")
+        ));
+        assert!(!final_status_contract_missing(
+            prompt,
+            Some("STATUS: SUCCESS\nFILES_CHANGED: src/routes/notes.js")
         ));
     }
 
