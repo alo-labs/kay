@@ -3,7 +3,7 @@
 use code_protocol::models::ContentItem;
 use code_protocol::models::ResponseInputItem;
 
-pub const FINAL_STATUS_REPAIR_PROMPT: &str = "Your last reply did not begin with STATUS:. Reply with ONLY a final status block—no narration or tool calls. Start the first line with STATUS: SUCCESS when the task goals are satisfied (including required verification scripts), or STATUS: BLOCKED only if required work truly could not be finished. Include FILES_CHANGED: and TESTS_RUN: lines when the original task required them.";
+pub const FINAL_STATUS_REPAIR_PROMPT: &str = "Your last reply did not begin with STATUS:. If required code or verify scripts are still incomplete, continue with tool calls now—do not emit STATUS: BLOCKED just because of this reminder. When (and only when) both required verify scripts exit 0, reply with ONLY a final status block: STATUS: SUCCESS, FILES_CHANGED:, and TESTS_RUN:. Use STATUS: BLOCKED only when a true external blocker remains after honest effort.";
 
 pub fn message_starts_with_status(message: &str) -> bool {
     status_head_line(message)
