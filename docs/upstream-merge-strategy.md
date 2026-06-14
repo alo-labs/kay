@@ -202,9 +202,11 @@ bash scripts/upstream-merge/verify.sh
 ./build-fast.sh
 ```
 
-For provider/model changes, also run the relevant live provider gate. Current
-release policy excludes direct MiniMax.io provider tests and validates MiniMax
-M2.7 through OpenCode Go.
+For provider/model changes, also run the relevant live provider gate. Set
+`KAY_PRE_RELEASE_LIVE_PROVIDER_GATE=minimax-m3` for MiniMax.io `MiniMax-M3`
+coverage (onboarding notes-app smoke, exec E2E, and provider acceptance). The
+default gate keeps OpenCode Go onboarding smoke plus Xiaomi acceptance; MiniMax
+M2.7 in the default gate still routes through OpenCode Go, not MiniMax.io.
 
 Commit with a merge subject that says what was merged and what Kay preserved,
 for example:

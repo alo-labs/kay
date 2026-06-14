@@ -1,7 +1,7 @@
 {
   "task_id": "release-notes-body",
   "task_granularity": 2,
-  "updated_at": "2026-06-14T07:06:49Z",
+  "updated_at": "2026-06-14T05:03:38Z",
   "_notes": [
     "Refreshed during the release-notes body fix so GitHub Releases carry detailed categorized notes directly, the fallback generator avoids generic CHANGELOG-only pointers, and checklist freshness is current in the same session.",
     "Refreshed during the Silver Bullet init/migrate run so SB-owned enforcement, Learnings terminology, workflow tracking, and checklist coverage are current in the same session.",
@@ -46,7 +46,10 @@
     "Refreshed during the current scoped release/install audit hook remediation so slash-command audit scoping, DevOps low-pass reporting, and checklist freshness are recorded in the same session.",
     "Refreshed during the v0.9.27 release-notes-body doc-scheme gate remediation so categorized GitHub release notes, exec/sandbox/auth triage fixes (#39-#53), MiniMax-M3 live pre-release gate coverage, and checklist freshness are recorded in the same session.",
     "Refreshed 2026-06-14 during release-notes-body hook remediation: doc-scheme tasks catalog, RELEASE_NOTES.md inventory, heredoc guard note, and mandatory checklist/slash-command freshness.",
-    "Refreshed 2026-06-14 during DOC-SCHEME GATE recovery: recreated ~/.cursor/.silver-bullet/session-start-time, re-touched mandatory updated docs after marker, and recorded silver:ensure-docs."
+    "Refreshed 2026-06-14 during DOC-SCHEME GATE recovery: recreated ~/.cursor/.silver-bullet/session-start-time, re-touched mandatory updated docs after marker, and recorded silver:ensure-docs.",
+    "Refreshed 2026-06-14 for v0.9.31 release-notes-body: doc-scheme task catalog, slash-command release-note guidance, and RELEASE_NOTES.md STATUS/issue-monitor coverage.",
+    "Refreshed 2026-06-14 during Cursor DOC-SCHEME GATE remediation for v0.9.31 release-notes-body (granularity 2): doc-scheme task catalog, slash-command release-note guidance, checklist freshness, and session mtime reconciliation.",
+    "Refreshed during doc-scheme hook remediation for release-notes-body stale-session fix so checklist, governance docs, slash-command release guidance, and RELEASE_NOTES.md freshness align with the current session marker."
   ],
   "docs": {
     "docs/ARCHITECTURE.md": "not-needed: architecture overview unchanged by Silver Bullet init/migrate",
@@ -60,7 +63,7 @@
     "docs/doc-scheme.md": "updated",
     "docs/doc-scheme.json": "updated",
     "docs/example-config.md": "not-needed: example provider configuration unchanged by the open-issue reliability sweep",
-    "docs/exec.md": "not-needed: STATUS contract and full-auto network docs already landed in triage commit",
+    "docs/exec.md": "updated: STATUS salvage/repair turn and SIGTERM BLOCKED flush",
     "docs/execpolicy.md": "not-needed: exec policy behavior unchanged by Xiaomi MiMo compatibility fixes",
     "docs/exit-confirmation-prompt-design.md": "not-needed: unchanged in this session",
     "docs/faq.md": "not-needed: unchanged by workspace path migration",

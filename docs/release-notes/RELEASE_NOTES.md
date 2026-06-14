@@ -18,9 +18,11 @@ already-handled issues is tracked instead of silently ignored.
 
 ### Release And Verification
 
+- Doc-scheme gate: `release-notes-body` remediation keeps categorized bodies in this file aligned with slash-command release guidance.
 - Published package metadata for `@alo-labs/kay` 0.9.31 (`f554de1c`).
 - Verified locally with `./build-fast.sh` and `./pre-release.sh` (MiniMax-M3 live
   provider gate).
+- Doc-scheme gate: `release-notes-body` (granularity 2) keeps this file, `docs/slash-commands.md`, and `docs/task-doc-checklist.json` fresh in the same session.
 
 ### Install
 

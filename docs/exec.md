@@ -120,12 +120,15 @@ kay exec --model gpt-5.1 --json resume --last "Fix use-after-free issues"
 `--max-seconds` stops a run when the wall-clock budget is exhausted. Kay writes
 `STATUS: BLOCKED` to `--output-last-message` (when configured) and exits with
 code 1. Host wrappers that use `timeout`/`gtimeout` may still surface exit code
-124; read the last-message file to see whether partial work is salvageable.
+124 after SIGTERM; Kay flushes `STATUS: BLOCKED` to the last-message file on
+SIGTERM so partial work remains salvageable for Sidekick verification.
 
 Delegated prompts that require a final status line (for example `Final message
 must include STATUS: SUCCESS` or `STATUS: BLOCKED`) are enforced at process
 exit: Kay returns exit code 1 when the last agent message does not satisfy the
-contract.
+contract. When the model emits `STATUS:` mid-message, Kay salvages the status
+block to the message prefix; when status is still missing, Kay submits one
+repair turn requesting a contract-compliant final status block before exiting.
 
 ## Authentication
 

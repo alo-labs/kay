@@ -26,7 +26,7 @@ The initial SB docs set for this init includes:
 - `docs/workflows/devops-cycle.md`
 - `docs/doc-scheme.md`
 - `docs/doc-scheme.json`
-- `docs/release-notes/RELEASE_NOTES.md`
+- `docs/release-notes/RELEASE_NOTES.md` — canonical source for categorized GitHub Release bodies (current: v0.9.31 STATUS fix, issue-monitor `closed_activity` tracking; `release-notes-body` granularity-2 tasks must refresh this file plus `docs/slash-commands.md` and the checklist in the same session)
 - `docs/slash-commands.md`
 - `docs/task-doc-checklist.json`
 
@@ -40,3 +40,7 @@ The initial SB docs set for this init includes:
 - When config or provider behavior changes, update the docs that describe the behavior and the docs that describe the workflow gate together
 - When install or release packaging changes, keep [`README.md`](../README.md) and `docs/install.md` aligned with the actual shipped assets and install channels
 - For live E2E harnesses, prefer a trusted clean clone of the seed repo so model behavior is measured against the repo's HEAD state rather than a dirty working tree
+
+## Session reconciliation
+
+- Last reconciled: 2026-06-14 — `release-notes-body` (granularity 2) doc-scheme hook remediation; mandatory `updated` docs touched after session marker.
