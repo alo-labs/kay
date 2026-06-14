@@ -822,7 +822,7 @@ pub async fn run_main(cli: Cli, code_linux_sandbox_exe: Option<PathBuf>) -> anyh
     let mut shutdown_deadline: Option<Instant> = None;
     let auto_review_grace_enabled = config.tui.auto_review_enabled;
     let mut auto_review_tracker = AutoReviewTracker::new(&config.cwd);
-    let mut status_repair_attempted = false;
+    let mut status_repair_attempts = 0usize;
     let mut suppress_shutdown_for_status_repair = false;
     let mut host_timeout_exit = false;
     loop {
@@ -1219,9 +1219,9 @@ pub async fn run_main(cli: Cli, code_linux_sandbox_exe: Option<PathBuf>) -> anyh
                     if should_request_final_status_repair(
                         &final_status_contract_prompt,
                         final_last_message.as_deref(),
-                        status_repair_attempted,
+                        status_repair_attempts,
                     ) {
-                        status_repair_attempted = true;
+                        status_repair_attempts += 1;
                         suppress_shutdown_for_status_repair = true;
                         let _ = conversation
                             .submit(Op::UserInput {
@@ -3384,17 +3384,17 @@ mod tests {
         assert!(should_request_final_status_repair(
             prompt,
             Some("Still working on verify scripts."),
-            false,
+            0,
         ));
         assert!(!should_request_final_status_repair(
             prompt,
-            Some("STATUS: SUCCESS"),
-            false,
+            Some("STATUS: SUCCESS\nFILES_CHANGED: []"),
+            0,
         ));
         assert!(!should_request_final_status_repair(
             prompt,
             Some("Still working on verify scripts."),
-            true,
+            2,
         ));
     }
 

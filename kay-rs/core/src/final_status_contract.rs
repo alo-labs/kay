@@ -3,17 +3,73 @@
 use code_protocol::models::ContentItem;
 use code_protocol::models::ResponseInputItem;
 
-pub const FINAL_STATUS_REPAIR_PROMPT: &str = "STOP. Your last reply did not begin with STATUS:. Reply with ONLY a final status block—no narration or tool calls. Start the first line with STATUS: SUCCESS or STATUS: BLOCKED. Include FILES_CHANGED: and TESTS_RUN: lines when the original task required them.";
+pub const FINAL_STATUS_REPAIR_PROMPT: &str = "Your last reply did not begin with STATUS:. Reply with ONLY a final status block—no narration or tool calls. Start the first line with STATUS: SUCCESS when the task goals are satisfied (including required verification scripts), or STATUS: BLOCKED only if required work truly could not be finished. Include FILES_CHANGED: and TESTS_RUN: lines when the original task required them.";
 
 pub fn message_starts_with_status(message: &str) -> bool {
-    message
-        .trim_start_matches(|ch: char| ch.is_whitespace() || ch == '`')
-        .to_ascii_uppercase()
-        .starts_with("STATUS:")
+    status_head_line(message)
+        .map(|line| line.to_ascii_uppercase().starts_with("STATUS:"))
+        .unwrap_or(false)
+}
+
+pub fn status_head_line(message: &str) -> Option<&str> {
+    let first = message
+        .trim_start_matches(|ch: char| ch.is_whitespace() || ch == '`' || ch == '*')
+        .lines()
+        .next()?
+        .trim();
+    if first.is_empty() {
+        None
+    } else {
+        Some(first)
+    }
+}
+
+pub fn status_head_is_complete(message: &str) -> bool {
+    status_head_line(message)
+        .map(|line| {
+            let upper = line.to_ascii_uppercase();
+            upper.starts_with("STATUS: SUCCESS")
+                || upper.starts_with("STATUS: BLOCKED")
+                || upper.starts_with("STATUS: PASS")
+                || upper.starts_with("STATUS: FAIL")
+        })
+        .unwrap_or(false)
+}
+
+/// Returns true when the model's last turn looks like mid-task narration rather
+/// than an attempted final closeout, so a STATUS repair would abort real work.
+pub fn should_defer_turn_final_status_repair(last_agent_message: Option<&str>) -> bool {
+    let Some(message) = last_agent_message else {
+        return false;
+    };
+    let trimmed = message.trim();
+    if trimmed.is_empty() || message_starts_with_status(trimmed) {
+        return false;
+    }
+    let lower = trimmed.to_ascii_lowercase();
+    if lower.contains("status:") {
+        return false;
+    }
+    const IN_PROGRESS_MARKERS: &[&str] = &[
+        "let me ",
+        "i'll ",
+        "i will ",
+        "now i ",
+        "first,",
+        "step 1",
+        "next i",
+        "reading ",
+        "implementing ",
+        "patching ",
+        "exploring ",
+    ];
+    IN_PROGRESS_MARKERS
+        .iter()
+        .any(|marker| lower.contains(marker))
 }
 
 pub fn salvage_final_status_message(message: &str) -> Option<String> {
-    if message_starts_with_status(message) {
+    if status_head_is_complete(message) {
         return None;
     }
 
@@ -33,7 +89,11 @@ pub fn salvage_final_status_message(message: &str) -> Option<String> {
 
         let upper_line = trimmed.to_ascii_uppercase();
         if lines.is_empty() {
-            if upper_line.starts_with("STATUS:") {
+            if upper_line.starts_with("STATUS: SUCCESS")
+                || upper_line.starts_with("STATUS: BLOCKED")
+                || upper_line.starts_with("STATUS: PASS")
+                || upper_line.starts_with("STATUS: FAIL")
+            {
                 lines.push(trimmed);
             } else {
                 return None;
@@ -72,9 +132,9 @@ pub fn try_salvage_last_task_message(last_task_message: &mut Option<String>) {
 pub fn should_request_final_status_repair(
     prompt: &str,
     last_agent_message: Option<&str>,
-    status_repair_attempted: bool,
+    status_repair_attempts: usize,
 ) -> bool {
-    !status_repair_attempted
+    status_repair_attempts < 2
         && prompt_requires_final_status(prompt)
         && final_status_contract_missing(prompt, last_agent_message)
 }
@@ -91,10 +151,18 @@ pub fn final_status_contract_missing(prompt: &str, last_agent_message: Option<&s
 }
 
 pub fn final_status_contract_satisfied(prompt: &str, message: &str) -> bool {
-    let trimmed = message.trim_start_matches(|ch: char| ch.is_whitespace() || ch == '`');
+    if status_head_is_complete(message) {
+        return true;
+    }
+
+    if message_starts_with_status(message) {
+        return false;
+    }
+
+    let trimmed = message.trim_start_matches(|ch: char| ch.is_whitespace() || ch == '`' || ch == '*');
     let upper = trimmed.to_ascii_uppercase();
     if upper.starts_with("STATUS:") {
-        return true;
+        return false;
     }
 
     let lower_prompt = prompt.to_ascii_lowercase();
@@ -125,6 +193,17 @@ pub fn prompt_requires_final_status(prompt: &str) -> bool {
         || (lower.contains("success criteria") && lower.contains("status:"));
 
     mentions_final && mentions_required_status && requires_status_contract
+}
+
+pub const TURN_CONTINUE_NUDGE_PROMPT: &str = "Continue the task with tool calls. Do not stop for narration—apply the required code changes, run verification scripts, then end with a STATUS block when done.";
+
+pub fn turn_continue_nudge_input() -> ResponseInputItem {
+    ResponseInputItem::Message {
+        role: "developer".to_string(),
+        content: vec![ContentItem::InputText {
+            text: TURN_CONTINUE_NUDGE_PROMPT.to_string(),
+        }],
+    }
 }
 
 pub fn final_status_repair_input(attempt: usize) -> ResponseInputItem {
@@ -184,5 +263,38 @@ mod tests {
             panic!("expected developer repair message");
         };
         assert_eq!(role, "developer");
+    }
+
+    #[test]
+    fn markdown_bold_status_prefix_counts_as_contract() {
+        let message = "**STATUS: SUCCESS**\nFILES_CHANGED: src/routes/notes.js";
+        assert!(message_starts_with_status(message));
+        assert!(final_status_contract_satisfied(
+            "Final message STATUS: SUCCESS with FILES_CHANGED.",
+            message,
+        ));
+    }
+
+    #[test]
+    fn defers_status_repair_for_in_progress_narration() {
+        assert!(should_defer_turn_final_status_repair(Some(
+            "Let me read the key files to understand the existing structure."
+        )));
+        assert!(!should_defer_turn_final_status_repair(Some(
+            "STATUS: BLOCKED\nFILES_CHANGED: []"
+        )));
+    }
+
+    #[test]
+    fn partial_status_head_is_not_contract_satisfied() {
+        assert!(!status_head_is_complete("status:"));
+        assert!(!final_status_contract_satisfied(
+            "Final message STATUS: SUCCESS with FILES_CHANGED.",
+            "status:",
+        ));
+        assert!(final_status_contract_satisfied(
+            "Final message STATUS: SUCCESS with FILES_CHANGED.",
+            "STATUS: SUCCESS\nFILES_CHANGED: []",
+        ));
     }
 }
