@@ -1,8 +1,9 @@
 {
   "task_id": "release-notes-body",
   "task_granularity": 2,
-  "updated_at": "2026-06-14T05:03:38Z",
+  "updated_at": "2026-06-15T17:12:44Z",
   "_notes": [
+    "Refreshed during v0.9.41 release-notes-body: OCG minimax-m3 e2e/task8 nudges, bash -lc argv repair, closes #79.",
     "Refreshed during the release-notes body fix so GitHub Releases carry detailed categorized notes directly, the fallback generator avoids generic CHANGELOG-only pointers, and checklist freshness is current in the same session.",
     "Refreshed during the Silver Bullet init/migrate run so SB-owned enforcement, Learnings terminology, workflow tracking, and checklist coverage are current in the same session.",
     "Normalized the section statuses to exact `updated` tokens after the current-session doc-scheme hook validation.",
