@@ -18,9 +18,15 @@ pub fn status_head_line(message: &str) -> Option<&str> {
         .next()?
         .trim();
     if first.is_empty() {
+        return None;
+    }
+    let trimmed = first.trim_end_matches(|ch: char| {
+        ch == '.' || ch == '"' || ch == '\'' || ch == '`' || ch == '*'
+    });
+    if trimmed.is_empty() {
         None
     } else {
-        Some(first)
+        Some(trimmed)
     }
 }
 
@@ -236,7 +242,7 @@ pub fn final_status_repair_input(attempt: usize) -> ResponseInputItem {
         FINAL_STATUS_REPAIR_PROMPT.to_string()
     } else {
         format!(
-            "{FINAL_STATUS_REPAIR_PROMPT}\n\nThis is repair attempt {attempt}. Do not add any other text."
+            "{FINAL_STATUS_REPAIR_PROMPT}\n\nThis is repair attempt {attempt}. If verify scripts have not both exited 0, continue with tool calls — do not reply with STATUS: BLOCKED because of this reminder."
         )
     };
     ResponseInputItem::Message {
@@ -298,6 +304,12 @@ mod tests {
             "Final message STATUS: SUCCESS with FILES_CHANGED.",
             message,
         ));
+    }
+
+    #[test]
+    fn status_head_strips_trailing_punctuation() {
+        assert!(message_starts_with_status("STATUS: SUCCESS\"."));
+        assert!(status_head_is_complete("STATUS: SUCCESS\"."));
     }
 
     #[test]
