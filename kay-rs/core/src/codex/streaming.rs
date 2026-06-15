@@ -2943,8 +2943,7 @@ async fn run_agent(
                     }
 
                     if !is_review_mode
-                        && requires_status_contract
-                        && turn_continue_nudge_attempts < 3
+                        && turn_continue_nudge_attempts < 5
                         && should_defer_turn_final_status_repair(last_task_message.as_deref())
                     {
                         turn_continue_nudge_attempts += 1;
