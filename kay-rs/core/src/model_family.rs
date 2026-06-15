@@ -45,6 +45,8 @@ const MIMO_SYNTHESIS_CHECKPOINT_INSTRUCTIONS: &str = r#"MiMo investigation disci
 const MINIMAX_TOOL_DISCIPLINE_INSTRUCTIONS: &str = r#"MiniMax tool discipline:
 - Call `apply_patch` with exactly one argument: the full patch string from `*** Begin Patch` through `*** End Patch`.
 - Do not pass patch lines as separate shell arguments and do not insert `&&` between argv tokens.
+- Pass shell work as one `bash -lc '...'` string; Kay joins argv arrays with `&&`, which breaks `apply_patch` and pipes.
+- Prefer `bash -lc "apply_patch <<'PATCH'\n*** Begin Patch\n...\n*** End Patch\nPATCH"` over `cat file | apply_patch`.
 - On macOS, use `cat -n`, not `cat -An` or `cat -A`.
 - Prefer the `apply_patch` tool or a heredoc for file edits instead of empty redirections like `cat > /tmp/file` without content.
 - In `scripts/verify-*.sh`, default the port with `PORT="${PORT:-3458}"` and export it before starting the app; never use `PORT="${PORT:?PORT is required}"`.
@@ -1000,8 +1002,8 @@ mod tests {
         assert!(
             family
                 .base_instructions
-                .contains("MiniMax tool discipline"),
-            "MiniMax models need explicit apply_patch argv guidance"
+                .contains("Kay joins argv arrays with `&&`"),
+            "MiniMax models need explicit shell argv guidance for OpenCode Go wire"
         );
         assert!(
             family
