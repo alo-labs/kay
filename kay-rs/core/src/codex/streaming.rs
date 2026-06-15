@@ -2938,7 +2938,9 @@ async fn run_agent(
                         )
                     {
                         turn_continue_nudge_attempts += 1;
-                        sess.add_pending_input(turn_continue_nudge_input());
+                        sess.add_pending_input(turn_continue_nudge_input(
+                            &status_contract_prompt,
+                        ));
                         continue;
                     }
 
@@ -2947,7 +2949,9 @@ async fn run_agent(
                         && should_defer_turn_final_status_repair(last_task_message.as_deref())
                     {
                         turn_continue_nudge_attempts += 1;
-                        sess.add_pending_input(turn_continue_nudge_input());
+                        sess.add_pending_input(turn_continue_nudge_input(
+                            &status_contract_prompt,
+                        ));
                         continue;
                     }
 
@@ -8437,30 +8441,20 @@ fn repair_malformed_shell_wrapper_argv(command: &[String]) -> Option<Vec<String>
         return None;
     }
 
-    let normalized = crate::exec_command::normalize_model_malformed_shell_command(&command[2]);
-    if normalized == command[2] {
+    let inner = crate::exec_command::strip_redundant_wrapping_quotes(&command[2]);
+    let repaired_inner = if inner.contains("&&") {
+        crate::exec_command::join_malformed_and_tokens(inner)
+    } else {
+        inner.to_string()
+    };
+    if repaired_inner == command[2] {
         return None;
-    }
-
-    if let Some((shell, script)) = normalized.split_once(" -lc ") {
-        if shell == "bash" {
-            return Some(vec![
-                "bash".to_string(),
-                "-lc".to_string(),
-                script.to_string(),
-            ]);
-        }
-    }
-    if let Some((shell, script)) = normalized.split_once(" -c ") {
-        if shell == "sh" {
-            return Some(vec!["sh".to_string(), "-c".to_string(), script.to_string()]);
-        }
     }
 
     Some(vec![
         command[0].clone(),
         command[1].clone(),
-        normalized,
+        repaired_inner,
     ])
 }
 
@@ -9234,6 +9228,38 @@ mod kay_runtime_regression_tests {
         let parsed = super::parse_kill_params("call_bg_lsof_probe_12345")
             .expect("bare call_id should parse");
         assert_eq!(parsed.call_id, "call_bg_lsof_probe_12345");
+    }
+
+    #[test]
+    fn minimax_malformed_bash_lc_ls_probe_is_repaired() {
+        assert_eq!(
+            normalize_exec_command_argv(vec![
+                "bash".to_string(),
+                "-lc".to_string(),
+                "ls && -d && node_modules/express node_modules/better-sqlite3".to_string(),
+            ]),
+            vec![
+                "bash".to_string(),
+                "-lc".to_string(),
+                "ls -d node_modules/express node_modules/better-sqlite3".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn minimax_overquoted_cat_pipe_apply_patch_is_repaired() {
+        assert_eq!(
+            normalize_exec_command_argv(vec![
+                "bash".to_string(),
+                "-lc".to_string(),
+                "'cat /tmp/patch_notes.txt | apply_patch'".to_string(),
+            ]),
+            vec![
+                "bash".to_string(),
+                "-lc".to_string(),
+                "cat /tmp/patch_notes.txt | apply_patch".to_string(),
+            ]
+        );
     }
 
     #[test]

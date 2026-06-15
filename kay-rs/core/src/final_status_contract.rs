@@ -239,13 +239,23 @@ pub fn prompt_requires_final_status(prompt: &str) -> bool {
     mentions_final && mentions_required_status && requires_status_contract
 }
 
-pub const TURN_CONTINUE_NUDGE_PROMPT: &str = "Continue the task with tool calls. Do not stop for narration—finish wiring (including notes-ui.js if needed), ensure scripts/verify-*.sh exist via apply_patch, run both verify scripts with PORT exported, then reply with only STATUS: SUCCESS (or STATUS: BLOCKED if truly stuck) plus FILES_CHANGED and TESTS_RUN.";
+pub const TURN_CONTINUE_NUDGE_VERIFY_PROMPT: &str = "Continue the task with tool calls. Do not stop for narration—finish wiring (including notes-ui.js if needed), ensure scripts/verify-*.sh exist via apply_patch, run both verify scripts with PORT exported, then reply with only STATUS: SUCCESS (or STATUS: BLOCKED if truly stuck) plus FILES_CHANGED and TESTS_RUN.";
 
-pub fn turn_continue_nudge_input() -> ResponseInputItem {
+pub const TURN_CONTINUE_NUDGE_GENERIC_PROMPT: &str = "Continue the task with tool calls now. Do not stop for narration—apply the required file edits and run the verification command(s) named in the prompt before replying.";
+
+pub fn turn_continue_nudge_prompt(prompt: &str) -> &'static str {
+    if prompt_requires_verify_scripts(prompt) || prompt_requires_final_status(prompt) {
+        TURN_CONTINUE_NUDGE_VERIFY_PROMPT
+    } else {
+        TURN_CONTINUE_NUDGE_GENERIC_PROMPT
+    }
+}
+
+pub fn turn_continue_nudge_input(prompt: &str) -> ResponseInputItem {
     ResponseInputItem::Message {
         role: "developer".to_string(),
         content: vec![ContentItem::InputText {
-            text: TURN_CONTINUE_NUDGE_PROMPT.to_string(),
+            text: turn_continue_nudge_prompt(prompt).to_string(),
         }],
     }
 }
@@ -278,6 +288,24 @@ pub fn status_contract_prompt_from_input(input: &[crate::protocol::InputItem]) -
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn nudge_prompt_is_generic_for_e2e_health_tasks() {
+        let prompt = "OBJECTIVE: Fix /api/health in src/server.js.\nRun bash scripts/e2e-smoke.sh with PORT=64457.";
+        assert_eq!(
+            turn_continue_nudge_prompt(prompt),
+            TURN_CONTINUE_NUDGE_GENERIC_PROMPT
+        );
+    }
+
+    #[test]
+    fn nudge_prompt_is_verify_specific_for_bulk_archive_tasks() {
+        let prompt = "SUCCESS CRITERIA:\n- Both verify scripts exit 0.\n- STATUS: SUCCESS with FILES_CHANGED and TESTS_RUN.";
+        assert_eq!(
+            turn_continue_nudge_prompt(prompt),
+            TURN_CONTINUE_NUDGE_VERIFY_PROMPT
+        );
+    }
 
     #[test]
     fn salvage_promotes_mid_message_status_to_prefix() {

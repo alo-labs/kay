@@ -570,7 +570,7 @@ pub(crate) fn normalize_model_malformed_shell_command(cmd: &str) -> String {
     join_malformed_and_tokens(trimmed)
 }
 
-fn join_malformed_and_tokens(cmd: &str) -> String {
+pub(crate) fn join_malformed_and_tokens(cmd: &str) -> String {
     cmd.split("&&")
         .map(str::trim)
         .filter(|part| !part.is_empty())
@@ -594,11 +594,34 @@ fn repair_apply_patch_and_separated_patch(cmd: &str) -> Option<String> {
 }
 
 fn repair_malformed_shell_wrapper(cmd: &str) -> Option<String> {
-    if !cmd.contains("&&") {
+    let trimmed = cmd.trim();
+    if let Some(rest) = trimmed.strip_prefix("bash -lc ") {
+        let inner = strip_redundant_wrapping_quotes(rest.trim());
+        if inner.contains("&&") {
+            let repaired = join_malformed_and_tokens(inner);
+            if repaired != inner {
+                return Some(format!(
+                    "bash -lc {}",
+                    shell_word_for_flag(repaired.as_str())
+                ));
+            }
+        }
+    }
+    if let Some(rest) = trimmed.strip_prefix("sh -c ") {
+        let inner = strip_redundant_wrapping_quotes(rest.trim());
+        if inner.contains("&&") {
+            let repaired = join_malformed_and_tokens(inner);
+            if repaired != inner {
+                return Some(format!("sh -c {}", shell_word_for_flag(repaired.as_str())));
+            }
+        }
+    }
+
+    if !trimmed.contains("&&") {
         return None;
     }
 
-    let parts = cmd
+    let parts = trimmed
         .split("&&")
         .map(str::trim)
         .filter(|part| !part.is_empty())
@@ -613,7 +636,24 @@ fn repair_malformed_shell_wrapper(cmd: &str) -> Option<String> {
     }
 
     let inner = join_malformed_and_tokens(&rest.join(" && "));
-    Some(format!("{shell} {flag} {}", shell_word_for_flag(inner.as_str())))
+    Some(format!(
+        "{shell} {flag} {}",
+        shell_word_for_flag(strip_redundant_wrapping_quotes(inner.as_str()))
+    ))
+}
+
+pub(crate) fn strip_redundant_wrapping_quotes(script: &str) -> &str {
+    let trimmed = script.trim();
+    if trimmed.len() < 2 {
+        return trimmed;
+    }
+    let first = trimmed.as_bytes()[0];
+    let last = trimmed.as_bytes()[trimmed.len() - 1];
+    if (first == b'\'' && last == b'\'') || (first == b'"' && last == b'"') {
+        &trimmed[1..trimmed.len() - 1]
+    } else {
+        trimmed
+    }
 }
 
 fn shell_word_for_flag(script: &str) -> String {
@@ -856,6 +896,24 @@ abc"#;
         let expected_tokens = (input.len() as u64).div_ceil(4);
         assert_eq!(out, format!("…{expected_tokens} tokens truncated…"));
         assert_eq!(original, Some(expected_tokens));
+    }
+
+    #[test]
+    fn normalizes_overquoted_bash_lc_inner_script() {
+        assert_eq!(
+            normalize_model_malformed_shell_command(
+                "bash -lc 'ls && -d && node_modules/express node_modules/better-sqlite3'"
+            ),
+            "bash -lc 'ls -d node_modules/express node_modules/better-sqlite3'"
+        );
+    }
+
+    #[test]
+    fn strips_redundant_wrapping_quotes_from_inner_script() {
+        assert_eq!(
+            strip_redundant_wrapping_quotes("'cat /tmp/patch.txt | apply_patch'"),
+            "cat /tmp/patch.txt | apply_patch"
+        );
     }
 
     #[test]
