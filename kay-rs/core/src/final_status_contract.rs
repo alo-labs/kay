@@ -83,6 +83,9 @@ pub fn should_defer_turn_final_status_repair(last_agent_message: Option<&str>) -
     }
     const IN_PROGRESS_MARKERS: &[&str] = &[
         "let me ",
+        "let me apply",
+        "let me fix",
+        "let me also",
         "i'll ",
         "i will ",
         "now i ",
