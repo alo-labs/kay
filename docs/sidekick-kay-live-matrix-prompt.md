@@ -37,10 +37,10 @@ Use this as the **baseline** when interpreting your run; update the headline in 
 | Signal | Value |
 |--------|--------|
 | Kay under test | **local build** (`kay 0.0.0` from `cargo build -p code-cli --release`) at `~/.local/bin/kay` |
-| Matrix prefix (latest local retest) | `local-fix-r6` (targeted task8/9) → **1/6 PASS** on former FAIL cells; projected **16/20** full matrix (+1: `ocg-mimo` task8); prior r5 **15/20** |
-| Baseline comparison | **Δ +11** vs v0.9.31; **Δ +2** vs r4 |
-| **#42** (STATUS contract) | **Strong overall:** ocg-mimo-pro **5/5**; minimax-m3 direct **e2e/task7/task10 PASS**; remaining FAILs emit `STATUS: BLOCKED` (contract present) but miss SUCCESS — task8/task9 incomplete work |
-| **#46**, **#49** | **#49 cleared**; **#46** narrowed to task8 bulk-archive incomplete patches / multi-arg apply_patch (minimax-m3 e2e now PASS) |
+| Matrix prefix (latest local retest) | `local-fix-r8` + `local-fix-r9` retest → **20/20 PASS** |
+| Baseline comparison | **Δ +9** vs r7 (10/20); **Δ +5** vs r5 (15/20); **Δ +9** vs v0.9.31 |
+| **#42** (STATUS contract) | **Cleared:** all profiles emit `STATUS: SUCCESS` on task7–10 closeout; premature BLOCKED nudges fixed |
+| **#46**, **#49** | **#49 cleared**; **#46 cleared** — task8 bulk-archive completes with `bulkArchiveButton`/`note-checkbox` wiring |
 | **#39**, **#52**, **#54** | **#39** mitigated (`cat -An` → `cat -n` repair); **#52** PORT default guidance added to MiMo/MiniMax profiles |
 | Parent issues (active) | [#42](https://github.com/alo-labs/kay/issues/42), [#46](https://github.com/alo-labs/kay/issues/46), [#49](https://github.com/alo-labs/kay/issues/49), [#39](https://github.com/alo-labs/kay/issues/39), [#52](https://github.com/alo-labs/kay/issues/52), [#54](https://github.com/alo-labs/kay/issues/54), [#56](https://github.com/alo-labs/kay/issues/56) (Vision Delegate enhancement) |
 | Deduped closures | [#57](https://github.com/alo-labs/kay/issues/57)–[#71](https://github.com/alo-labs/kay/issues/71), [#72](https://github.com/alo-labs/kay/issues/72), [#73](https://github.com/alo-labs/kay/issues/73) closed as duplicates/mis-triage |
