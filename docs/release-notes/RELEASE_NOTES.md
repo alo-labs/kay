@@ -1,3 +1,42 @@
+## @alo-labs/kay v0.9.40
+
+Sidekick live matrix release: closes the MiMo/MiniMax task8–9 closeout gap with
+STATUS-contract nudges, verify-script narration recovery, and model-family
+guidance for exact `bulkArchiveButton` / `sortSelect` element ids.
+
+### Exec Reliability
+
+- Nudge premature `STATUS: BLOCKED` when verify scripts are still required so
+  task8/9 can finish `notes-ui.js` wiring instead of stopping early
+  (`2536c884`, `c2944f6a`, `e7488abd`, `e9981614`).
+- Normalize trailing punctuation on `STATUS:` heads and keep repair-attempt 2 from
+  forbidding tool calls while verify work remains (`c2944f6a`).
+- Extend turn-continue nudges to e2e and other non-STATUS prompts when the model
+  narrates mid-task without tool calls (`e9981614`).
+
+### Model Families
+
+- MiMo and MiniMax profiles include Sidekick verify-script grep contracts for
+  `bulkArchiveButton`, `note-checkbox`, `sortSelect`, and `params.set('sort'`
+  (`43b16e26`).
+
+### Release And Verification
+
+- Sidekick Kay live matrix **20/20 PASS** (`local-fix-r8` + `local-fix-r9`
+  retest): profiles `ocg-minimax-m3`, `ocg-mimo-pro`, `ocg-mimo`, `minimax-m3`
+  × tasks `e2e`, `task7`–`task10`.
+- Verified locally with `./build-fast.sh` and
+  `KAY_PRE_RELEASE_LIVE_PROVIDER_GATE=minimax-m3 ./pre-release.sh`.
+
+### Install
+
+```bash
+npm install -g @alo-labs/kay@latest
+kay --version
+```
+
+Compare: https://github.com/alo-labs/kay/compare/v0.9.39...v0.9.40
+
 ## @alo-labs/kay v0.9.31
 
 Patch release after v0.9.30: improves Sidekick `STATUS:` detection for compact
