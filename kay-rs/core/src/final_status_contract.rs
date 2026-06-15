@@ -86,13 +86,23 @@ pub fn should_defer_turn_final_status_repair(last_agent_message: Option<&str>) -
         "i'll ",
         "i will ",
         "now i ",
+        "now let me ",
+        "now the ",
         "first,",
         "step 1",
         "next i",
+        "next,",
         "reading ",
         "implementing ",
         "patching ",
         "exploring ",
+        "continuing with",
+        "i need to ",
+        "verification script",
+        "verify script",
+        "notes-ui.js",
+        "sortselect",
+        "bulkarchive",
     ];
     IN_PROGRESS_MARKERS
         .iter()
@@ -327,6 +337,16 @@ mod tests {
             "No verify requirement here.",
             Some("STATUS: BLOCKED\nFILES_CHANGED: []"),
         ));
+    }
+
+    #[test]
+    fn defers_status_repair_for_verify_script_narration() {
+        assert!(should_defer_turn_final_status_repair(Some(
+            "The API tests pass. Now the UI verify script:"
+        )));
+        assert!(should_defer_turn_final_status_repair(Some(
+            "Looking at the response, apply_patch was called as a CLI command. Let me verify the file is updated:"
+        )));
     }
 
     #[test]
