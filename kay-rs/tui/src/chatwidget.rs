@@ -26202,6 +26202,11 @@ Have we met every part of this goal and is there no further work to do?"#
         self.bottom_pane.set_access_mode_label(label);
     }
 
+    #[cfg(any(test, feature = "test-helpers"))]
+    pub(crate) fn stabilize_access_mode_hint_for_snapshot(&mut self) {
+        self.bottom_pane.stabilize_access_mode_hint_for_snapshot();
+    }
+
     /// Rotate the access preset: Read Only (Plan Mode) → Write with Approval → Full Access
     pub(crate) fn cycle_access_mode(&mut self) {
         use code_core::config::set_project_access_mode;
