@@ -38,6 +38,31 @@ pub fn status_head_is_complete(message: &str) -> bool {
 
 /// Returns true when the model's last turn looks like mid-task narration rather
 /// than an attempted final closeout, so a STATUS repair would abort real work.
+pub fn prompt_requires_verify_scripts(prompt: &str) -> bool {
+    let lower = prompt.to_ascii_lowercase();
+    lower.contains("scripts/verify-")
+        || lower.contains("verify scripts exit 0")
+        || lower.contains("both verify scripts")
+}
+
+pub fn status_message_is_blocked(message: &str) -> bool {
+    status_head_line(message)
+        .map(|line| line.to_ascii_uppercase().starts_with("STATUS: BLOCKED"))
+        .unwrap_or(false)
+}
+
+/// When a prompt requires local verify scripts, `STATUS: BLOCKED` before they
+/// pass is a premature closeout — nudge the model to keep using tools.
+pub fn should_nudge_premature_blocked_closeout(
+    prompt: &str,
+    last_agent_message: Option<&str>,
+) -> bool {
+    let Some(message) = last_agent_message else {
+        return false;
+    };
+    prompt_requires_verify_scripts(prompt) && status_message_is_blocked(message)
+}
+
 pub fn should_defer_turn_final_status_repair(last_agent_message: Option<&str>) -> bool {
     let Some(message) = last_agent_message else {
         return false;
@@ -272,6 +297,23 @@ mod tests {
         assert!(final_status_contract_satisfied(
             "Final message STATUS: SUCCESS with FILES_CHANGED.",
             message,
+        ));
+    }
+
+    #[test]
+    fn nudges_premature_blocked_when_verify_scripts_required() {
+        let prompt = "SUCCESS CRITERIA:\n- Both verify scripts exit 0.\n- STATUS: SUCCESS with FILES_CHANGED and TESTS_RUN in final message.";
+        assert!(should_nudge_premature_blocked_closeout(
+            prompt,
+            Some("STATUS: BLOCKED\nFILES_CHANGED: []"),
+        ));
+        assert!(!should_nudge_premature_blocked_closeout(
+            prompt,
+            Some("STATUS: SUCCESS\nFILES_CHANGED: []"),
+        ));
+        assert!(!should_nudge_premature_blocked_closeout(
+            "No verify requirement here.",
+            Some("STATUS: BLOCKED\nFILES_CHANGED: []"),
         ));
     }
 
