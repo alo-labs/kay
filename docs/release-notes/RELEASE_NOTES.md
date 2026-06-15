@@ -1,3 +1,33 @@
+## @alo-labs/kay v0.9.41
+
+Patch release after v0.9.40: fixes OpenCode Go `minimax-m3` live acceptance for
+e2e and task8 by separating generic turn-continue nudges from task8 verify-script
+closeout guidance and repairing malformed `bash -lc` argv splits.
+
+### Exec Reliability
+
+- Use context-aware turn-continue nudges so e2e prompts are not steered toward
+  task8 verify-script closeout when the model narrates without tool calls
+  (`836cc9bf`).
+- Repair `bash -lc` argv splits and over-quoted `cat|apply_patch` shell
+  invocations that reproduce on OpenCode Go `minimax-m3` (`836cc9bf`).
+
+### Release And Verification
+
+- Closes [#79](https://github.com/alo-labs/kay/issues/79); Sidekick Kay live
+  matrix **task8 `ocg-minimax-m3` PASS**.
+- Verified locally with `./build-fast.sh` and
+  `KAY_PRE_RELEASE_LIVE_PROVIDER_GATE=minimax-m3 ./pre-release.sh`.
+
+### Install
+
+```bash
+npm install -g @alo-labs/kay@latest
+kay --version
+```
+
+Compare: https://github.com/alo-labs/kay/compare/v0.9.40...v0.9.41
+
 ## @alo-labs/kay v0.9.40
 
 Sidekick live matrix release: closes the MiMo/MiniMax task8–9 closeout gap with
