@@ -971,6 +971,18 @@ mod tests {
                 .contains("never `printf`, `cat >`, or `&&`-chained shell"),
             "MiMo models need notes-ui.js apply_patch guidance"
         );
+        assert!(
+            family
+                .base_instructions
+                .contains("bulkArchiveButton"),
+            "MiMo models need exact Sidekick verify element ids"
+        );
+        assert!(
+            family
+                .base_instructions
+                .contains("params.set('sort'"),
+            "MiMo models need sortSelect wiring guidance"
+        );
         assert!(family.repairs_malformed_apply_patch_tool_calls);
         assert!(family.repairs_final_output_json_schema);
         assert!(family.routes_apply_patch_function_call());
@@ -996,6 +1008,18 @@ mod tests {
                 .base_instructions
                 .contains("never `printf`, `cat >`, or `&&`-chained shell"),
             "MiniMax models need notes-ui.js apply_patch guidance"
+        );
+        assert!(
+            family
+                .base_instructions
+                .contains("bulkArchiveButton"),
+            "MiniMax models need exact Sidekick verify element ids"
+        );
+        assert!(
+            family
+                .base_instructions
+                .contains("params.set('sort'"),
+            "MiniMax models need sortSelect wiring guidance"
         );
     }
 
