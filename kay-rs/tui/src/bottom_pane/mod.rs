@@ -1138,6 +1138,14 @@ impl BottomPane<'_> {
         self.request_redraw();
     }
 
+    #[cfg(any(test, feature = "test-helpers"))]
+    pub(crate) fn stabilize_access_mode_hint_for_snapshot(&mut self) {
+        // VT100 snapshots capture a single frame; refresh the timed suffix so slow
+        // harness setup cannot expire the "(Shift+Tab change)" hint mid-test.
+        self.composer
+            .set_access_mode_hint_for(Duration::from_secs(3600));
+    }
+
     pub(crate) fn set_access_mode_label_ephemeral(&mut self, label: String, dur: Duration) {
         self.composer.set_access_mode_label_ephemeral(label, dur);
         // Schedule a redraw after expiry without blocking other scheduled frames.

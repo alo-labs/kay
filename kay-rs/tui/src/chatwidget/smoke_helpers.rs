@@ -440,6 +440,11 @@ impl ChatWidgetHarness {
         self.chat.rate_limit_fetch_inflight = false;
     }
 
+    #[cfg(any(test, feature = "test-helpers"))]
+    pub fn stabilize_access_mode_hint_for_snapshot(&mut self) {
+        self.chat.stabilize_access_mode_hint_for_snapshot();
+    }
+
     pub fn show_agent_editor(&mut self, name: impl Into<String>) {
         self.chat.show_agent_editor_ui(name.into());
         self.flush_into_widget();

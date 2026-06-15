@@ -201,6 +201,7 @@ pub mod test_helpers {
         frames
             .iter()
             .map(|&(width, height)| {
+                harness.stabilize_access_mode_hint_for_snapshot();
                 harness.flush_into_widget();
 
                 let backend = VT100Backend::new(width, height);
