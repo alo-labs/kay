@@ -28,8 +28,8 @@ use crate::agent_tool::current_agent_spawn_depth;
 use crate::agent_tool::external_agent_command_exists;
 use crate::final_status_contract::{
     final_status_contract_missing, final_status_repair_input, prompt_requires_final_status,
-    should_defer_turn_final_status_repair, status_contract_prompt_from_input,
-    turn_continue_nudge_input, try_salvage_last_task_message,
+    should_defer_turn_final_status_repair, should_nudge_premature_blocked_closeout,
+    status_contract_prompt_from_input, turn_continue_nudge_input, try_salvage_last_task_message,
 };
 use crate::protocol::McpListToolsResponseEvent;
 use crate::protocol::TaskLifecycleEvent;
@@ -2926,6 +2926,19 @@ async fn run_agent(
                             schema,
                             final_output_schema_repair_attempts,
                         ));
+                        continue;
+                    }
+
+                    if !is_review_mode
+                        && requires_status_contract
+                        && turn_continue_nudge_attempts < 3
+                        && should_nudge_premature_blocked_closeout(
+                            &status_contract_prompt,
+                            last_task_message.as_deref(),
+                        )
+                    {
+                        turn_continue_nudge_attempts += 1;
+                        sess.add_pending_input(turn_continue_nudge_input());
                         continue;
                     }
 
