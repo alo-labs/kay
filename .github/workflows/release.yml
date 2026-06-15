@@ -40,6 +40,7 @@ jobs:
     # Probe npm auth and record whether publication is possible; downstream jobs can still run.
     env:
       NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
     steps:
       - name: Setup Node.js for auth check
         uses: actions/setup-node@v4
@@ -48,8 +49,6 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
       - name: Validate npm authentication
         id: auth
-        env:
-          NODE_AUTH_TOKEN: ${{ env.NPM_TOKEN }}
         run: |
           set -euo pipefail
           if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
@@ -58,13 +57,16 @@ jobs:
             exit 0
           fi
 
-          echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > ~/.npmrc
+          config_path="${NPM_CONFIG_USERCONFIG:-$HOME/.npmrc}"
+          mkdir -p "$(dirname "$config_path")"
+          echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > "$config_path"
 
           if npm whoami >/dev/null 2>&1; then
             echo "npm auth ok"
             echo "publish=true" >> "$GITHUB_OUTPUT"
           else
             echo "::warning::npm auth failed (npm whoami); npm publication will be skipped for this release." >&2
+            npm whoami 2>&1 || true
             echo "publish=false" >> "$GITHUB_OUTPUT"
           fi
 
@@ -557,6 +559,7 @@ jobs:
     timeout-minutes: 30
     env:
       NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
     steps:
