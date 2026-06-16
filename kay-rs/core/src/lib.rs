@@ -19,6 +19,7 @@ mod auto_drive_pid;
 mod chat_completions;
 mod client;
 mod client_common;
+mod opencode_go_anthropic_messages;
 pub mod codex;
 mod code_conversation;
 mod bridge_client;
