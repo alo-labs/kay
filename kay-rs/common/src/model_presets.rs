@@ -201,6 +201,7 @@ static PRESETS: Lazy<Vec<ModelPreset>> = Lazy::new(|| {
         opencode_go_preset("opencode-go/mimo-v2.5", "OpenCode Go MiMo V2.5"),
         opencode_go_preset("opencode-go/minimax-m2.7", "OpenCode Go MiniMax M2.7"),
         opencode_go_preset("opencode-go/qwen3.6-plus", "OpenCode Go Qwen3.6 Plus"),
+        opencode_go_preset("opencode-go/qwen3.7-max", "OpenCode Go Qwen3.7 Max"),
         opencode_go_preset("opencode-go/deepseek-v4-pro", "OpenCode Go DeepSeek V4 Pro"),
         opencode_go_preset("opencode-go/deepseek-v4-flash", "OpenCode Go DeepSeek V4 Flash"),
         ModelPreset {
