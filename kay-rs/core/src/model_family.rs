@@ -1399,6 +1399,14 @@ pub fn model_supports_configurable_reasoning_effort_for_provider(
     model_supports_configurable_reasoning_effort(model)
 }
 
+pub fn uses_opencode_go_anthropic_messages(provider_id: &str, model_slug: &str) -> bool {
+    if provider_id != OPENCODE_GO_PROVIDER_ID {
+        return false;
+    }
+    let slug = provider_model_slug(provider_id, model_slug);
+    slug.starts_with("qwen3.7")
+}
+
 pub fn supports_extended_context(model: &str) -> bool {
     if model.eq_ignore_ascii_case("gpt-5.4") {
         return true;
