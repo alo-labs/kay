@@ -21,6 +21,7 @@ const OPENCODE_GO_MODELS: &[&str] = &[
     "opencode-go/mimo-v2.5",
     "opencode-go/minimax-m2.7",
     "opencode-go/qwen3.6-plus",
+    "opencode-go/qwen3.7-max",
     "opencode-go/deepseek-v4-pro",
     "opencode-go/deepseek-v4-flash",
 ];

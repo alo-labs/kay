@@ -61,6 +61,7 @@ const PRIORITIZED_OPENCODE_GO_MODELS: &[&str] = &[
     "mimo-v2.5",
     "minimax-m2.7",
     "qwen3.6-plus",
+    "qwen3.7-max",
     "deepseek-v4-pro",
     "deepseek-v4-flash",
 ];
