@@ -30,14 +30,14 @@ Deliver a final host message with matrix score, delta vs baseline, per-parent is
 
 **Checkout:** If Sidekick is not present, clone `https://github.com/alo-exp/sidekick.git` and work from that root. This prompt does not require a specific branch name; use the branch that contains the matrix scripts you intend to run.
 
-### CURRENT STATUS (headline — 2026-06-15)
+### CURRENT STATUS (headline — 2026-06-16)
 
 Use this as the **baseline** when interpreting your run; update the headline in this doc after a confirmed retest.
 
 | Signal | Value |
 |--------|--------|
-| Kay under test | **local build** (`kay 0.0.0` from `cargo build -p code-cli --release`) at `~/.local/bin/kay` |
-| Matrix prefix (latest local retest) | `local-fix-r8` + `local-fix-r9` retest → **20/20 PASS** |
+| Kay under test | **v0.9.44** (patch: OCG `qwen3.7-max` via Anthropic Messages wire) |
+| Matrix prefix (latest local retest) | `qwen-ocg-v3` → **5/5 PASS** (`ocg-qwen` × e2e, task7–10); full 4-profile matrix **20/20 PASS** at v0.9.43 (`v0943-r1`) |
 | Baseline comparison | **Δ +9** vs r7 (10/20); **Δ +5** vs r5 (15/20); **Δ +9** vs v0.9.31 |
 | **#42** (STATUS contract) | **Cleared:** all profiles emit `STATUS: SUCCESS` on task7–10 closeout; premature BLOCKED nudges fixed |
 | **#46**, **#49** | **#49 cleared**; **#46 cleared** — task8 bulk-archive completes with `bulkArchiveButton`/`note-checkbox` wiring |
@@ -52,6 +52,7 @@ Use this as the **baseline** when interpreting your run; update the headline in 
 | profile_id | provider | model |
 |------------|----------|-------|
 | `ocg-minimax-m3` | `opencode-go` | `minimax-m3` |
+| `ocg-qwen` | `opencode-go` | `qwen3.7-max` |
 | `ocg-mimo-pro` | `opencode-go` | `mimo-v2.5-pro` |
 | `ocg-mimo` | `opencode-go` | `mimo-v2.5` |
 | `minimax-m3` | `minimax` | `minimax/MiniMax-M3` |
