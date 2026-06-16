@@ -11,6 +11,7 @@ const OPENCODE_GO_SUPPORTED_MODELS: &[&str] = &[
     "mimo-v2.5",
     "minimax-m2.7",
     "qwen3.6-plus",
+    "qwen3.7-max",
     "deepseek-v4-pro",
     "deepseek-v4-flash",
 ];
@@ -313,6 +314,8 @@ mod tests {
         assert!(!matches_opencode_go_supported_model("opencode-gox/kimi-k2.6"));
         assert!(matches_opencode_go_supported_model("opencode-go/minimax-m2.7"));
         assert!(!matches_opencode_go_supported_model("opencode-go/minimax-m2.7-beta"));
+        assert!(matches_opencode_go_supported_model("opencode-go/qwen3.7-max"));
+        assert!(!matches_opencode_go_supported_model("opencode-go/qwen3.7-max-beta"));
     }
 
     #[test]

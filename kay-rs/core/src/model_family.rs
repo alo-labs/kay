@@ -42,6 +42,17 @@ const MIMO_SYNTHESIS_CHECKPOINT_INSTRUCTIONS: &str = r#"MiMo investigation disci
 - For `src/public/notes-ui.js`, HTML, and `scripts/verify-*.sh`, use `apply_patch` Add/Update File hunks — never `printf`, `cat >`, or `&&`-chained shell to write source files.
 - When a task names `scripts/verify-*.sh`, create or update those files with `apply_patch`, run them with `PORT` exported, then end with `STATUS: SUCCESS` and `TESTS_RUN:` listing both scripts.
 - Match Sidekick verify script greps exactly: bulk-archive UI needs `bulkArchiveButton`, `note-checkbox`, `selectedIds`, and `bulk-archive` in notes-ui.js; sort UI needs `sortSelect` in HTML/JS and `params.set('sort'` in notes-ui.js."#;
+const QWEN_TOOL_DISCIPLINE_INSTRUCTIONS: &str = r#"Qwen tool discipline:
+- Call `apply_patch` with exactly one argument: the full patch string from `*** Begin Patch` through `*** End Patch`.
+- Do not pass patch lines as separate shell arguments and do not insert `&&` between argv tokens.
+- Pass shell work as one `bash -lc '...'` string; Kay joins argv arrays with `&&`, which breaks `apply_patch` and pipes.
+- Prefer `bash -lc "apply_patch <<'PATCH'\n*** Begin Patch\n...\n*** End Patch\nPATCH"` over `cat file | apply_patch`.
+- On macOS, use `cat -n`, not `cat -An` or `cat -A`.
+- Prefer the `apply_patch` tool or a heredoc for file edits instead of empty redirections like `cat > /tmp/file` without content.
+- In `scripts/verify-*.sh`, default the port with `PORT="${PORT:-3458}"` and export it before starting the app; never use `PORT="${PORT:?PORT is required}"`.
+- For `src/public/notes-ui.js`, HTML, and `scripts/verify-*.sh`, use `apply_patch` Add/Update File hunks — never `printf`, `cat >`, or `&&`-chained shell to write source files.
+- When a task names `scripts/verify-*.sh`, create or update those files with `apply_patch`, run them with `PORT` exported, then end with `STATUS: SUCCESS` and `TESTS_RUN:` listing both scripts.
+- Match Sidekick verify script greps exactly: bulk-archive UI needs `bulkArchiveButton`, `note-checkbox`, `selectedIds`, and `bulk-archive` in notes-ui.js; sort UI needs `sortSelect` in HTML/JS and `params.set('sort'` in notes-ui.js."#;
 const MINIMAX_TOOL_DISCIPLINE_INSTRUCTIONS: &str = r#"MiniMax tool discipline:
 - Call `apply_patch` with exactly one argument: the full patch string from `*** Begin Patch` through `*** End Patch`.
 - Do not pass patch lines as separate shell arguments and do not insert `&&` between argv tokens.
@@ -475,6 +486,17 @@ fn with_mimo_synthesis_checkpoint(mut family: ModelFamily) -> ModelFamily {
     family
 }
 
+fn with_qwen_tool_discipline(mut family: ModelFamily) -> ModelFamily {
+    family.repairs_malformed_apply_patch_tool_calls = true;
+    if !family.base_instructions.contains("Qwen tool discipline") {
+        family.base_instructions.push_str("\n\n");
+        family
+            .base_instructions
+            .push_str(QWEN_TOOL_DISCIPLINE_INSTRUCTIONS);
+    }
+    family
+}
+
 fn with_minimax_tool_discipline(mut family: ModelFamily) -> ModelFamily {
     family.repairs_malformed_apply_patch_tool_calls = true;
     if !family
@@ -725,7 +747,11 @@ pub fn find_family_for_model(slug: &str) -> Option<ModelFamily> {
         model_family!(
             slug, "qwen",
             chat_completions_role_strategy: ChatCompletionsRoleStrategy::CollapseNonChatRolesToSystem,
+            needs_special_apply_patch_instructions: true,
+            repairs_malformed_apply_patch_tool_calls: true,
+            base_instructions: BASE_INSTRUCTIONS_WITH_APPLY_PATCH.to_string(),
         )
+        .map(with_qwen_tool_discipline)
     } else if slug.starts_with("kimi") {
         model_family!(
             slug, "kimi",
@@ -898,6 +924,7 @@ mod tests {
     fn qwen_and_deepseek_families_collapse_developer_roles_to_system() {
         for (slug, family_name) in [
             ("opencode-go/qwen3.6-plus", "qwen"),
+            ("opencode-go/qwen3.7-max", "qwen"),
             ("opencode-go/deepseek-v4-pro", "deepseek"),
         ] {
             let family = find_family_for_model(slug).expect("namespaced model should resolve");
@@ -909,6 +936,26 @@ mod tests {
                 ChatCompletionsRoleStrategy::CollapseNonChatRolesToSystem
             );
         }
+    }
+
+    #[test]
+    fn qwen_family_repairs_malformed_apply_patch_tool_calls() {
+        let family = find_family_for_model("opencode-go/qwen3.7-max")
+            .expect("known OpenCode Go Qwen model");
+        assert!(family.repairs_malformed_apply_patch_tool_calls);
+        assert!(family.needs_special_apply_patch_instructions);
+        assert!(
+            family
+                .base_instructions
+                .contains("Kay joins argv arrays with `&&`"),
+            "Qwen models need explicit shell argv guidance for OpenCode Go wire"
+        );
+        assert!(
+            family
+                .base_instructions
+                .contains("bulkArchiveButton"),
+            "Qwen models need exact Sidekick verify element ids"
+        );
     }
 
     #[test]

@@ -1908,7 +1908,7 @@ mod tests {
     #[test]
     fn qwen_and_deepseek_chat_payload_collapses_developer_role_into_system_message() {
         let provider = crate::model_provider_info::create_opencode_go_provider();
-        for model in ["qwen3.6-plus", "deepseek-v4-pro"] {
+        for model in ["qwen3.6-plus", "qwen3.7-max", "deepseek-v4-pro"] {
             let model_family = crate::model_family::find_family_for_model(model)
                 .expect("known collapsed-role model");
             assert_eq!(

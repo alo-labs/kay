@@ -1,3 +1,32 @@
+## @alo-labs/kay v0.9.44
+
+Patch release: adds first-class OpenCode Go **Qwen3.7 Max** (`qwen3.7-max`) support
+with Qwen tool-discipline guidance and apply_patch repairs matching MiMo/MiniMax
+OCG profiles.
+
+### Model Families
+
+- Register `opencode-go/qwen3.7-max` preset, visibility whitelist, and provider
+  acceptance lists (`qwen3.7-max` wire slug).
+- Extend the `qwen` model family with apply_patch instructions, malformed
+  tool-call repairs, and Sidekick verify-script closeout discipline.
+
+### Release And Verification
+
+- Sidekick Kay live matrix **5/5 PASS** for `ocg-qwen` (`qwen3.7-max`) ×
+  `e2e`, `task7`–`task10` (`prefix: qwen-ocg-v2`).
+- Verified locally with `./build-fast.sh` and
+  `KAY_PRE_RELEASE_LIVE_PROVIDER_GATE=minimax-m3 ./pre-release.sh`.
+
+### Install
+
+```bash
+npm install -g @alo-labs/kay@latest
+kay --version
+```
+
+Compare: https://github.com/alo-labs/kay/compare/v0.9.43...v0.9.44
+
 ## @alo-labs/kay v0.9.41
 
 Patch release after v0.9.40: fixes OpenCode Go `minimax-m3` live acceptance for
