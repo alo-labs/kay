@@ -1,8 +1,8 @@
 ## @alo-labs/kay v0.9.44
 
 Patch release: adds first-class OpenCode Go **Qwen3.7 Max** (`qwen3.7-max`) support
-with Qwen tool-discipline guidance and apply_patch repairs matching MiMo/MiniMax
-OCG profiles.
+via Anthropic Messages wire transport (`/v1/messages` + `x-api-key`), Qwen
+tool-discipline guidance, and apply_patch repairs matching MiMo/MiniMax OCG profiles.
 
 ### Model Families
 
@@ -10,11 +10,13 @@ OCG profiles.
   acceptance lists (`qwen3.7-max` wire slug).
 - Extend the `qwen` model family with apply_patch instructions, malformed
   tool-call repairs, and Sidekick verify-script closeout discipline.
+- Route `qwen3.7-*` OpenCode Go models through Anthropic Messages SSE instead of
+  oa-compat chat completions (OCG rejects `qwen3.7-max` on `/chat/completions`).
 
 ### Release And Verification
 
 - Sidekick Kay live matrix **5/5 PASS** for `ocg-qwen` (`qwen3.7-max`) ×
-  `e2e`, `task7`–`task10` (`prefix: qwen-ocg-v2`).
+  `e2e`, `task7`–`task10` (`prefix: qwen-ocg-v3`).
 - Verified locally with `./build-fast.sh` and
   `KAY_PRE_RELEASE_LIVE_PROVIDER_GATE=minimax-m3 ./pre-release.sh`.
 
