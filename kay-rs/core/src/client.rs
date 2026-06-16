@@ -67,7 +67,9 @@ use crate::error::RetryLimitReachedError;
 use crate::error::UnexpectedResponseError;
 use crate::error::UsageLimitReachedError;
 use crate::flags::CODEX_RS_SSE_FIXTURE;
-use crate::model_family::{find_family_for_model, wire_model_slug, ModelFamily};
+use crate::model_family::{
+    find_family_for_model, uses_opencode_go_anthropic_messages, wire_model_slug, ModelFamily,
+};
 #[cfg(test)]
 use crate::model_provider_info::ChatCompletionsFormat;
 use crate::model_provider_info::ModelProviderInfo;
@@ -663,20 +665,38 @@ impl ModelClient {
                     .clone()
                     .or_else(|| find_family_for_model(request_model))
                     .unwrap_or_else(|| self.config.model_family.clone());
-                // Create the raw streaming connection first.
-                let response_stream = stream_chat_completions(
-                    prompt,
-                    &effective_family,
+                let response_stream = if uses_opencode_go_anthropic_messages(
+                    &self.config.model_provider_id,
                     request_model,
-                    &self.client,
-                    &self.provider,
-                    self.config.responses_originator_header.as_str(),
-                    &self.debug_logger,
-                    self.auth_manager.clone(),
-                    self.otel_event_manager.clone(),
-                    log_tag,
-                )
-                .await?;
+                ) {
+                    crate::opencode_go_anthropic_messages::stream_opencode_go_anthropic_messages(
+                        prompt,
+                        &effective_family,
+                        request_model,
+                        &self.client,
+                        &self.provider,
+                        self.config.responses_originator_header.as_str(),
+                        &self.debug_logger,
+                        self.auth_manager.clone(),
+                        self.otel_event_manager.clone(),
+                        log_tag,
+                    )
+                    .await?
+                } else {
+                    stream_chat_completions(
+                        prompt,
+                        &effective_family,
+                        request_model,
+                        &self.client,
+                        &self.provider,
+                        self.config.responses_originator_header.as_str(),
+                        &self.debug_logger,
+                        self.auth_manager.clone(),
+                        self.otel_event_manager.clone(),
+                        log_tag,
+                    )
+                    .await?
+                };
 
                 // Wrap it with the aggregation adapter so callers see *only*
                 // the final assistant message per turn (matching the

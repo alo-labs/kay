@@ -1508,7 +1508,7 @@ impl<S> AggregatedChatStream<S> {
     }
 }
 
-fn header_map_to_json(headers: &HeaderMap) -> serde_json::Value {
+pub(crate) fn header_map_to_json(headers: &HeaderMap) -> serde_json::Value {
     let mut ordered: BTreeMap<String, Vec<String>> = BTreeMap::new();
     for (name, value) in headers.iter() {
         let entry = ordered.entry(name.as_str().to_string()).or_default();
