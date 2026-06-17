@@ -20,6 +20,8 @@ use tokio::process::Child;
 use tokio::time::Sleep;
 
 use crate::codex::Session;
+use crate::exec_env::ensure_exec_path;
+use crate::exec_env::effective_path_value;
 use crate::error::CodexErr;
 use crate::error::Result;
 use crate::error::SandboxErr;
@@ -346,6 +348,7 @@ async fn exec(
     } = params;
 
     merge_leading_env_assignments(&mut command, &mut env);
+    ensure_exec_path(&mut env);
 
     preflight_exec(&command, &cwd, &env)?;
 
@@ -443,14 +446,17 @@ fn command_program_resolves(program: &str, cwd: &Path, env: &HashMap<String, Str
 }
 
 fn resolve_program_in_path(program: &str, env: &HashMap<String, String>) -> Option<PathBuf> {
-    let path_value = env
-        .get("PATH")
-        .cloned()
-        .or_else(|| std::env::var("PATH").ok())?;
+    let path_value = effective_path_value(env);
+    if path_value.is_empty() {
+        return None;
+    }
 
     for dir in std::env::split_paths(&path_value) {
+        if dir.as_os_str().is_empty() {
+            continue;
+        }
         let candidate = dir.join(program);
-        if candidate.is_file() {
+        if is_shell_executable(&candidate) {
             return Some(candidate);
         }
 
@@ -469,7 +475,7 @@ fn resolve_program_in_path(program: &str, env: &HashMap<String, String>) -> Opti
                     format!(".{ext}")
                 };
                 let candidate = dir.join(format!("{program}{ext}"));
-                if candidate.is_file() {
+                if is_shell_executable(&candidate) {
                     return Some(candidate);
                 }
             }
@@ -477,6 +483,21 @@ fn resolve_program_in_path(program: &str, env: &HashMap<String, String>) -> Opti
     }
 
     None
+}
+
+#[cfg(unix)]
+fn is_shell_executable(path: &Path) -> bool {
+    use std::os::unix::fs::PermissionsExt;
+
+    let Ok(meta) = std::fs::metadata(path) else {
+        return false;
+    };
+    meta.is_file() && (meta.permissions().mode() & 0o111 != 0)
+}
+
+#[cfg(windows)]
+fn is_shell_executable(path: &Path) -> bool {
+    path.is_file()
 }
 
 /// Consumes the output of a child process, truncating it so it is suitable for
@@ -948,6 +969,20 @@ mod tests {
         fs::remove_dir_all(&cwd).expect("remove temp dir");
 
         assert!(err.is_ok(), "expected relative program to resolve in cwd");
+    }
+
+    #[test]
+    fn preflight_exec_resolves_standard_binary_when_env_path_empty() {
+        let cwd = std::env::current_dir().expect("cwd");
+        let mut env = HashMap::new();
+        env.insert("PATH".to_string(), String::new());
+        #[cfg(unix)]
+        {
+            assert!(
+                preflight_exec(&["cat".to_string()], &cwd, &env).is_ok(),
+                "expected cat to resolve via PATH fallback"
+            );
+        }
     }
 
     #[test]

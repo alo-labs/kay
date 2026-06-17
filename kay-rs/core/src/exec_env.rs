@@ -94,7 +94,74 @@ where
         env_map.retain(|k, _| matches_any(k, &policy.include_only));
     }
 
+    ensure_exec_path(&mut env_map);
     env_map
+}
+
+/// Ensure shell subprocesses can resolve standard system binaries even when the
+/// inherited PATH is missing, empty, or stripped of `/usr/bin` and `/bin`.
+pub fn ensure_exec_path(env_map: &mut HashMap<String, String>) {
+    let path = effective_path_value(env_map);
+    env_map.insert("PATH".to_string(), path);
+}
+
+pub(crate) fn effective_path_value(env: &HashMap<String, String>) -> String {
+    let from_env = env
+        .get("PATH")
+        .filter(|value| !value.is_empty())
+        .cloned();
+    let from_process = from_env.or_else(|| {
+        std::env::var("PATH")
+            .ok()
+            .filter(|value| !value.is_empty())
+    });
+
+    #[cfg(unix)]
+    {
+        let base = from_process.unwrap_or_else(default_path_env_var);
+        if path_has_standard_dirs(&base) {
+            base
+        } else {
+            join_path_env(&base, &default_path_env_var())
+        }
+    }
+
+    #[cfg(windows)]
+    {
+        from_process.unwrap_or_default()
+    }
+}
+
+#[cfg(unix)]
+fn default_path_env_var() -> String {
+    if cfg!(target_os = "macos") {
+        "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin".to_string()
+    } else {
+        "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin".to_string()
+    }
+}
+
+#[cfg(unix)]
+fn path_has_standard_dirs(path: &str) -> bool {
+    use std::ffi::OsString;
+
+    let os = OsString::from(path);
+    std::env::split_paths(&os).any(|entry| {
+        entry == std::path::Path::new("/usr/bin")
+            || entry == std::path::Path::new("/bin")
+            || entry == std::path::Path::new("/usr/sbin")
+            || entry == std::path::Path::new("/sbin")
+    })
+}
+
+#[cfg(unix)]
+fn join_path_env(prefix: &str, suffix: &str) -> String {
+    match (prefix.is_empty(), suffix.is_empty()) {
+        (true, true) => String::new(),
+        (false, true) => prefix.to_string(),
+        (true, false) => suffix.to_string(),
+        (false, false) => format!("{prefix}:{suffix}"),
+    }
 }
 
 #[cfg(test)]
@@ -276,7 +343,33 @@ mod tests {
         };
 
         #[cfg(unix)]
-        expected.insert("GIT_ASKPASS".to_string(), "true".to_string());
+        {
+            expected.insert("GIT_ASKPASS".to_string(), "true".to_string());
+            let path = result.get("PATH").expect("PATH seeded");
+            assert!(
+                path.contains("/usr/bin") || path.contains("/bin"),
+                "expected standard PATH seeding, got: {path}"
+            );
+            expected.insert("PATH".to_string(), path.clone());
+        }
         assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn effective_path_value_ignores_empty_env_path() {
+        let env = hashmap! {
+            "PATH".to_string() => String::new(),
+        };
+        let resolved = effective_path_value(&env);
+        let process_path = std::env::var("PATH").unwrap_or_default();
+        if process_path.is_empty() {
+            #[cfg(unix)]
+            assert!(
+                resolved.contains("/usr/bin") || resolved.contains("/bin"),
+                "expected default unix PATH, got: {resolved}"
+            );
+        } else {
+            assert_eq!(resolved, process_path);
+        }
     }
 }
