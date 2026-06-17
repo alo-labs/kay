@@ -9296,7 +9296,7 @@ mod kay_runtime_regression_tests {
 
     #[test]
     fn parses_mimo_concatenated_shell_tool_arguments() {
-        let arguments = r#"{"command":["cat","src/public/index.html"]}{"command":["cat","src/public/notes-ui.js"]}"#;
+        let arguments = r#"{"command":["cat","src/public/index.html"]}{"command":["cat","src/public/widget.js"]}"#;
         let params = parse_shell_tool_call_params_values(arguments)
             .expect("concatenated MiMo shell arguments should parse");
 
@@ -9307,17 +9307,17 @@ mod kay_runtime_regression_tests {
         );
         assert_eq!(
             params[1].command,
-            vec!["cat".to_string(), "src/public/notes-ui.js".to_string()]
+            vec!["cat".to_string(), "src/public/widget.js".to_string()]
         );
         assert_eq!(
             shell_tool_call_params_to_script(&params).expect("script"),
-            "cat src/public/index.html\ncat src/public/notes-ui.js"
+            "cat src/public/index.html\ncat src/public/widget.js"
         );
     }
 
     #[test]
     fn parses_mimo_concatenated_shell_tool_string_commands() {
-        let arguments = r#"{"command":"cat /tmp/index.html"}{"command":"cat /tmp/notes-ui.js"}"#;
+        let arguments = r#"{"command":"cat /tmp/index.html"}{"command":"cat /tmp/widget.js"}"#;
         let params = parse_shell_tool_call_params_values(arguments)
             .expect("concatenated MiMo shell string arguments should parse");
 
@@ -9328,11 +9328,11 @@ mod kay_runtime_regression_tests {
         );
         assert_eq!(
             params[1].command,
-            vec!["cat".to_string(), "/tmp/notes-ui.js".to_string()]
+            vec!["cat".to_string(), "/tmp/widget.js".to_string()]
         );
         assert_eq!(
             shell_tool_call_params_to_script(&params).expect("script"),
-            "cat /tmp/index.html\ncat /tmp/notes-ui.js"
+            "cat /tmp/index.html\ncat /tmp/widget.js"
         );
     }
 
@@ -9443,7 +9443,7 @@ mod kay_runtime_regression_tests {
     #[test]
     fn final_output_schema_accepts_trailing_json_contract() {
         let schema = notes_schema();
-        let message = "All edits are complete.\n{\"summary\":\"done\",\"touched_files\":[\"src/public/index.html\",\"src/public/notes-ui.js\"]}";
+        let message = "All edits are complete.\n{\"summary\":\"done\",\"touched_files\":[\"src/public/index.html\",\"src/public/widget.js\"]}";
 
         assert!(final_output_message_satisfies_json_schema(
             Some(message),
