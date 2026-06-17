@@ -162,6 +162,7 @@ mod tests {
         let slugs = opencode_go_model_slugs();
         for expected in [
             "glm-5.1",
+            "glm-5.2",
             "glm-5",
             "kimi-k2.7-code",
             "kimi-k2.6",
@@ -180,7 +181,7 @@ mod tests {
                 "missing OpenCode Go model {expected}"
             );
         }
-        assert_eq!(slugs.len(), 13);
+        assert_eq!(slugs.len(), 14);
     }
 
     #[test]

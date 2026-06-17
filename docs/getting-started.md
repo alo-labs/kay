@@ -85,7 +85,7 @@ Model availability currently looks like this:
 | Provider | Models shown in `/model` |
 | --- | --- |
 | Xiaomi | `xiaomi/mimo-v2.5-pro`, `xiaomi/mimo-v2.5` |
-| OpenCode Go | `opencode-go/glm-5.1`, `opencode-go/kimi-k2.6`, `opencode-go/mimo-v2.5-pro`, `opencode-go/mimo-v2.5`, `opencode-go/minimax-m2.7`, `opencode-go/qwen3.6-plus`, `opencode-go/deepseek-v4-pro`, `opencode-go/deepseek-v4-flash` |
+| OpenCode Go | `opencode-go/glm-5.1`, `opencode-go/glm-5.2`, `opencode-go/kimi-k2.6`, `opencode-go/mimo-v2.5-pro`, `opencode-go/mimo-v2.5`, `opencode-go/minimax-m2.7`, `opencode-go/qwen3.6-plus`, `opencode-go/deepseek-v4-pro`, `opencode-go/deepseek-v4-flash` |
 | MiniMax | `MiniMax-M3`, `MiniMax-M2.7` |
 | OpenRouter | OpenRouter models available for your account and routing settings |
 | OpenAI | The OpenAI models supported by the upstream model list |

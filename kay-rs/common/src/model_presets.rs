@@ -782,6 +782,7 @@ mod tests {
         let presets = builtin_model_presets(Some(AuthMode::ApiKey), false);
         for model in [
             "opencode-go/glm-5.1",
+            "opencode-go/glm-5.2",
             "opencode-go/glm-5",
             "opencode-go/kimi-k2.7-code",
             "opencode-go/kimi-k2.6",

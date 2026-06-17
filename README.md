@@ -22,7 +22,7 @@ Kay can use custom OpenAI-compatible providers, but these providers are availabl
 | Provider | Built-in models | Why it matters |
 | --- | --- | --- |
 | Xiaomi | `xiaomi/mimo-v2.5-pro`, `xiaomi/mimo-v2.5` | Direct Xiaomi MiMo support for cost-effective coding turns. |
-| OpenCode Go | `opencode-go/glm-5.1`, `opencode-go/kimi-k2.6`, `opencode-go/mimo-v2.5-pro`, `opencode-go/mimo-v2.5`, `opencode-go/minimax-m2.7`, `opencode-go/qwen3.6-plus`, `opencode-go/deepseek-v4-pro`, `opencode-go/deepseek-v4-flash` | A curated set of high-performing coding models behind one provider. |
+| OpenCode Go | `opencode-go/glm-5.1`, `opencode-go/glm-5.2`, `opencode-go/kimi-k2.6`, `opencode-go/mimo-v2.5-pro`, `opencode-go/mimo-v2.5`, `opencode-go/minimax-m2.7`, `opencode-go/qwen3.6-plus`, `opencode-go/deepseek-v4-pro`, `opencode-go/deepseek-v4-flash` | A curated set of high-performing coding models behind one provider. |
 | MiniMax | `MiniMax-M3`, `MiniMax-M2.7` | Focused built-in options for MiniMax workflows. |
 | OpenRouter | OpenRouter's configured model catalog. | Broad third-party model access through one OpenAI-compatible provider. |
 | OpenAI | The upstream OpenAI model list supported by Kay's Codex lineage. | Keep OpenAI available without making it the only path. |
