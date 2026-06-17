@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::process::Stdio;
 
+use code_core::provider_models::{opencode_go_preset_ids, xiaomi_preset_ids};
 use serde::Deserialize;
 use serde_json::json;
 use tempfile::TempDir;
@@ -14,39 +15,30 @@ use common::SessionPreserver;
 const TEST_NOTES_APP_REPO_ROOT: &str = "/Users/shafqat/projects/test-notes-app";
 const EXPECTED_NOTES_FILES: &[&str] = &["src/public/index.html", "src/public/notes-ui.js"];
 
-const OPENCODE_GO_MODELS: &[&str] = &[
-    "opencode-go/glm-5.1",
-    "opencode-go/kimi-k2.6",
-    "opencode-go/mimo-v2.5-pro",
-    "opencode-go/mimo-v2.5",
-    "opencode-go/minimax-m2.7",
-    "opencode-go/qwen3.6-plus",
-    "opencode-go/qwen3.7-max",
-    "opencode-go/deepseek-v4-pro",
-    "opencode-go/deepseek-v4-flash",
-];
-const XIAOMI_MODELS: &[&str] = &["xiaomi/mimo-v2.5-pro", "xiaomi/mimo-v2.5"];
-
 struct ProviderSpec {
     provider_id: &'static str,
     primary_api_key_env: &'static str,
     fallback_api_key_env: Option<&'static str>,
-    models: &'static [&'static str],
+    models: Vec<String>,
 }
 
-const OPENCODE_GO_SPEC: ProviderSpec = ProviderSpec {
-    provider_id: "opencode-go",
-    primary_api_key_env: "OPENCODE_GO_LIVE_API_KEY",
-    fallback_api_key_env: Some("OPENCODE_GO_API_KEY"),
-    models: OPENCODE_GO_MODELS,
-};
+fn opencode_go_spec() -> ProviderSpec {
+    ProviderSpec {
+        provider_id: "opencode-go",
+        primary_api_key_env: "OPENCODE_GO_LIVE_API_KEY",
+        fallback_api_key_env: Some("OPENCODE_GO_API_KEY"),
+        models: opencode_go_preset_ids(),
+    }
+}
 
-const XIAOMI_SPEC: ProviderSpec = ProviderSpec {
-    provider_id: "xiaomi",
-    primary_api_key_env: "XIAOMI_LIVE_API_KEY",
-    fallback_api_key_env: Some("XIAOMI_API_KEY"),
-    models: XIAOMI_MODELS,
-};
+fn xiaomi_spec() -> ProviderSpec {
+    ProviderSpec {
+        provider_id: "xiaomi",
+        primary_api_key_env: "XIAOMI_LIVE_API_KEY",
+        fallback_api_key_env: Some("XIAOMI_API_KEY"),
+        models: xiaomi_preset_ids(),
+    }
+}
 
 fn code_bin() -> &'static str {
     env!("CARGO_BIN_EXE_code")
@@ -70,9 +62,9 @@ fn repo_root() -> PathBuf {
         .unwrap_or_else(|| PathBuf::from(TEST_NOTES_APP_REPO_ROOT))
 }
 
-fn selected_models(spec: &ProviderSpec) -> Vec<&'static str> {
+fn selected_models(spec: &ProviderSpec) -> Vec<String> {
     let Some(raw) = std::env::var_os("TEST_NOTES_APP_MODEL_FILTER") else {
-        return spec.models.to_vec();
+        return spec.models.clone();
     };
 
     let requested: Vec<String> = raw
@@ -83,13 +75,13 @@ fn selected_models(spec: &ProviderSpec) -> Vec<&'static str> {
         .collect();
 
     if requested.is_empty() {
-        return spec.models.to_vec();
+        return spec.models.clone();
     }
 
     spec.models
         .iter()
-        .copied()
-        .filter(|model| requested.iter().any(|wanted| wanted == model))
+        .filter(|model| requested.iter().any(|wanted| wanted == *model))
+        .cloned()
         .collect()
 }
 
@@ -755,7 +747,7 @@ fn run_notes_app_live_feature_workflow(spec: &ProviderSpec) {
         return;
     };
 
-    for &model in &selected_models(spec) {
+    for model in selected_models(spec) {
         let kay_home = TempDir::new().expect("temp KAY_HOME");
         let _sessions = SessionPreserver::new(
             kay_home.path(),
@@ -779,7 +771,7 @@ fn run_notes_app_live_feature_workflow(spec: &ProviderSpec) {
             &kay_home,
             &repo_dir,
             spec.provider_id,
-            model,
+            &model,
             prompt.trim(),
             &last_message,
         );
@@ -804,7 +796,7 @@ fn run_notes_app_live_feature_workflow(spec: &ProviderSpec) {
         assert_notes_feature_behavior(&repo_dir);
         assert_notes_js_syntax(&repo_dir);
 
-        let transcript_path = copy_transcript(kay_home.path(), &repo_dir, model);
+        let transcript_path = copy_transcript(kay_home.path(), &repo_dir, &model);
         assert!(
             transcript_path.exists(),
             "expected transcript copy at {}",
@@ -874,10 +866,12 @@ fn duplicate_shortcut_guard_accepts_inline_typing_flag() {
 
 #[test]
 fn opencode_go_notes_app_live_feature_workflow() {
-    run_notes_app_live_feature_workflow(&OPENCODE_GO_SPEC);
+    let spec = opencode_go_spec();
+    run_notes_app_live_feature_workflow(&spec);
 }
 
 #[test]
 fn xiaomi_notes_app_live_feature_workflow() {
-    run_notes_app_live_feature_workflow(&XIAOMI_SPEC);
+    let spec = xiaomi_spec();
+    run_notes_app_live_feature_workflow(&spec);
 }

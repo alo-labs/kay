@@ -55,6 +55,20 @@ const LIVE_MODELS: &[LiveModelSpec] = &[
     LiveModelSpec {
         provider_label: "OpenCode Go",
         provider_id: "opencode-go",
+        model: "opencode-go/glm-5",
+        header_label: "opencode-go/glm-5",
+        reasoning_effort: None,
+    },
+    LiveModelSpec {
+        provider_label: "OpenCode Go",
+        provider_id: "opencode-go",
+        model: "opencode-go/kimi-k2.7-code",
+        header_label: "opencode-go/kimi-k2.7-code",
+        reasoning_effort: None,
+    },
+    LiveModelSpec {
+        provider_label: "OpenCode Go",
+        provider_id: "opencode-go",
         model: "opencode-go/kimi-k2.6",
         header_label: "opencode-go/kimi-k2.6",
         reasoning_effort: None,
@@ -78,6 +92,27 @@ const LIVE_MODELS: &[LiveModelSpec] = &[
         provider_id: "opencode-go",
         model: "opencode-go/minimax-m2.7",
         header_label: "opencode-go/minimax-m2.7",
+        reasoning_effort: None,
+    },
+    LiveModelSpec {
+        provider_label: "OpenCode Go",
+        provider_id: "opencode-go",
+        model: "opencode-go/minimax-m3",
+        header_label: "opencode-go/minimax-m3",
+        reasoning_effort: None,
+    },
+    LiveModelSpec {
+        provider_label: "OpenCode Go",
+        provider_id: "opencode-go",
+        model: "opencode-go/qwen3.7-max",
+        header_label: "opencode-go/qwen3.7-max",
+        reasoning_effort: None,
+    },
+    LiveModelSpec {
+        provider_label: "OpenCode Go",
+        provider_id: "opencode-go",
+        model: "opencode-go/qwen3.7-plus",
+        header_label: "opencode-go/qwen3.7-plus",
         reasoning_effort: None,
     },
     LiveModelSpec {

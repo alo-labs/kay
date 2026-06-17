@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "providers": {
+    "opencode-go": {
+      "description": "OpenCode Go coding model.",
+      "models": [
+        { "slug": "glm-5.1", "display_name": "OpenCode Go GLM 5.1" },
+        { "slug": "glm-5", "display_name": "OpenCode Go GLM 5" },
+        { "slug": "kimi-k2.7-code", "display_name": "OpenCode Go Kimi K2.7 Code" },
+        { "slug": "kimi-k2.6", "display_name": "OpenCode Go Kimi K2.6" },
+        { "slug": "mimo-v2.5-pro", "display_name": "OpenCode Go MiMo V2.5 Pro" },
+        { "slug": "mimo-v2.5", "display_name": "OpenCode Go MiMo V2.5" },
+        { "slug": "minimax-m3", "display_name": "OpenCode Go MiniMax M3" },
+        { "slug": "minimax-m2.7", "display_name": "OpenCode Go MiniMax M2.7" },
+        { "slug": "qwen3.7-max", "display_name": "OpenCode Go Qwen3.7 Max" },
+        { "slug": "qwen3.7-plus", "display_name": "OpenCode Go Qwen3.7 Plus" },
+        { "slug": "qwen3.6-plus", "display_name": "OpenCode Go Qwen3.6 Plus" },
+        { "slug": "deepseek-v4-pro", "display_name": "OpenCode Go DeepSeek V4 Pro" },
+        { "slug": "deepseek-v4-flash", "display_name": "OpenCode Go DeepSeek V4 Flash" }
+      ]
+    },
+    "minimax": {
+      "models": [
+        {
+          "slug": "MiniMax-M3",
+          "display_name": "MiniMax-M3",
+          "description": "Latest MiniMax coding model."
+        },
+        {
+          "slug": "MiniMax-M2.7",
+          "display_name": "MiniMax-M2.7",
+          "description": "Balanced MiniMax coding model."
+        }
+      ]
+    },
+    "xiaomi": {
+      "description": "Xiaomi MiMo coding model.",
+      "models": [
+        { "slug": "mimo-v2.5-pro", "display_name": "Xiaomi MiMo V2.5 Pro" },
+        { "slug": "mimo-v2.5", "display_name": "Xiaomi MiMo V2.5" }
+      ]
+    }
+  }
+}

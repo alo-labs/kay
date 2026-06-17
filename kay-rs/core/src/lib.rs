@@ -82,6 +82,7 @@ pub mod slash_commands;
 pub mod parse_command;
 pub mod history;
 pub mod model_visibility;
+pub mod provider_models;
 mod truncate;
 mod unified_exec;
 mod user_instructions;
