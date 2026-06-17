@@ -3,7 +3,7 @@
 use code_protocol::models::ContentItem;
 use code_protocol::models::ResponseInputItem;
 
-pub const FINAL_STATUS_REPAIR_PROMPT: &str = "Your last reply did not begin with STATUS:. If required code or verify scripts are still incomplete, continue with tool calls now—do not emit STATUS: BLOCKED just because of this reminder. When (and only when) both required verify scripts exit 0, reply with ONLY a final status block: STATUS: SUCCESS, FILES_CHANGED:, and TESTS_RUN:. Use STATUS: BLOCKED only when a true external blocker remains after honest effort.";
+pub const FINAL_STATUS_REPAIR_PROMPT: &str = "Your last reply did not begin with STATUS:. If required work or verification named in the prompt is still incomplete, continue with tool calls now—do not emit STATUS: BLOCKED just because of this reminder. When (and only when) the prompt's requirements are satisfied, reply with the final status block the prompt specifies. Use STATUS: BLOCKED only when a true external blocker remains after honest effort.";
 
 pub fn message_starts_with_status(message: &str) -> bool {
     status_head_line(message)
@@ -103,9 +103,6 @@ pub fn should_defer_turn_final_status_repair(last_agent_message: Option<&str>) -
         "i need to ",
         "verification script",
         "verify script",
-        "notes-ui.js",
-        "sortselect",
-        "bulkarchive",
     ];
     IN_PROGRESS_MARKERS
         .iter()
@@ -239,7 +236,7 @@ pub fn prompt_requires_final_status(prompt: &str) -> bool {
     mentions_final && mentions_required_status && requires_status_contract
 }
 
-pub const TURN_CONTINUE_NUDGE_VERIFY_PROMPT: &str = "Continue the task with tool calls. Do not stop for narration—finish wiring (including notes-ui.js if needed), ensure scripts/verify-*.sh exist via apply_patch, run both verify scripts with PORT exported, then reply with only STATUS: SUCCESS (or STATUS: BLOCKED if truly stuck) plus FILES_CHANGED and TESTS_RUN.";
+pub const TURN_CONTINUE_NUDGE_VERIFY_PROMPT: &str = "Continue the task with tool calls. Do not stop for narration—finish the required file edits, ensure any verify scripts named in the prompt exist via apply_patch, run those scripts with the environment the prompt requires, then reply with only the final STATUS block the prompt specifies.";
 
 pub const TURN_CONTINUE_NUDGE_GENERIC_PROMPT: &str = "Continue the task with tool calls now. Do not stop for narration—apply the required file edits and run the verification command(s) named in the prompt before replying.";
 
@@ -265,7 +262,7 @@ pub fn final_status_repair_input(attempt: usize) -> ResponseInputItem {
         FINAL_STATUS_REPAIR_PROMPT.to_string()
     } else {
         format!(
-            "{FINAL_STATUS_REPAIR_PROMPT}\n\nThis is repair attempt {attempt}. If verify scripts have not both exited 0, continue with tool calls — do not reply with STATUS: BLOCKED because of this reminder."
+            "{FINAL_STATUS_REPAIR_PROMPT}\n\nThis is repair attempt {attempt}. If the prompt's verification requirements are not yet satisfied, continue with tool calls — do not reply with STATUS: BLOCKED because of this reminder."
         )
     };
     ResponseInputItem::Message {
@@ -299,7 +296,7 @@ mod tests {
     }
 
     #[test]
-    fn nudge_prompt_is_verify_specific_for_bulk_archive_tasks() {
+    fn nudge_prompt_is_verify_specific_for_delegation_prompts() {
         let prompt = "SUCCESS CRITERIA:\n- Both verify scripts exit 0.\n- STATUS: SUCCESS with FILES_CHANGED and TESTS_RUN.";
         assert_eq!(
             turn_continue_nudge_prompt(prompt),

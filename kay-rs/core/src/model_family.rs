@@ -39,9 +39,8 @@ const MIMO_SYNTHESIS_CHECKPOINT_INSTRUCTIONS: &str = r#"MiMo investigation disci
 - Before taking another exploratory tool action, state the current hypothesis, the evidence for it, and the single next observation that would change it.
 - When enough evidence has been gathered, provide the diagnosis or next concrete code change instead of another preamble.
 - In `scripts/verify-*.sh`, default the port with `PORT="${PORT:-3458}"` and export it before starting the app; never use `PORT="${PORT:?PORT is required}"`.
-- For `src/public/notes-ui.js`, HTML, and `scripts/verify-*.sh`, use `apply_patch` Add/Update File hunks — never `printf`, `cat >`, or `&&`-chained shell to write source files.
-- When a task names `scripts/verify-*.sh`, create or update those files with `apply_patch`, run them with `PORT` exported, then end with `STATUS: SUCCESS` and `TESTS_RUN:` listing both scripts.
-- Match Sidekick verify script greps exactly: bulk-archive UI needs `bulkArchiveButton`, `note-checkbox`, `selectedIds`, and `bulk-archive` in notes-ui.js; sort UI needs `sortSelect` in HTML/JS and `params.set('sort'` in notes-ui.js."#;
+- For source files and verify scripts, use `apply_patch` Add/Update File hunks — never `printf`, `cat >`, or `&&`-chained shell to write files.
+- When the user prompt names local verify scripts or a final STATUS block, create or update files with `apply_patch`, run named verification commands with any required environment exported, then honor that STATUS contract in the final reply."#;
 const QWEN_TOOL_DISCIPLINE_INSTRUCTIONS: &str = r#"Qwen tool discipline:
 - Call `apply_patch` with exactly one argument: the full patch string from `*** Begin Patch` through `*** End Patch`.
 - Do not pass patch lines as separate shell arguments and do not insert `&&` between argv tokens.
@@ -50,9 +49,8 @@ const QWEN_TOOL_DISCIPLINE_INSTRUCTIONS: &str = r#"Qwen tool discipline:
 - On macOS, use `cat -n`, not `cat -An` or `cat -A`.
 - Prefer the `apply_patch` tool or a heredoc for file edits instead of empty redirections like `cat > /tmp/file` without content.
 - In `scripts/verify-*.sh`, default the port with `PORT="${PORT:-3458}"` and export it before starting the app; never use `PORT="${PORT:?PORT is required}"`.
-- For `src/public/notes-ui.js`, HTML, and `scripts/verify-*.sh`, use `apply_patch` Add/Update File hunks — never `printf`, `cat >`, or `&&`-chained shell to write source files.
-- When a task names `scripts/verify-*.sh`, create or update those files with `apply_patch`, run them with `PORT` exported, then end with `STATUS: SUCCESS` and `TESTS_RUN:` listing both scripts.
-- Match Sidekick verify script greps exactly: bulk-archive UI needs `bulkArchiveButton`, `note-checkbox`, `selectedIds`, and `bulk-archive` in notes-ui.js; sort UI needs `sortSelect` in HTML/JS and `params.set('sort'` in notes-ui.js."#;
+- For source files and verify scripts, use `apply_patch` Add/Update File hunks — never `printf`, `cat >`, or `&&`-chained shell to write files.
+- When the user prompt names local verify scripts or a final STATUS block, create or update files with `apply_patch`, run named verification commands with any required environment exported, then honor that STATUS contract in the final reply."#;
 const MINIMAX_TOOL_DISCIPLINE_INSTRUCTIONS: &str = r#"MiniMax tool discipline:
 - Call `apply_patch` with exactly one argument: the full patch string from `*** Begin Patch` through `*** End Patch`.
 - Do not pass patch lines as separate shell arguments and do not insert `&&` between argv tokens.
@@ -61,9 +59,8 @@ const MINIMAX_TOOL_DISCIPLINE_INSTRUCTIONS: &str = r#"MiniMax tool discipline:
 - On macOS, use `cat -n`, not `cat -An` or `cat -A`.
 - Prefer the `apply_patch` tool or a heredoc for file edits instead of empty redirections like `cat > /tmp/file` without content.
 - In `scripts/verify-*.sh`, default the port with `PORT="${PORT:-3458}"` and export it before starting the app; never use `PORT="${PORT:?PORT is required}"`.
-- For `src/public/notes-ui.js`, HTML, and `scripts/verify-*.sh`, use `apply_patch` Add/Update File hunks — never `printf`, `cat >`, or `&&`-chained shell to write source files.
-- When a task names `scripts/verify-*.sh`, create or update those files with `apply_patch`, run them with `PORT` exported, then end with `STATUS: SUCCESS` and `TESTS_RUN:` listing both scripts.
-- Match Sidekick verify script greps exactly: bulk-archive UI needs `bulkArchiveButton`, `note-checkbox`, `selectedIds`, and `bulk-archive` in notes-ui.js; sort UI needs `sortSelect` in HTML/JS and `params.set('sort'` in notes-ui.js."#;
+- For source files and verify scripts, use `apply_patch` Add/Update File hunks — never `printf`, `cat >`, or `&&`-chained shell to write files.
+- When the user prompt names local verify scripts or a final STATUS block, create or update files with `apply_patch`, run named verification commands with any required environment exported, then honor that STATUS contract in the final reply."#;
 const DEFAULT_PERSONALITY_HEADER: &str = "You are Codex, a coding agent based on GPT-5. You and the user share the same workspace and collaborate to achieve the user's goals.";
 const LOCAL_FRIENDLY_TEMPLATE: &str =
     "You optimize for team morale and being a supportive teammate as much as code quality.";
@@ -838,6 +835,33 @@ fn supports_image_generation(model_info: &ModelInfo) -> bool {
     model_info.input_modalities.contains(&InputModality::Image)
 }
 
+/// Live compatibility matrix inputs derived from [`ModelFamily`] and provider
+/// routing helpers. Keeps CLI acceptance tests aligned with runtime behavior.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ModelCompatibilityProfile {
+    pub family: String,
+    pub uses_local_shell_tool: bool,
+    pub needs_apply_patch: bool,
+    pub supports_json_schema_output: bool,
+    pub repairs_malformed_apply_patch: bool,
+    pub uses_anthropic_messages_wire: bool,
+    pub expected_wire_slug: String,
+}
+
+pub fn compatibility_profile_for_model(provider_id: &str, model: &str) -> ModelCompatibilityProfile {
+    let family =
+        find_family_for_model(model).unwrap_or_else(|| derive_default_model_family(model));
+    ModelCompatibilityProfile {
+        family: family.family.clone(),
+        uses_local_shell_tool: family.uses_local_shell_tool,
+        needs_apply_patch: family.needs_special_apply_patch_instructions,
+        supports_json_schema_output: family.supports_chat_completions_response_format_json_schema,
+        repairs_malformed_apply_patch: family.repairs_malformed_apply_patch_tool_calls,
+        uses_anthropic_messages_wire: uses_opencode_go_anthropic_messages(provider_id, model),
+        expected_wire_slug: wire_model_slug(provider_id, model),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::config_types::ReasoningEffort;
@@ -846,6 +870,7 @@ mod tests {
     use super::ChatCompletionsRoleStrategy;
     use super::ChatCompletionsReasoningStrategy;
     use super::EXTENDED_CONTEXT_WINDOW_1M;
+    use super::compatibility_profile_for_model;
     use super::default_auto_compact_limit_for_context_window;
     use super::find_family_for_model;
     use super::infer_model_provider_id;
@@ -953,8 +978,8 @@ mod tests {
         assert!(
             family
                 .base_instructions
-                .contains("bulkArchiveButton"),
-            "Qwen models need exact Sidekick verify element ids"
+                .contains("never `printf`, `cat >`, or `&&`-chained shell"),
+            "Qwen models need apply_patch file-edit guidance"
         );
     }
 
@@ -1018,19 +1043,13 @@ mod tests {
             family
                 .base_instructions
                 .contains("never `printf`, `cat >`, or `&&`-chained shell"),
-            "MiMo models need notes-ui.js apply_patch guidance"
+            "MiMo models need apply_patch file-edit guidance"
         );
         assert!(
             family
                 .base_instructions
-                .contains("bulkArchiveButton"),
-            "MiMo models need exact Sidekick verify element ids"
-        );
-        assert!(
-            family
-                .base_instructions
-                .contains("params.set('sort'"),
-            "MiMo models need sortSelect wiring guidance"
+                .contains("honor that STATUS contract"),
+            "MiMo models need prompt-driven STATUS closeout guidance"
         );
         assert!(family.repairs_malformed_apply_patch_tool_calls);
         assert!(family.repairs_final_output_json_schema);
@@ -1056,19 +1075,13 @@ mod tests {
             family
                 .base_instructions
                 .contains("never `printf`, `cat >`, or `&&`-chained shell"),
-            "MiniMax models need notes-ui.js apply_patch guidance"
+            "MiniMax models need apply_patch file-edit guidance"
         );
         assert!(
             family
                 .base_instructions
-                .contains("bulkArchiveButton"),
-            "MiniMax models need exact Sidekick verify element ids"
-        );
-        assert!(
-            family
-                .base_instructions
-                .contains("params.set('sort'"),
-            "MiniMax models need sortSelect wiring guidance"
+                .contains("honor that STATUS contract"),
+            "MiniMax models need prompt-driven STATUS closeout guidance"
         );
     }
 
@@ -1215,6 +1228,29 @@ mod tests {
         assert_eq!(family.family, "glm");
         assert!(family.needs_special_apply_patch_instructions);
         assert!(family.uses_local_shell_tool);
+    }
+
+    #[test]
+    fn glm_compatibility_profile_uses_oa_compat_wire() {
+        let profile = compatibility_profile_for_model(
+            OPENCODE_GO_PROVIDER_ID,
+            "opencode-go/glm-5.1",
+        );
+        assert_eq!(profile.family, "glm");
+        assert!(profile.uses_local_shell_tool);
+        assert!(profile.needs_apply_patch);
+        assert!(!profile.uses_anthropic_messages_wire);
+        assert_eq!(profile.expected_wire_slug, "glm-5.1");
+    }
+
+    #[test]
+    fn qwen37_compatibility_profile_uses_anthropic_wire() {
+        let profile = compatibility_profile_for_model(
+            OPENCODE_GO_PROVIDER_ID,
+            "opencode-go/qwen3.7-plus",
+        );
+        assert!(profile.uses_anthropic_messages_wire);
+        assert_eq!(profile.expected_wire_slug, "qwen3.7-plus");
     }
 
     #[test]

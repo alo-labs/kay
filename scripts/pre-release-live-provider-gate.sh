@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Live provider release gate profiles (KAY_PRE_RELEASE_LIVE_PROVIDER_GATE):
 #   default | release — OpenCode Go onboarding notes-app smoke + Xiaomi acceptance
+#   opencode-go-compat — full provider_model_acceptance matrix for all OpenCode Go models
 #   minimax | minimax-m3 — MiniMax.io MiniMax-M3 only (onboarding smoke, exec E2E, acceptance)
 #
 # MiniMax-M3 live tests always use the built-in `minimax` provider (api.minimax.io),
@@ -119,6 +120,25 @@ run_default_release_gate() {
     cargo test -p code-cli --test provider_model_acceptance xiaomi_provider_model_acceptance_matrix -- --nocapture
 }
 
+run_opencode_go_compat_gate() {
+  require_opencode_go_key
+  fail_if_missing_keys
+
+  echo "[pre-release/live-provider-gate] running OpenCode Go provider compatibility matrix"
+  cd "$ROOT_DIR/kay-rs"
+
+  compat_env=(
+    "KAY_PROVIDER_MODEL_LIVE_SMOKE=1"
+    "OPENCODE_GO_LIVE_API_KEY=$OPENCODE_GO_LIVE_API_KEY"
+  )
+  if [[ -n "${KAY_PROVIDER_MODEL_LIVE_SMOKE_MODEL_FILTER:-}" ]]; then
+    compat_env+=("KAY_PROVIDER_MODEL_LIVE_SMOKE_MODEL_FILTER=$KAY_PROVIDER_MODEL_LIVE_SMOKE_MODEL_FILTER")
+  fi
+
+  env "${compat_env[@]}" \
+    cargo test -p code-cli --test provider_model_acceptance opencode_go_provider_model_acceptance_matrix -- --nocapture
+}
+
 run_minimax_m3_gate() {
   require_minimax_key
   fail_if_missing_keys
@@ -148,12 +168,15 @@ case "${KAY_PRE_RELEASE_LIVE_PROVIDER_GATE:-default}" in
   default | release)
     run_default_release_gate
     ;;
+  opencode-go-compat | opencode-go)
+    run_opencode_go_compat_gate
+    ;;
   minimax | minimax-m3)
     run_minimax_m3_gate
     ;;
   *)
     echo "[pre-release/live-provider-gate] unknown gate profile: ${KAY_PRE_RELEASE_LIVE_PROVIDER_GATE}" >&2
-    echo "[pre-release/live-provider-gate] expected one of: default, release, minimax, minimax-m3" >&2
+    echo "[pre-release/live-provider-gate] expected one of: default, release, opencode-go-compat, opencode-go, minimax, minimax-m3" >&2
     exit 64
     ;;
 esac

@@ -6,6 +6,8 @@ use std::sync::atomic::Ordering;
 use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
 
+pub mod provider_compat;
+
 static RUN_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 pub struct SessionPreserver {
