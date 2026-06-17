@@ -3,6 +3,11 @@ use std::collections::HashMap;
 use code_app_server_protocol::AuthMode;
 use code_core::config_types::TextVerbosity as TextVerbosityConfig;
 use code_core::protocol_config_types::ReasoningEffort;
+use code_core::provider_models::{
+    minimax_models, opencode_go_default_description, opencode_go_models, xiaomi_default_description,
+    xiaomi_models,
+};
+use code_core::{OPENCODE_GO_PROVIDER_ID, XIAOMI_PROVIDER_ID};
 use once_cell::sync::Lazy;
 
 pub const HIDE_GPT5_1_MIGRATION_PROMPT_CONFIG: &str = "hide_gpt5_1_migration_prompt";
@@ -48,34 +53,26 @@ const ALL_TEXT_VERBOSITY: &[TextVerbosityConfig] = &[
 ];
 
 static PRESETS: Lazy<Vec<ModelPreset>> = Lazy::new(|| {
-    let opencode_go_preset = |model: &str, display_name: &str| ModelPreset {
-        id: model.to_string(),
-        model: model.to_string(),
-        display_name: display_name.to_string(),
-        description: "OpenCode Go coding model.".to_string(),
-        default_reasoning_effort: ReasoningEffort::Medium,
-        supported_reasoning_efforts: Vec::new(),
-        supported_text_verbosity: &[TextVerbosityConfig::Medium],
-        is_default: false,
-        upgrade: None,
-        pro_only: false,
-        show_in_picker: true,
-    };
-    let xiaomi_preset = |model: &str, display_name: &str| ModelPreset {
-        id: model.to_string(),
-        model: model.to_string(),
-        display_name: display_name.to_string(),
-        description: "Xiaomi MiMo coding model.".to_string(),
-        default_reasoning_effort: ReasoningEffort::Medium,
-        supported_reasoning_efforts: Vec::new(),
-        supported_text_verbosity: &[TextVerbosityConfig::Medium],
-        is_default: false,
-        upgrade: None,
-        pro_only: false,
-        show_in_picker: true,
+    let third_party_preset = |model: &str,
+                              display_name: &str,
+                              description: &str|
+     -> ModelPreset {
+        ModelPreset {
+            id: model.to_string(),
+            model: model.to_string(),
+            display_name: display_name.to_string(),
+            description: description.to_string(),
+            default_reasoning_effort: ReasoningEffort::Medium,
+            supported_reasoning_efforts: Vec::new(),
+            supported_text_verbosity: &[TextVerbosityConfig::Medium],
+            is_default: false,
+            upgrade: None,
+            pro_only: false,
+            show_in_picker: true,
+        }
     };
 
-    vec![
+    let mut presets = vec![
         ModelPreset {
             id: "gpt-5.5".to_string(),
             model: "gpt-5.5".to_string(),
@@ -167,43 +164,46 @@ static PRESETS: Lazy<Vec<ModelPreset>> = Lazy::new(|| {
             pro_only: false,
             show_in_picker: true,
         },
-        ModelPreset {
-            id: "MiniMax-M3".to_string(),
-            model: "MiniMax-M3".to_string(),
-            display_name: "MiniMax-M3".to_string(),
-            description: "Latest MiniMax coding model.".to_string(),
-            default_reasoning_effort: ReasoningEffort::Medium,
-            supported_reasoning_efforts: Vec::new(),
-            supported_text_verbosity: &[TextVerbosityConfig::Medium],
-            is_default: false,
-            upgrade: None,
-            pro_only: false,
-            show_in_picker: true,
-        },
-        ModelPreset {
-            id: "MiniMax-M2.7".to_string(),
-            model: "MiniMax-M2.7".to_string(),
-            display_name: "MiniMax-M2.7".to_string(),
-            description: "Balanced MiniMax coding model.".to_string(),
-            default_reasoning_effort: ReasoningEffort::Medium,
-            supported_reasoning_efforts: Vec::new(),
-            supported_text_verbosity: &[TextVerbosityConfig::Medium],
-            is_default: false,
-            upgrade: None,
-            pro_only: false,
-            show_in_picker: true,
-        },
-        xiaomi_preset("xiaomi/mimo-v2.5-pro", "Xiaomi MiMo V2.5 Pro"),
-        xiaomi_preset("xiaomi/mimo-v2.5", "Xiaomi MiMo V2.5"),
-        opencode_go_preset("opencode-go/glm-5.1", "OpenCode Go GLM 5.1"),
-        opencode_go_preset("opencode-go/kimi-k2.6", "OpenCode Go Kimi K2.6"),
-        opencode_go_preset("opencode-go/mimo-v2.5-pro", "OpenCode Go MiMo V2.5 Pro"),
-        opencode_go_preset("opencode-go/mimo-v2.5", "OpenCode Go MiMo V2.5"),
-        opencode_go_preset("opencode-go/minimax-m2.7", "OpenCode Go MiniMax M2.7"),
-        opencode_go_preset("opencode-go/qwen3.6-plus", "OpenCode Go Qwen3.6 Plus"),
-        opencode_go_preset("opencode-go/qwen3.7-max", "OpenCode Go Qwen3.7 Max"),
-        opencode_go_preset("opencode-go/deepseek-v4-pro", "OpenCode Go DeepSeek V4 Pro"),
-        opencode_go_preset("opencode-go/deepseek-v4-flash", "OpenCode Go DeepSeek V4 Flash"),
+    ];
+
+    let opencode_go_description = opencode_go_default_description();
+    for entry in opencode_go_models() {
+        let model = format!("{OPENCODE_GO_PROVIDER_ID}/{}", entry.slug);
+        presets.push(third_party_preset(
+            &model,
+            &entry.display_name,
+            entry
+                .description
+                .as_deref()
+                .unwrap_or(&opencode_go_description),
+        ));
+    }
+
+    for entry in minimax_models() {
+        presets.push(third_party_preset(
+            &entry.slug,
+            &entry.display_name,
+            entry
+                .description
+                .as_deref()
+                .unwrap_or("MiniMax coding model."),
+        ));
+    }
+
+    let xiaomi_description = xiaomi_default_description();
+    for entry in xiaomi_models() {
+        let model = format!("{XIAOMI_PROVIDER_ID}/{}", entry.slug);
+        presets.push(third_party_preset(
+            &model,
+            &entry.display_name,
+            entry
+                .description
+                .as_deref()
+                .unwrap_or(&xiaomi_description),
+        ));
+    }
+
+    presets.extend([
         ModelPreset {
             id: "gpt-5.3-codex".to_string(),
             model: "gpt-5.3-codex".to_string(),
@@ -626,7 +626,9 @@ static PRESETS: Lazy<Vec<ModelPreset>> = Lazy::new(|| {
             pro_only: false,
             show_in_picker: false,
         },
-    ]
+    ]);
+
+    presets
 });
 
 pub fn model_preset_available_for_auth(
@@ -778,16 +780,20 @@ mod tests {
     #[test]
     fn opencode_go_models_available_for_api_key_auth() {
         let presets = builtin_model_presets(Some(AuthMode::ApiKey), false);
-        assert!(
-            presets
-                .iter()
-                .any(|preset| preset.id == "opencode-go/kimi-k2.6")
-        );
-        assert!(
-            presets
-                .iter()
-                .any(|preset| preset.id == "opencode-go/deepseek-v4-flash")
-        );
+        for model in [
+            "opencode-go/glm-5.1",
+            "opencode-go/glm-5",
+            "opencode-go/kimi-k2.7-code",
+            "opencode-go/kimi-k2.6",
+            "opencode-go/minimax-m3",
+            "opencode-go/qwen3.7-plus",
+            "opencode-go/deepseek-v4-flash",
+        ] {
+            assert!(
+                presets.iter().any(|preset| preset.id == model),
+                "missing preset {model}"
+            );
+        }
     }
 
     #[test]

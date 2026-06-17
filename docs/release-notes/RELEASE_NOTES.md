@@ -1,3 +1,36 @@
+## @alo-labs/kay v0.9.45
+
+Patch release: sync `/model` menu with the latest OpenCode Go catalog via external
+`provider-models.json`, add missing OCG entries (GLM-5, Kimi K2.7 Code, MiniMax M3,
+Qwen3.7 Plus), and route OCG MiniMax models through Anthropic Messages.
+
+### Model Families
+
+- Add `kay-rs/core/provider-models.json` as the single source for OpenCode Go,
+  MiniMax.io, and Xiaomi `/model` picker entries plus visibility whitelists.
+- Register new presets: `opencode-go/glm-5`, `opencode-go/kimi-k2.7-code`,
+  `opencode-go/minimax-m3`, `opencode-go/qwen3.7-plus`; keep `MiniMax-M3` on the
+  built-in `minimax` provider.
+- Route `opencode-go/minimax-m3` and `opencode-go/minimax-m2.7` through Anthropic
+  Messages (`/v1/messages`) per OpenCode Go docs.
+
+### Release And Verification
+
+- Live smoke: one `kay exec` per menu model (13 OCG + `MiniMax-M3`) with
+  `~/.kay/auth.json` credentials — 13/14 pass; `opencode-go/kimi-k2.7-code` fails
+  upstream with Moonshot `tokenization failed` (OCG/Moonshot provider error, not Kay routing).
+- Verified locally with `./build-fast.sh` and
+  `KAY_PRE_RELEASE_LIVE_PROVIDER_GATE=minimax-m3 ./pre-release.sh`.
+
+### Install
+
+```bash
+npm install -g @alo-labs/kay@latest
+kay --version
+```
+
+Compare: https://github.com/alo-labs/kay/compare/v0.9.44...v0.9.45
+
 ## @alo-labs/kay v0.9.44
 
 Patch release: adds first-class OpenCode Go **Qwen3.7 Max** (`qwen3.7-max`) support
