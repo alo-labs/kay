@@ -3291,7 +3291,7 @@ mod tests {
     }
 
     #[test]
-    fn final_status_contract_detects_sidekick_final_message_requirement() {
+    fn final_status_contract_detects_delegation_final_message_requirement() {
         let prompt = "Final message must include STATUS: SUCCESS only if all open issues are addressed locally. If blocked, use STATUS: BLOCKED with the exact blocker.";
         assert!(final_status_contract_missing(
             prompt,
@@ -3327,7 +3327,7 @@ mod tests {
     }
 
     #[test]
-    fn final_status_contract_detects_sidekick_compact_final_message_status() {
+    fn final_status_contract_detects_compact_final_message_status() {
         let prompt = "Final message STATUS: SUCCESS with FILES_CHANGED and TESTS_RUN.";
         assert!(final_status_contract_missing(
             prompt,
@@ -3365,14 +3365,14 @@ mod tests {
     }
 
     #[test]
-    fn final_status_contract_detects_sidekick_task7_exact_block_requirement() {
+    fn final_status_contract_detects_exact_block_requirement() {
         let prompt = "Your final message MUST be exactly this block (fill in real lists):\n  STATUS: SUCCESS";
         assert!(prompt_requires_final_status(prompt));
         assert!(final_status_contract_missing(prompt, Some("Done without status.")));
     }
 
     #[test]
-    fn final_status_contract_detects_sidekick_task9_success_criteria() {
+    fn final_status_contract_detects_success_criteria_status() {
         let prompt = "SUCCESS CRITERIA:\n- Both verify scripts exit 0.\n- STATUS: SUCCESS with FILES_CHANGED and TESTS_RUN in final message.";
         assert!(prompt_requires_final_status(prompt));
         assert!(final_status_contract_missing(prompt, Some("Still implementing sort API.")));

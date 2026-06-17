@@ -200,6 +200,24 @@ MiniMax M2.7 in the default gate still routes through OpenCode Go
 work completed; model/provider identity is verified from Kay-side metadata, not
 from model self-reporting.
 
+OpenCode Go full compatibility (basic completion, shell, apply_patch, wire
+slug, STATUS contract, and family-specific recovery) runs through
+`provider_model_acceptance` when `KAY_PROVIDER_MODEL_LIVE_SMOKE=1` is set:
+
+```bash
+KAY_PROVIDER_MODEL_LIVE_SMOKE=1 \
+OPENCODE_GO_LIVE_API_KEY=... \
+KAY_PROVIDER_MODEL_LIVE_SMOKE_MODEL_FILTER=opencode-go/glm-5.1 \
+cargo test -p code-cli --test provider_model_acceptance opencode_go_provider_model_acceptance_matrix -- --nocapture
+```
+
+Omit `KAY_PROVIDER_MODEL_LIVE_SMOKE_MODEL_FILTER` to iterate every model listed in
+`provider-models.json` for OpenCode Go. Without `KAY_PROVIDER_MODEL_LIVE_SMOKE=1`,
+the acceptance test still runs the basic completion/dev/json/markdown checks.
+
+Use `KAY_PRE_RELEASE_LIVE_PROVIDER_GATE=opencode-go-compat` to run the full
+OpenCode Go compatibility matrix in `./pre-release.sh`'s live-provider gate.
+
 Xiaomi direct-provider release coverage runs through
 `provider_model_acceptance`:
 

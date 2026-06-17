@@ -2,12 +2,16 @@
 
 ## [Unreleased]
 
+## [0.9.46] — 2026-06-18
+
 ### Bug Fixes
 
 - Auth: provider env keys such as `OPENCODE_GO_API_KEY` now override stored
   `~/.kay/auth.json` provider credentials.
 - Models: wire requests canonicalize OpenCode Go aliases such as
   `MiniMax-M3` → `minimax-m3`.
+- Models: add GLM 5.1 OpenCode Go compatibility profile and expand live
+  provider/model acceptance coverage.
 - Exec: `kay exec --full-auto` enables workspace-write network access by
   default for package registries, GitHub APIs, and local test servers.
 - Runtime: normalize malformed model shell commands (`git && -C && …`, `bash &&
@@ -21,7 +25,7 @@
 - Exec: normalize leading `KEY=value` argv prefixes before exec preflight and merge
   them into the child environment.
 - Runtime: auto-strip redundant leading `cd <workspace>` instead of blocking.
-- Exec: enforce Sidekick-style final `STATUS:` contracts and write
+- Exec: enforce prompt-driven final `STATUS:` contracts and write
   `STATUS: BLOCKED` on `--max-seconds` timeout to `--output-last-message`.
 - Exec: accept `--ask-for-approval` on `kay exec` and preserve explicit
   approval-policy overrides while keeping headless default behavior.
@@ -29,6 +33,9 @@
   before command execution.
 - Skills: make exact named skill/workflow requests binding so `silver:init`
   does not drift into adjacent scan/discovery paths.
+- Core: remove Sidekick-specific verify-script element ids and notes-app
+  closeout text from model tool-discipline prompts; keep generic apply_patch,
+  PORT export, and prompt-driven STATUS repair/nudges.
 
 ### Release Hygiene
 
