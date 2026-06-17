@@ -1,3 +1,32 @@
+## @alo-labs/kay v0.9.48
+
+Patch release: add OpenCode Go **GLM 5.2** compatibility and verify the full
+live provider/model acceptance matrix for GLM 5.2 plus DeepSeek V4 Pro/Flash.
+
+### Model Families
+
+- Register `opencode-go/glm-5.2` in `provider-models.json` with the same GLM
+  family profile as GLM 5.1 (local shell tool, apply_patch, oa-compat wire).
+- Normalize Fireworks-hosted GLM 5.2 response slugs (`glm-5p2`) so routing
+  warnings do not fire on successful requests.
+
+### Release And Verification
+
+- Live `provider_model_acceptance` matrix **3/3 PASS** for
+  `opencode-go/glm-5.2`, `opencode-go/deepseek-v4-pro`, and
+  `opencode-go/deepseek-v4-flash` (basic, dev message, JSON schema, markdown,
+  wire slug, shell, apply_patch/STATUS where applicable).
+- Verified locally with `./build-fast.sh` and `./pre-release.sh`.
+
+### Install
+
+```bash
+npm install -g @alo-labs/kay@latest
+kay --version
+```
+
+Compare: https://github.com/alo-labs/kay/compare/v0.9.47...v0.9.48
+
 ## @alo-labs/kay v0.9.45
 
 Patch release: sync `/model` menu with the latest OpenCode Go catalog via external

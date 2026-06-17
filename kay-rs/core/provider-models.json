@@ -5,6 +5,7 @@
       "description": "OpenCode Go coding model.",
       "models": [
         { "slug": "glm-5.1", "display_name": "OpenCode Go GLM 5.1" },
+        { "slug": "glm-5.2", "display_name": "OpenCode Go GLM 5.2" },
         { "slug": "glm-5", "display_name": "OpenCode Go GLM 5" },
         { "slug": "kimi-k2.7-code", "display_name": "OpenCode Go Kimi K2.7 Code" },
         { "slug": "kimi-k2.6", "display_name": "OpenCode Go Kimi K2.6" },

@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+## [0.9.48] — 2026-06-18
+
+### Models
+
+- Add OpenCode Go **GLM 5.2** (`opencode-go/glm-5.2`) to `provider-models.json`,
+  model presets, and GLM family compatibility profiles (same oa-compat wire as GLM 5.1).
+- Accept Fireworks-hosted GLM 5.2 response slugs such as
+  `accounts/fireworks/models/glm-5p2` without model-routing warnings.
+- Verified live provider/model acceptance for `opencode-go/glm-5.2`,
+  `opencode-go/deepseek-v4-pro`, and `opencode-go/deepseek-v4-flash`.
+
 ## [0.9.46] — 2026-06-18
 
 ### Bug Fixes
