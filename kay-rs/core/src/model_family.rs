@@ -199,6 +199,23 @@ fn owner_prefixed_model_slug(model: &str) -> Option<&str> {
     Some(suffix)
 }
 
+/// OpenCode Go sometimes returns Fireworks-hosted model paths such as
+/// `accounts/fireworks/models/glm-5p2` where dotted versions use `p`.
+fn opencode_go_fireworks_slug_matches(requested_slug: &str, response_model: &str) -> bool {
+    let response = response_model.trim().to_ascii_lowercase();
+    if !response.contains("fireworks/") {
+        return false;
+    }
+    let Some(tail) = response.rsplit('/').next() else {
+        return false;
+    };
+    let requested = requested_slug.trim().to_ascii_lowercase();
+    if requested == tail {
+        return true;
+    }
+    requested.replace('.', "p") == tail || tail.replace('p', ".") == requested
+}
+
 /// Returns true when the provider response model is equivalent to the requested
 /// model slug.
 ///
@@ -229,6 +246,10 @@ pub fn response_model_matches_request(requested_model: &str, response_model: &st
         if owner_prefixed_model_slug(response_slug.as_ref()).is_some_and(|response_slug| {
             normalized_model_matches_request(requested_slug.as_ref(), response_slug)
         }) {
+            return true;
+        }
+
+        if opencode_go_fireworks_slug_matches(requested_slug.as_ref(), &response) {
             return true;
         }
     }
@@ -1221,26 +1242,44 @@ mod tests {
 
     #[test]
     fn glm_family_uses_local_shell_tool() {
-        let family = find_family_for_model("opencode-go/glm-5.1")
-            .expect("namespaced model should resolve");
+        for model in ["opencode-go/glm-5.1", "opencode-go/glm-5.2"] {
+            let family = find_family_for_model(model).expect("namespaced model should resolve");
 
-        assert_eq!(family.slug, "opencode-go/glm-5.1");
-        assert_eq!(family.family, "glm");
-        assert!(family.needs_special_apply_patch_instructions);
-        assert!(family.uses_local_shell_tool);
+            assert_eq!(family.slug, model);
+            assert_eq!(family.family, "glm");
+            assert!(family.needs_special_apply_patch_instructions);
+            assert!(family.uses_local_shell_tool);
+        }
     }
 
     #[test]
     fn glm_compatibility_profile_uses_oa_compat_wire() {
-        let profile = compatibility_profile_for_model(
-            OPENCODE_GO_PROVIDER_ID,
-            "opencode-go/glm-5.1",
-        );
-        assert_eq!(profile.family, "glm");
-        assert!(profile.uses_local_shell_tool);
-        assert!(profile.needs_apply_patch);
-        assert!(!profile.uses_anthropic_messages_wire);
-        assert_eq!(profile.expected_wire_slug, "glm-5.1");
+        for (model, wire_slug) in [
+            ("opencode-go/glm-5.1", "glm-5.1"),
+            ("opencode-go/glm-5.2", "glm-5.2"),
+        ] {
+            let profile = compatibility_profile_for_model(OPENCODE_GO_PROVIDER_ID, model);
+            assert_eq!(profile.family, "glm", "{model}");
+            assert!(profile.uses_local_shell_tool, "{model}");
+            assert!(profile.needs_apply_patch, "{model}");
+            assert!(!profile.uses_anthropic_messages_wire, "{model}");
+            assert_eq!(profile.expected_wire_slug, wire_slug, "{model}");
+        }
+    }
+
+    #[test]
+    fn deepseek_compatibility_profile_uses_oa_compat_wire() {
+        for (model, wire_slug) in [
+            ("opencode-go/deepseek-v4-pro", "deepseek-v4-pro"),
+            ("opencode-go/deepseek-v4-flash", "deepseek-v4-flash"),
+        ] {
+            let profile = compatibility_profile_for_model(OPENCODE_GO_PROVIDER_ID, model);
+            assert_eq!(profile.family, "deepseek", "{model}");
+            assert!(!profile.uses_local_shell_tool, "{model}");
+            assert!(!profile.needs_apply_patch, "{model}");
+            assert!(!profile.uses_anthropic_messages_wire, "{model}");
+            assert_eq!(profile.expected_wire_slug, wire_slug, "{model}");
+        }
     }
 
     #[test]
@@ -1274,6 +1313,14 @@ mod tests {
         assert!(response_model_matches_request(
             "opencode-go/glm-5.1",
             "glm-5.1"
+        ));
+        assert!(response_model_matches_request(
+            "opencode-go/glm-5.2",
+            "glm-5.2"
+        ));
+        assert!(response_model_matches_request(
+            "opencode-go/glm-5.2",
+            "accounts/fireworks/models/glm-5p2"
         ));
         assert!(response_model_matches_request(
             "opencode-go/kimi-k2.6",
