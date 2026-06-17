@@ -2,6 +2,9 @@ use std::io::Write;
 use std::process::Command;
 use std::process::Stdio;
 
+use code_core::provider_models::{
+    minimax_preset_ids, opencode_go_preset_ids, xiaomi_preset_ids,
+};
 use serde_json::Value;
 use tempfile::TempDir;
 
@@ -10,46 +13,36 @@ use common::SessionPreserver;
 
 const EXEC_TIMEOUT_SECS: &str = "900";
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 struct ProviderAcceptanceSpec {
     provider_id: &'static str,
     api_key_env: &'static str,
-    models: &'static [&'static str],
+    models: Vec<String>,
 }
 
-const OPENCODE_GO_MODELS: &[&str] = &[
-    "opencode-go/glm-5.1",
-    "opencode-go/kimi-k2.6",
-    "opencode-go/mimo-v2.5-pro",
-    "opencode-go/mimo-v2.5",
-    "opencode-go/minimax-m2.7",
-    "opencode-go/qwen3.6-plus",
-    "opencode-go/qwen3.7-max",
-    "opencode-go/deepseek-v4-pro",
-    "opencode-go/deepseek-v4-flash",
-];
+fn opencode_go_spec() -> ProviderAcceptanceSpec {
+    ProviderAcceptanceSpec {
+        provider_id: "opencode-go",
+        api_key_env: "OPENCODE_GO_LIVE_API_KEY",
+        models: opencode_go_preset_ids(),
+    }
+}
 
-const MINIMAX_MODELS: &[&str] = &["MiniMax-M3"];
+fn minimax_spec() -> ProviderAcceptanceSpec {
+    ProviderAcceptanceSpec {
+        provider_id: "minimax",
+        api_key_env: "MINIMAX_LIVE_API_KEY",
+        models: minimax_preset_ids(),
+    }
+}
 
-const XIAOMI_MODELS: &[&str] = &["xiaomi/mimo-v2.5-pro", "xiaomi/mimo-v2.5"];
-
-const OPENCODE_GO_SPEC: ProviderAcceptanceSpec = ProviderAcceptanceSpec {
-    provider_id: "opencode-go",
-    api_key_env: "OPENCODE_GO_LIVE_API_KEY",
-    models: OPENCODE_GO_MODELS,
-};
-
-const MINIMAX_SPEC: ProviderAcceptanceSpec = ProviderAcceptanceSpec {
-    provider_id: "minimax",
-    api_key_env: "MINIMAX_LIVE_API_KEY",
-    models: MINIMAX_MODELS,
-};
-
-const XIAOMI_SPEC: ProviderAcceptanceSpec = ProviderAcceptanceSpec {
-    provider_id: "xiaomi",
-    api_key_env: "XIAOMI_LIVE_API_KEY",
-    models: XIAOMI_MODELS,
-};
+fn xiaomi_spec() -> ProviderAcceptanceSpec {
+    ProviderAcceptanceSpec {
+        provider_id: "xiaomi",
+        api_key_env: "XIAOMI_LIVE_API_KEY",
+        models: xiaomi_preset_ids(),
+    }
+}
 
 fn live_key(env_var: &str) -> Option<String> {
     std::env::var(env_var)
@@ -252,7 +245,7 @@ fn assert_provider_acceptance(spec: &ProviderAcceptanceSpec) {
     std::fs::write(&schema_path, serde_json::to_string_pretty(&schema).unwrap())
         .expect("write acceptance output schema");
 
-    for &model in spec.models {
+    for model in &spec.models {
         let plain_last_message = tempfile::NamedTempFile::new_in(kay_home.path())
             .expect("create plain last-message file");
         let plain = run_exec_prompt(
@@ -299,7 +292,7 @@ fn assert_provider_acceptance(spec: &ProviderAcceptanceSpec) {
         let parsed = first_json_object(&json)
             .unwrap_or_else(|| panic!("expected JSON object for {model}, got:\n{json}"));
         assert_eq!(parsed["provider"], spec.provider_id);
-        assert_eq!(parsed["model"], model);
+        assert_eq!(parsed["model"], model.as_str());
         assert_eq!(parsed["ok"], true);
 
         let markdown_last_message = tempfile::NamedTempFile::new_in(kay_home.path())
@@ -336,15 +329,15 @@ fn assert_provider_acceptance(spec: &ProviderAcceptanceSpec) {
 
 #[test]
 fn opencode_go_provider_model_acceptance_matrix() {
-    assert_provider_acceptance(&OPENCODE_GO_SPEC);
+    assert_provider_acceptance(&opencode_go_spec());
 }
 
 #[test]
 fn minimax_provider_model_acceptance_matrix() {
-    assert_provider_acceptance(&MINIMAX_SPEC);
+    assert_provider_acceptance(&minimax_spec());
 }
 
 #[test]
 fn xiaomi_provider_model_acceptance_matrix() {
-    assert_provider_acceptance(&XIAOMI_SPEC);
+    assert_provider_acceptance(&xiaomi_spec());
 }

@@ -8,6 +8,7 @@ use code_core::model_family::{
     derive_default_model_family, provider_model_slug, ChatCompletionsReasoningStrategy,
     ChatCompletionsRoleStrategy,
 };
+use code_core::provider_models::opencode_go_model_slugs;
 use code_core::protocol::{AskForApproval, EventMsg, InputItem, Op, SandboxPolicy};
 use code_core::{
     built_in_model_providers, CodexAuth, ConversationManager, WireApi,
@@ -54,17 +55,9 @@ fn sse_response(body: String) -> ResponseTemplate {
         .set_body_string(body)
 }
 
-const PRIORITIZED_OPENCODE_GO_MODELS: &[&str] = &[
-    "glm-5.1",
-    "kimi-k2.6",
-    "mimo-v2.5-pro",
-    "mimo-v2.5",
-    "minimax-m2.7",
-    "qwen3.6-plus",
-    "qwen3.7-max",
-    "deepseek-v4-pro",
-    "deepseek-v4-flash",
-];
+fn prioritized_opencode_go_models() -> Vec<String> {
+    opencode_go_model_slugs()
+}
 
 fn uses_collapsed_chat_roles(model: &str) -> bool {
     model.starts_with("qwen") || model.starts_with("deepseek")
@@ -98,11 +91,11 @@ fn built_in_opencode_go_provider_uses_chat_completions_and_provider_credentials(
 
 #[test]
 fn prioritized_opencode_go_model_slugs_strip_to_provider_local_names() {
-    for model in PRIORITIZED_OPENCODE_GO_MODELS {
+    for model in prioritized_opencode_go_models() {
         let slug = format!("opencode-go/{model}");
         assert_eq!(
             provider_model_slug(OPENCODE_GO_PROVIDER_ID, &slug).as_ref(),
-            *model
+            model
         );
     }
 }
@@ -113,7 +106,7 @@ fn opencode_go_prioritized_models_can_be_selected_without_custom_config() -> std
     std::fs::write(cwd.path().join(".git"), "gitdir: nowhere")?;
     let code_home = TempDir::new().unwrap();
 
-    for model in PRIORITIZED_OPENCODE_GO_MODELS {
+    for model in prioritized_opencode_go_models() {
         let cfg = ConfigToml {
             model: Some(format!("opencode-go/{model}")),
             model_provider: Some(OPENCODE_GO_PROVIDER_ID.to_string()),
@@ -135,7 +128,7 @@ fn opencode_go_prioritized_models_can_be_selected_without_custom_config() -> std
         assert!(!config.model_provider.requires_openai_auth);
         assert_eq!(
             config.model_family.chat_completions_role_strategy,
-            if uses_collapsed_chat_roles(model) {
+            if uses_collapsed_chat_roles(&model) {
                 ChatCompletionsRoleStrategy::CollapseNonChatRolesToSystem
             } else {
                 ChatCompletionsRoleStrategy::OpenAi
@@ -143,7 +136,7 @@ fn opencode_go_prioritized_models_can_be_selected_without_custom_config() -> std
         );
         assert_eq!(
             config.model_family.chat_completions_reasoning_strategy,
-            if preserves_reasoning_content(model) {
+            if preserves_reasoning_content(&model) {
                 ChatCompletionsReasoningStrategy::PreserveReasoningContent
             } else {
                 ChatCompletionsReasoningStrategy::OpenAi

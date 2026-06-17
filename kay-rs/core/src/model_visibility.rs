@@ -1,24 +1,11 @@
 use crate::auth::AuthManager;
 use crate::model_family::provider_model_slug;
+use crate::provider_models::{
+    matches_minimax_model, matches_opencode_go_supported_model, matches_xiaomi_supported_model,
+};
 use crate::MINIMAX_PROVIDER_ID;
 use crate::OPENCODE_GO_PROVIDER_ID;
 use crate::XIAOMI_PROVIDER_ID;
-
-const OPENCODE_GO_SUPPORTED_MODELS: &[&str] = &[
-    "glm-5.1",
-    "kimi-k2.6",
-    "mimo-v2.5-pro",
-    "mimo-v2.5",
-    "minimax-m2.7",
-    "qwen3.6-plus",
-    "qwen3.7-max",
-    "deepseek-v4-pro",
-    "deepseek-v4-flash",
-];
-
-const MINIMAX_SUPPORTED_MODELS: &[&str] = &["MiniMax-M3", "MiniMax-M2.7"];
-
-const XIAOMI_SUPPORTED_MODELS: &[&str] = &["mimo-v2.5-pro", "mimo-v2.5"];
 
 /// Provider buckets are intentionally locked so the picker can render them in
 /// a predictable order.
@@ -138,42 +125,10 @@ fn provider_credential_visible(auth: &AuthManager, provider_ref: &str, env_key: 
             .is_some_and(|value| !value.trim().is_empty())
 }
 
-fn matches_minimax_model(model: &str) -> bool {
-    MINIMAX_SUPPORTED_MODELS
-        .iter()
-        .any(|supported| model.trim().eq_ignore_ascii_case(supported))
-}
-
 fn matches_openai_model(model: &str) -> bool {
     let slug = provider_model_slug("openai", model);
     let slug = slug.as_ref().trim().to_ascii_lowercase();
     slug.starts_with("gpt-") && !slug.starts_with("gpt-oss")
-}
-
-fn matches_opencode_go_supported_model(model: &str) -> bool {
-    let Some((namespace, _)) = model.trim().split_once('/') else {
-        return false;
-    };
-    if !namespace.eq_ignore_ascii_case(OPENCODE_GO_PROVIDER_ID) {
-        return false;
-    }
-    let slug = provider_model_slug(OPENCODE_GO_PROVIDER_ID, model);
-    OPENCODE_GO_SUPPORTED_MODELS
-        .iter()
-        .any(|supported| slug.as_ref().trim().eq_ignore_ascii_case(supported))
-}
-
-fn matches_xiaomi_supported_model(model: &str) -> bool {
-    let Some((namespace, _)) = model.trim().split_once('/') else {
-        return false;
-    };
-    if !namespace.eq_ignore_ascii_case(XIAOMI_PROVIDER_ID) {
-        return false;
-    }
-    let slug = provider_model_slug(XIAOMI_PROVIDER_ID, model);
-    XIAOMI_SUPPORTED_MODELS
-        .iter()
-        .any(|supported| slug.as_ref().trim().eq_ignore_ascii_case(supported))
 }
 
 fn is_visible_to_openai<P>(auth: Option<&crate::auth::CodexAuth>, preset: &P) -> bool
@@ -309,17 +264,22 @@ mod tests {
 
     #[test]
     fn opencode_go_model_matching_is_whitelist_based() {
+        use crate::provider_models::matches_opencode_go_supported_model;
+
         assert!(matches_opencode_go_supported_model("opencode-go/kimi-k2.6"));
         assert!(!matches_opencode_go_supported_model("xopencode-go/kimi-k2.6"));
         assert!(!matches_opencode_go_supported_model("opencode-gox/kimi-k2.6"));
         assert!(matches_opencode_go_supported_model("opencode-go/minimax-m2.7"));
+        assert!(matches_opencode_go_supported_model("opencode-go/minimax-m3"));
         assert!(!matches_opencode_go_supported_model("opencode-go/minimax-m2.7-beta"));
         assert!(matches_opencode_go_supported_model("opencode-go/qwen3.7-max"));
+        assert!(matches_opencode_go_supported_model("opencode-go/qwen3.7-plus"));
         assert!(!matches_opencode_go_supported_model("opencode-go/qwen3.7-max-beta"));
     }
 
     #[test]
     fn minimax_model_matching_is_exact() {
+        use crate::provider_models::matches_minimax_model;
         assert!(matches_minimax_model("MiniMax-M3"));
         assert!(matches_minimax_model("minimax-m3"));
         assert!(matches_minimax_model("MiniMax-M2.7"));

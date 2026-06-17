@@ -561,7 +561,7 @@ mod tests {
     use crate::model_family::find_family_for_model;
 
     #[test]
-    fn qwen37_max_uses_anthropic_messages_wire() {
+    fn qwen37_models_use_anthropic_messages_wire() {
         assert!(uses_opencode_go_anthropic_messages(
             OPENCODE_GO_PROVIDER_ID,
             "qwen3.7-max"
@@ -570,9 +570,25 @@ mod tests {
             OPENCODE_GO_PROVIDER_ID,
             "opencode-go/qwen3.7-max"
         ));
+        assert!(uses_opencode_go_anthropic_messages(
+            OPENCODE_GO_PROVIDER_ID,
+            "qwen3.7-plus"
+        ));
         assert!(!uses_opencode_go_anthropic_messages(
             OPENCODE_GO_PROVIDER_ID,
             "qwen3.6-plus"
+        ));
+    }
+
+    #[test]
+    fn minimax_models_use_anthropic_messages_wire_on_opencode_go() {
+        assert!(uses_opencode_go_anthropic_messages(
+            OPENCODE_GO_PROVIDER_ID,
+            "minimax-m3"
+        ));
+        assert!(uses_opencode_go_anthropic_messages(
+            OPENCODE_GO_PROVIDER_ID,
+            "opencode-go/minimax-m2.7"
         ));
     }
 

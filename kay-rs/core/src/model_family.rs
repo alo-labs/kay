@@ -1404,7 +1404,7 @@ pub fn uses_opencode_go_anthropic_messages(provider_id: &str, model_slug: &str) 
         return false;
     }
     let slug = provider_model_slug(provider_id, model_slug);
-    slug.starts_with("qwen3.7")
+    slug.starts_with("qwen3.7") || slug.starts_with("minimax-m")
 }
 
 pub fn supports_extended_context(model: &str) -> bool {
