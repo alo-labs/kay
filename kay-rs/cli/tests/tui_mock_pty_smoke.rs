@@ -115,16 +115,15 @@ fn mock_pty_shows_composer_and_model_selector_without_live_api() {
         &["Model:", "What can I code"],
         DEFAULT_PROMPT_TIMEOUT,
     );
-    harness.write_composer_line("/model");
+    harness.write_composer_line("/model opencode-go/deepseek-v4-flash");
     let screen = harness.wait_for(
-        &["Select Model", "Reasoning"],
+        &["Model: opencode-go/deepseek-v4-flash"],
         DEFAULT_PROMPT_TIMEOUT,
     );
     assert!(
-        screen.contains("Select Model"),
-        "expected model selector overlay, got:\n{screen}"
+        screen.contains("opencode-go/deepseek-v4-flash"),
+        "expected /model slash command to update the session model, got:\n{screen}"
     );
-    harness.write_key(b"\x1b");
 }
 
 #[test]
