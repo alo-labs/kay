@@ -68,4 +68,6 @@ tracing-subscriber = { workspace = true, features = ["env-filter", "fmt"] }
 filetime = { workspace = true }
 code-apply-patch = { workspace = true }
 portable-pty = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+wiremock = { workspace = true }
 vt100 = "0.15.0"

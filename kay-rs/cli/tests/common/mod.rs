@@ -7,6 +7,7 @@ use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
 
 pub mod provider_compat;
+pub mod tui_live_harness;
 
 static RUN_COUNTER: AtomicU64 = AtomicU64::new(0);
 
