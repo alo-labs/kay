@@ -218,6 +218,56 @@ the acceptance test still runs the basic completion/dev/json/markdown checks.
 Use `KAY_PRE_RELEASE_LIVE_PROVIDER_GATE=opencode-go-compat` to run the full
 OpenCode Go compatibility matrix in `./pre-release.sh`'s live-provider gate.
 
+### TUI live provider smoke (PTY)
+
+Kay also has a PTY-driven TUI live smoke sibling to `provider_model_acceptance`.
+The shared harness lives in `kay-rs/cli/tests/common/tui_live_harness.rs` and is
+used by both the live provider matrix and the PR-safe mock PTY smoke.
+
+Layers:
+
+1. **Harness / unit** — `cargo test -p code-tui --test ui_smoke --features test-helpers`
+   for composer and history APIs without a real terminal.
+2. **Mock PTY** — `cargo test -p code-cli --test tui_mock_pty_smoke` spawns `kay`
+   in a PTY with a dummy key and either opens `/model` without network traffic or
+   streams a wiremock OpenAI response for a one-turn exact-answer check.
+3. **Live PTY provider matrix** — opt-in smoke that logs in to OpenCode Go,
+   switches models through `/model`, sends `Reply with exactly OK.`, and asserts
+   Kay-side session metadata plus wire-slug compatibility profiles.
+
+Run the live TUI matrix when touching TUI model selection, provider routing, or
+streaming render paths that only show up in interactive mode:
+
+```bash
+KAY_TUI_PROVIDER_LIVE_SMOKE=1 \
+OPENCODE_GO_LIVE_API_KEY=... \
+KAY_TUI_PROVIDER_LIVE_SMOKE_MODEL_FILTER=opencode-go/glm-5.2 \
+cargo test -p code-cli --test tui_provider_live_smoke -- --nocapture
+```
+
+Omit `KAY_TUI_PROVIDER_LIVE_SMOKE_MODEL_FILTER` to use the curated proof set
+(`glm-5.2`, `deepseek-v4-pro`, `deepseek-v4-flash`). The default per-model turn
+timeout is 15 minutes; override with
+`KAY_TUI_PROVIDER_LIVE_SMOKE_TURN_TIMEOUT_SECS` for focused diagnostics.
+
+PR-safe mock PTY checks:
+
+```bash
+cargo test -p code-cli --test tui_mock_pty_smoke -- --nocapture
+cargo test -p code-tui --test ui_smoke --features test-helpers
+```
+
+Optional pre-release gate profile:
+
+```bash
+KAY_PRE_RELEASE_LIVE_PROVIDER_GATE=tui-opencode-go-compat \
+OPENCODE_GO_LIVE_API_KEY=... \
+./pre-release.sh
+```
+
+This profile runs the curated OpenCode Go TUI live matrix after the normal
+dev-fast build and workspace nextest suite.
+
 Xiaomi direct-provider release coverage runs through
 `provider_model_acceptance`:
 

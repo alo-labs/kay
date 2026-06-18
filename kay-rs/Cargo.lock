@@ -1544,6 +1544,7 @@ dependencies = [
  "uuid",
  "vt100",
  "which",
+ "wiremock",
  "zip",
 ]
 

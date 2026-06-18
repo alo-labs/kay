@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::path::Path;
 
 use code_core::model_family::ModelCompatibilityProfile;
@@ -6,6 +8,16 @@ use code_core::model_family::response_model_matches_request;
 use code_core::model_family::wire_model_slug;
 use code_core::model_family::uses_opencode_go_anthropic_messages;
 use serde_json::Value;
+
+pub fn tui_live_smoke_enabled() -> bool {
+    matches!(
+        std::env::var("KAY_TUI_PROVIDER_LIVE_SMOKE")
+            .ok()
+            .map(|value| value.trim().to_string())
+            .as_deref(),
+        Some("1") | Some("true") | Some("TRUE")
+    )
+}
 
 pub fn live_smoke_enabled() -> bool {
     matches!(
@@ -161,6 +173,39 @@ pub fn completed_file_change(events: &[Value], path: &str) -> bool {
 pub fn read_workspace_file(workspace: &Path, relative_path: &str) -> String {
     std::fs::read_to_string(workspace.join(relative_path))
         .unwrap_or_else(|err| panic!("read {}: {err}", workspace.join(relative_path).display()))
+}
+
+pub fn exact_ok_prompt() -> &'static str {
+    "Reply with exactly OK."
+}
+
+pub fn tui_selected_models(default_models: &[String]) -> Vec<String> {
+    let Some(filter) = std::env::var("KAY_TUI_PROVIDER_LIVE_SMOKE_MODEL_FILTER")
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+    else {
+        return default_models.to_vec();
+    };
+
+    let allowed: Vec<String> = filter
+        .split(',')
+        .map(str::trim)
+        .filter(|entry| !entry.is_empty())
+        .map(str::to_string)
+        .collect();
+
+    default_models
+        .iter()
+        .filter(|model| {
+            allowed.iter().any(|entry| {
+                entry.eq_ignore_ascii_case(model.as_str())
+                    || model.ends_with(&format!("/{entry}"))
+                    || model.ends_with(entry)
+            })
+        })
+        .cloned()
+        .collect()
 }
 
 pub fn shell_tool_prompt() -> &'static str {

@@ -2,6 +2,7 @@
 # Live provider release gate profiles (KAY_PRE_RELEASE_LIVE_PROVIDER_GATE):
 #   default | release — OpenCode Go onboarding notes-app smoke + Xiaomi acceptance
 #   opencode-go-compat — full provider_model_acceptance matrix for all OpenCode Go models
+#   tui-opencode-go-compat — curated OpenCode Go TUI PTY live smoke (basic completion via /model)
 #   minimax | minimax-m3 — MiniMax.io MiniMax-M3 only (onboarding smoke, exec E2E, acceptance)
 #
 # MiniMax-M3 live tests always use the built-in `minimax` provider (api.minimax.io),
@@ -139,6 +140,28 @@ run_opencode_go_compat_gate() {
     cargo test -p code-cli --test provider_model_acceptance opencode_go_provider_model_acceptance_matrix -- --nocapture
 }
 
+run_tui_opencode_go_compat_gate() {
+  require_opencode_go_key
+  fail_if_missing_keys
+
+  echo "[pre-release/live-provider-gate] running OpenCode Go TUI provider live smoke"
+  cd "$ROOT_DIR/kay-rs"
+
+  tui_env=(
+    "KAY_TUI_PROVIDER_LIVE_SMOKE=1"
+    "OPENCODE_GO_LIVE_API_KEY=$OPENCODE_GO_LIVE_API_KEY"
+    "KAY_TUI_PROVIDER_LIVE_SMOKE_TURN_TIMEOUT_SECS=${KAY_TUI_PROVIDER_LIVE_SMOKE_TURN_TIMEOUT_SECS:-900}"
+  )
+  if [[ -n "${KAY_TUI_PROVIDER_LIVE_SMOKE_MODEL_FILTER:-}" ]]; then
+    tui_env+=("KAY_TUI_PROVIDER_LIVE_SMOKE_MODEL_FILTER=$KAY_TUI_PROVIDER_LIVE_SMOKE_MODEL_FILTER")
+  else
+    tui_env+=("KAY_TUI_PROVIDER_LIVE_SMOKE_MODEL_FILTER=opencode-go/glm-5.2,opencode-go/deepseek-v4-pro,opencode-go/deepseek-v4-flash")
+  fi
+
+  env "${tui_env[@]}" \
+    cargo test -p code-cli --test tui_provider_live_smoke opencode_go_tui_provider_live_smoke_matrix -- --nocapture
+}
+
 run_minimax_m3_gate() {
   require_minimax_key
   fail_if_missing_keys
@@ -171,12 +194,15 @@ case "${KAY_PRE_RELEASE_LIVE_PROVIDER_GATE:-default}" in
   opencode-go-compat | opencode-go)
     run_opencode_go_compat_gate
     ;;
+  tui-opencode-go-compat | tui-opencode-go)
+    run_tui_opencode_go_compat_gate
+    ;;
   minimax | minimax-m3)
     run_minimax_m3_gate
     ;;
   *)
     echo "[pre-release/live-provider-gate] unknown gate profile: ${KAY_PRE_RELEASE_LIVE_PROVIDER_GATE}" >&2
-    echo "[pre-release/live-provider-gate] expected one of: default, release, opencode-go-compat, opencode-go, minimax, minimax-m3" >&2
+    echo "[pre-release/live-provider-gate] expected one of: default, release, opencode-go-compat, opencode-go, tui-opencode-go-compat, tui-opencode-go, minimax, minimax-m3" >&2
     exit 64
     ;;
 esac
