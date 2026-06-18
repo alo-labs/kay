@@ -3,6 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="${REPO_ROOT:-$(cd "${SCRIPT_DIR}/.." && pwd)}"
+INSTALL_SH="$REPO_ROOT/scripts/install/install.sh"
 DRY_RUN=false
 brew_formula=""
 manager=""
@@ -83,34 +84,78 @@ PY
   fi
 }
 
+brew_formula_for_path() {
+  local target_path="$1"
+  local output=""
+
+  if ! command -v brew >/dev/null 2>&1; then
+    return 0
+  fi
+
+  output="$(brew which-formula "$target_path" 2>/dev/null || true)"
+  if [[ -z "$output" ]]; then
+    return 0
+  fi
+
+  printf '%s\n' "$output" | awk 'NR==1 {print $1}'
+}
+
+is_node_wrapper() {
+  local target_path="$1"
+
+  [[ -f "$target_path" ]] && grep -qF '#!/usr/bin/env node' "$target_path" 2>/dev/null
+}
+
 classify_install() {
   local kay_path="$1"
   brew_formula=""
   manager=""
-  if command -v brew >/dev/null 2>&1; then
-    local detected_brew_formula
-    detected_brew_formula="$(brew which-formula "$kay_path" 2>/dev/null | awk 'NR==1 {print $1}')"
-    if [[ -n "$detected_brew_formula" ]]; then
-      manager="brew"
-      brew_formula="$detected_brew_formula"
-      return
-    fi
+
+  if [[ -z "$kay_path" ]]; then
+    manager="standalone"
+    return
   fi
 
   case "$kay_path" in
+    *"/.kay/packages/standalone/"*)
+      manager="standalone"
+      return
+      ;;
     *"/node_modules/@alo-labs/kay/"*|*"/node_modules/.bin/kay")
       manager="npm"
+      return
       ;;
     *"/.bun/"*)
       manager="bun"
+      return
       ;;
     *"/.local/share/pnpm/"*|*"/pnpm/"*)
       manager="pnpm"
-      ;;
-    *)
-      manager="standalone"
+      return
       ;;
   esac
+
+  if is_node_wrapper "$kay_path"; then
+    case "$kay_path" in
+      *"/.bun/"*)
+        manager="bun"
+        ;;
+      *)
+        manager="npm"
+        ;;
+    esac
+    return
+  fi
+
+  local detected_brew_formula
+  detected_brew_formula="$(brew_formula_for_path "$kay_path")"
+  if [[ -n "$detected_brew_formula" ]]; then
+    manager="brew"
+    brew_formula="$detected_brew_formula"
+    return
+  fi
+
+  manager="standalone"
 }
 
 upgrade_command_for() {
@@ -145,11 +190,10 @@ upgrade_command_for() {
       printf 'brew upgrade %s\n' "${brew_formula:-kay}"
       ;;
     standalone)
-      printf 'bash %q --release latest\n' "$REPO_ROOT/scripts/install/install.sh"
+      printf 'bash %q --release latest\n' "$INSTALL_SH"
       ;;
     *)
-      echo "error: unknown Kay install manager: $manager" >&2
-      exit 1
+      printf 'bash %q --release latest\n' "$INSTALL_SH"
       ;;
   esac
 }
@@ -157,6 +201,36 @@ upgrade_command_for() {
 reported_version() {
   local cmd="$1"
   "$cmd" --version 2>/dev/null | sed -nE 's/.* ([0-9][0-9A-Za-z.+-]*)$/\1/p' | head -n 1
+}
+
+run_upgrade() {
+  local upgrade_cmd="$1"
+  eval "$upgrade_cmd"
+  hash -r 2>/dev/null || true
+  export PATH="$HOME/.local/bin:$PATH"
+}
+
+verify_visible_kay() {
+  local expected="$1"
+  local verify_path installed
+
+  verify_path="$(visible_kay_path)"
+  if [[ -z "$verify_path" && -x "$HOME/.local/bin/kay" ]]; then
+    verify_path="$HOME/.local/bin/kay"
+  fi
+
+  if [[ -z "$verify_path" ]]; then
+    echo "error: kay is still not visible after upgrade" >&2
+    return 1
+  fi
+
+  installed="$(reported_version "$verify_path")"
+  if [[ "$installed" != "$expected" ]]; then
+    echo "error: visible Kay is $installed at $verify_path, expected $expected" >&2
+    return 1
+  fi
+
+  echo "[local-kay-upgrade] verified kay $installed at $verify_path"
 }
 
 latest="$(latest_version)"
@@ -176,25 +250,16 @@ if [[ "$DRY_RUN" == true ]]; then
   exit 0
 fi
 
-eval "$upgrade_cmd"
-hash -r 2>/dev/null || true
-export PATH="$HOME/.local/bin:$PATH"
-
-verify_path="$(visible_kay_path)"
-if [[ -z "$verify_path" && -x "$HOME/.local/bin/kay" ]]; then
-  verify_path="$HOME/.local/bin/kay"
+run_upgrade "$upgrade_cmd"
+if ! verify_visible_kay "$latest"; then
+  if [[ "$manager" != "standalone" ]]; then
+    echo "[local-kay-upgrade] retrying with standalone installer" >&2
+    fallback_cmd="$(upgrade_command_for standalone)"
+    echo "[local-kay-upgrade] command: $fallback_cmd"
+    run_upgrade "$fallback_cmd"
+    verify_visible_kay "$latest"
+  else
+    echo "       Remove older Kay installs or adjust PATH so the latest installation is first." >&2
+    exit 1
+  fi
 fi
-
-if [[ -z "$verify_path" ]]; then
-  echo "error: kay is still not visible after upgrade" >&2
-  exit 1
-fi
-
-installed="$(reported_version "$verify_path")"
-if [[ "$installed" != "$latest" ]]; then
-  echo "error: visible Kay is $installed at $verify_path, expected $latest" >&2
-  echo "       Remove older Kay installs or adjust PATH so the latest installation is first." >&2
-  exit 1
-fi
-
-echo "[local-kay-upgrade] verified kay $installed at $verify_path"
