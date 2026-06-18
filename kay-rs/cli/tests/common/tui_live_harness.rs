@@ -33,11 +33,37 @@ pub fn env_key(name: &str) -> Option<String> {
 }
 
 pub fn turn_timeout() -> Duration {
-    env_key("KAY_TUI_PROVIDER_LIVE_SMOKE_TURN_TIMEOUT_SECS")
+    env_key("KAY_TUI_UX_LIVE_SMOKE_TURN_TIMEOUT_SECS")
+        .or_else(|| env_key("KAY_TUI_PROVIDER_LIVE_SMOKE_TURN_TIMEOUT_SECS"))
         .or_else(|| env_key("KAY_ONBOARDING_LIVE_SMOKE_TURN_TIMEOUT_SECS"))
         .and_then(|value| value.parse::<u64>().ok())
         .map(Duration::from_secs)
         .unwrap_or(DEFAULT_TURN_TIMEOUT)
+}
+
+pub fn read_provider_key_from_auth(provider: &str) -> Option<String> {
+    let kay_home = std::env::var_os("KAY_HOME")
+        .map(PathBuf::from)
+        .or_else(|| {
+            std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".kay"))
+        })?;
+    let auth_path = kay_home.join("auth.json");
+    let raw = fs::read_to_string(auth_path).ok()?;
+    let auth: Value = serde_json::from_str(&raw).ok()?;
+    auth.pointer(&format!("/provider_credentials/{provider}/api_key"))
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|key| !key.is_empty())
+        .map(str::to_string)
+}
+
+pub fn provider_api_key(env_names: &[&str], provider: &str) -> Option<String> {
+    for name in env_names {
+        if let Some(key) = env_key(name) {
+            return Some(key);
+        }
+    }
+    read_provider_key_from_auth(provider)
 }
 
 pub fn screen_from_output(output: &[u8]) -> String {
@@ -385,6 +411,51 @@ pub fn config_record_matches(record: &Value, provider_id: &str, model: &str) -> 
         && record.get("model_provider_id").and_then(Value::as_str) == Some(provider_id)
 }
 
+pub fn assert_session_start_metadata(
+    kay_home: &Path,
+    provider_id: &str,
+    model: &str,
+) {
+    let path = TuiLiveHarness::session_log_path(kay_home);
+    let raw = fs::read_to_string(&path)
+        .unwrap_or_else(|err| panic!("read session log {}: {err}", path.display()));
+    let records = raw
+        .lines()
+        .filter_map(|line| serde_json::from_str::<Value>(line).ok())
+        .filter(|value| value.get("kind").and_then(Value::as_str) == Some("session_start"))
+        .collect::<Vec<_>>();
+
+    assert!(
+        records.iter().any(|record| {
+            record.get("model").and_then(Value::as_str) == Some(model)
+                && record.get("model_provider_id").and_then(Value::as_str) == Some(provider_id)
+        }),
+        "no session_start record matched provider `{provider_id}` with model `{model}`; records:\n{}",
+        records
+            .iter()
+            .map(Value::to_string)
+            .collect::<Vec<_>>()
+            .join("\n")
+    );
+}
+
+pub fn wait_for_screen_contains(
+    harness: &mut TuiLiveHarness,
+    needle: &str,
+    timeout: Duration,
+) -> String {
+    harness.drain_output_until(timeout, |screen| screen.contains(needle))
+}
+
+pub fn screen_shows_streaming_content(screen: &str) -> bool {
+    screen.contains("Reasoning")
+        || screen.contains("reasoning")
+        || screen.lines().any(|line| {
+            let trimmed = line.trim();
+            trimmed.starts_with('▌') || trimmed.contains("│ OK") || trimmed.contains("│OK")
+        })
+}
+
 pub fn assert_session_configured_model(
     kay_home: &Path,
     before_count: usize,
@@ -450,12 +521,46 @@ pub fn wait_for_exact_response(
     expected: &str,
     timeout: Duration,
 ) -> String {
-    let failures = [
-        "Kay runtime error:",
-        "Authentication expired.",
-        "You exceeded your current quota",
-        "Unknown model preset:",
-    ];
+    wait_for_exact_response_with_failures(
+        harness,
+        model,
+        expected,
+        timeout,
+        &[
+            "Kay runtime error:",
+            "Authentication expired.",
+            "You exceeded your current quota",
+            "Unknown model preset:",
+        ],
+    )
+}
+
+pub fn wait_for_exact_response_after_recovery(
+    harness: &mut TuiLiveHarness,
+    model: &str,
+    expected: &str,
+    timeout: Duration,
+) -> String {
+    wait_for_exact_response_with_failures(
+        harness,
+        model,
+        expected,
+        timeout,
+        &[
+            "Kay runtime error:",
+            "Authentication expired.",
+            "You exceeded your current quota",
+        ],
+    )
+}
+
+fn wait_for_exact_response_with_failures(
+    harness: &mut TuiLiveHarness,
+    model: &str,
+    expected: &str,
+    timeout: Duration,
+    failures: &[&str],
+) -> String {
     let secrets = harness.secrets.clone();
     harness.drain_output_until(timeout, |screen| {
         if failures.iter().any(|failure| screen.contains(failure)) {
