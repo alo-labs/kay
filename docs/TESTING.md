@@ -268,6 +268,24 @@ OPENCODE_GO_LIVE_API_KEY=... \
 This profile runs the curated OpenCode Go TUI live matrix after the normal
 dev-fast build and workspace nextest suite.
 
+### TUI third-party UX live smoke (PTY)
+
+Opt-in full interactive UX validation for non-OpenAI providers (MiniMax.io
+`MiniMax-M3` and `opencode-go/minimax-m3`). Covers launch, `/model` selection,
+basic chat, shell-tool exec cells, streaming markers, session JSONL metadata,
+unknown-model recovery, and clean exit.
+
+```bash
+KAY_TUI_UX_LIVE_SMOKE=1 \
+MINIMAX_API_KEY=... \
+KAY_TUI_UX_LIVE_SMOKE_MODEL_FILTER=MiniMax-M3 \
+cargo test -p code-cli --test tui_third_party_ux_live_smoke -- --nocapture
+```
+
+Credentials resolve from `MINIMAX_API_KEY`, `MINIMAX_LIVE_API_KEY`, or
+`provider_credentials.minimax.api_key` in `~/.kay/auth.json` (never logged).
+OpenCode Go `minimax-m3` additionally needs `OPENCODE_GO_LIVE_API_KEY`.
+
 Xiaomi direct-provider release coverage runs through
 `provider_model_acceptance`:
 

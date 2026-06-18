@@ -9,14 +9,22 @@ use code_core::model_family::wire_model_slug;
 use code_core::model_family::uses_opencode_go_anthropic_messages;
 use serde_json::Value;
 
-pub fn tui_live_smoke_enabled() -> bool {
+pub fn env_flag_enabled(name: &str) -> bool {
     matches!(
-        std::env::var("KAY_TUI_PROVIDER_LIVE_SMOKE")
+        std::env::var(name)
             .ok()
             .map(|value| value.trim().to_string())
             .as_deref(),
         Some("1") | Some("true") | Some("TRUE")
     )
+}
+
+pub fn tui_live_smoke_enabled() -> bool {
+    env_flag_enabled("KAY_TUI_PROVIDER_LIVE_SMOKE")
+}
+
+pub fn tui_ux_live_smoke_enabled() -> bool {
+    env_flag_enabled("KAY_TUI_UX_LIVE_SMOKE")
 }
 
 pub fn live_smoke_enabled() -> bool {
@@ -179,8 +187,11 @@ pub fn exact_ok_prompt() -> &'static str {
     "Reply with exactly OK."
 }
 
-pub fn tui_selected_models(default_models: &[String]) -> Vec<String> {
-    let Some(filter) = std::env::var("KAY_TUI_PROVIDER_LIVE_SMOKE_MODEL_FILTER")
+fn tui_models_for_filter(
+    default_models: &[String],
+    filter_env: &str,
+) -> Vec<String> {
+    let Some(filter) = std::env::var(filter_env)
         .ok()
         .map(|value| value.trim().to_string())
         .filter(|value| !value.is_empty())
@@ -206,6 +217,14 @@ pub fn tui_selected_models(default_models: &[String]) -> Vec<String> {
         })
         .cloned()
         .collect()
+}
+
+pub fn tui_selected_models(default_models: &[String]) -> Vec<String> {
+    tui_models_for_filter(default_models, "KAY_TUI_PROVIDER_LIVE_SMOKE_MODEL_FILTER")
+}
+
+pub fn tui_ux_selected_models(default_models: &[String]) -> Vec<String> {
+    tui_models_for_filter(default_models, "KAY_TUI_UX_LIVE_SMOKE_MODEL_FILTER")
 }
 
 pub fn shell_tool_prompt() -> &'static str {
