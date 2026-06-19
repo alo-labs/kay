@@ -14,4 +14,4 @@ export default defineConfig(eslint.configs.recommended, tseslint.configs.recomme
   rules: {
     "node-import/prefer-node-protocol": 2,
   },
-});\n
+});\n;
