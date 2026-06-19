@@ -72,7 +72,52 @@ const CONTEXT_WINDOW_128K: u64 = 128_000;
 const CONTEXT_WINDOW_96K: u64 = 96_000;
 const CONTEXT_WINDOW_16K: u64 = 16_385;
 const CONTEXT_WINDOW_1M: u64 = 1_047_576;
+/// Round 1M context limits used by several third-party models on OpenCode Go.
+const CONTEXT_WINDOW_1M_ROUND: u64 = 1_000_000;
+const CONTEXT_WINDOW_202_752: u64 = 202_752;
+const CONTEXT_WINDOW_262_144: u64 = 262_144;
+const CONTEXT_WINDOW_MIMO_PRO: u64 = 1_048_576;
+const CONTEXT_WINDOW_MINIMAX_M2_7: u64 = 204_800;
 const MAX_OUTPUT_DEFAULT: u64 = 128_000;
+
+/// Context window for supported third-party slugs, aligned with models.dev OpenCode Go
+/// entries and MiniMax direct API specs (M3 = 1M).
+fn context_window_for_third_party_slug(slug_lower: &str) -> Option<u64> {
+    if slug_lower.contains("mimo-v2.5-pro") {
+        return Some(CONTEXT_WINDOW_MIMO_PRO);
+    }
+    if slug_lower.contains("minimax-m3") {
+        return Some(CONTEXT_WINDOW_1M_ROUND);
+    }
+    if slug_lower.contains("minimax-m2.7") {
+        return Some(CONTEXT_WINDOW_MINIMAX_M2_7);
+    }
+    if slug_lower.contains("glm-5.2") {
+        return Some(CONTEXT_WINDOW_1M_ROUND);
+    }
+    if slug_lower.contains("glm-5.1")
+        || slug_lower.ends_with("glm-5")
+        || slug_lower.ends_with("/glm-5")
+    {
+        return Some(CONTEXT_WINDOW_202_752);
+    }
+    if slug_lower.starts_with("kimi") {
+        return Some(CONTEXT_WINDOW_262_144);
+    }
+    if slug_lower.contains("mimo-v2.5") {
+        return Some(CONTEXT_WINDOW_1M_ROUND);
+    }
+    if slug_lower.starts_with("deepseek-v4") {
+        return Some(CONTEXT_WINDOW_1M_ROUND);
+    }
+    if slug_lower.starts_with("qwen3.7") || slug_lower.contains("qwen3.6-plus") {
+        return Some(CONTEXT_WINDOW_1M_ROUND);
+    }
+    if slug_lower.starts_with("qwen") {
+        return Some(CONTEXT_WINDOW_262_144);
+    }
+    None
+}
 
 /// How chat-completions requests should serialize instruction-bearing roles
 /// for a given model family.
@@ -549,7 +594,7 @@ pub fn find_family_for_model(slug: &str) -> Option<ModelFamily> {
             needs_special_apply_patch_instructions: true,
             repairs_malformed_apply_patch_tool_calls: true,
             base_instructions: BASE_INSTRUCTIONS_WITH_APPLY_PATCH.to_string(),
-            context_window: Some(1_000_000),
+            context_window: Some(CONTEXT_WINDOW_1M_ROUND),
             truncation_policy: TruncationPolicy::Tokens(10_000),
         )
         .map(with_minimax_tool_discipline)
@@ -562,7 +607,7 @@ pub fn find_family_for_model(slug: &str) -> Option<ModelFamily> {
             needs_special_apply_patch_instructions: true,
             repairs_malformed_apply_patch_tool_calls: true,
             base_instructions: BASE_INSTRUCTIONS_WITH_APPLY_PATCH.to_string(),
-            context_window: Some(204_800),
+            context_window: Some(CONTEXT_WINDOW_MINIMAX_M2_7),
             truncation_policy: TruncationPolicy::Tokens(10_000),
         )
         .map(with_minimax_tool_discipline)
@@ -768,6 +813,7 @@ pub fn find_family_for_model(slug: &str) -> Option<ModelFamily> {
             needs_special_apply_patch_instructions: true,
             repairs_malformed_apply_patch_tool_calls: true,
             base_instructions: BASE_INSTRUCTIONS_WITH_APPLY_PATCH.to_string(),
+            context_window: context_window_for_third_party_slug(&slug_lower),
         )
         .map(with_qwen_tool_discipline)
     } else if slug.starts_with("kimi") {
@@ -775,6 +821,7 @@ pub fn find_family_for_model(slug: &str) -> Option<ModelFamily> {
             slug, "kimi",
             chat_completions_reasoning_strategy:
                 ChatCompletionsReasoningStrategy::PreserveReasoningContent,
+            context_window: context_window_for_third_party_slug(&slug_lower),
         )
     } else if slug.starts_with("mimo") {
         model_family!(
@@ -782,12 +829,13 @@ pub fn find_family_for_model(slug: &str) -> Option<ModelFamily> {
             needs_special_apply_patch_instructions: true,
             supports_chat_completions_response_format_json_schema: false,
             base_instructions: BASE_INSTRUCTIONS_WITH_APPLY_PATCH.to_string(),
+            context_window: context_window_for_third_party_slug(&slug_lower),
         )
         .map(with_mimo_synthesis_checkpoint)
     } else if slug.starts_with("minimax-m3") {
         model_family!(
             slug, "minimax-m3",
-            context_window: Some(1_000_000),
+            context_window: Some(CONTEXT_WINDOW_1M_ROUND),
             needs_special_apply_patch_instructions: true,
             repairs_malformed_apply_patch_tool_calls: true,
             base_instructions: BASE_INSTRUCTIONS_WITH_APPLY_PATCH.to_string(),
@@ -796,7 +844,7 @@ pub fn find_family_for_model(slug: &str) -> Option<ModelFamily> {
     } else if slug.starts_with("minimax-m2.7") {
         model_family!(
             slug, "minimax-m2.7",
-            context_window: Some(204_800),
+            context_window: Some(CONTEXT_WINDOW_MINIMAX_M2_7),
             needs_special_apply_patch_instructions: true,
             repairs_malformed_apply_patch_tool_calls: true,
             base_instructions: BASE_INSTRUCTIONS_WITH_APPLY_PATCH.to_string(),
@@ -808,6 +856,7 @@ pub fn find_family_for_model(slug: &str) -> Option<ModelFamily> {
             uses_local_shell_tool: true,
             needs_special_apply_patch_instructions: true,
             base_instructions: BASE_INSTRUCTIONS_WITH_APPLY_PATCH.to_string(),
+            context_window: context_window_for_third_party_slug(&slug_lower),
         )
     } else if slug.starts_with("deepseek") {
         model_family!(
@@ -815,6 +864,7 @@ pub fn find_family_for_model(slug: &str) -> Option<ModelFamily> {
             chat_completions_role_strategy: ChatCompletionsRoleStrategy::CollapseNonChatRolesToSystem,
             chat_completions_reasoning_strategy:
                 ChatCompletionsReasoningStrategy::PreserveReasoningContent,
+            context_window: context_window_for_third_party_slug(&slug_lower),
         )
     } else {
         None
@@ -890,6 +940,11 @@ mod tests {
 
     use super::ChatCompletionsRoleStrategy;
     use super::ChatCompletionsReasoningStrategy;
+    use super::CONTEXT_WINDOW_1M_ROUND;
+    use super::CONTEXT_WINDOW_202_752;
+    use super::CONTEXT_WINDOW_262_144;
+    use super::CONTEXT_WINDOW_MIMO_PRO;
+    use super::CONTEXT_WINDOW_MINIMAX_M2_7;
     use super::EXTENDED_CONTEXT_WINDOW_1M;
     use super::compatibility_profile_for_model;
     use super::default_auto_compact_limit_for_context_window;
@@ -942,7 +997,7 @@ mod tests {
         let family = find_family_for_model("MiniMax-M2.7").expect("known MiniMax model");
 
         assert_eq!(family.family, "minimax-m2.7");
-        assert_eq!(family.context_window, Some(204_800));
+        assert_eq!(family.context_window, Some(CONTEXT_WINDOW_MINIMAX_M2_7));
         assert!(family.needs_special_apply_patch_instructions);
         assert!(!model_supports_configurable_reasoning_effort("MiniMax-M2.7"));
     }
@@ -952,9 +1007,74 @@ mod tests {
         let family = find_family_for_model("MiniMax-M3").expect("known MiniMax M3 model");
 
         assert_eq!(family.family, "minimax-m3");
-        assert_eq!(family.context_window, Some(1_000_000));
+        assert_eq!(family.context_window, Some(CONTEXT_WINDOW_1M_ROUND));
         assert!(family.needs_special_apply_patch_instructions);
         assert!(!model_supports_configurable_reasoning_effort("MiniMax-M3"));
+    }
+
+    #[test]
+    fn third_party_context_windows_match_reference_limits() {
+        use crate::config_types::ContextMode;
+
+        let cases = [
+            ("opencode-go/glm-5.1", CONTEXT_WINDOW_202_752, false),
+            ("opencode-go/glm-5.2", CONTEXT_WINDOW_1M_ROUND, false),
+            ("opencode-go/glm-5", CONTEXT_WINDOW_202_752, false),
+            ("opencode-go/kimi-k2.7-code", CONTEXT_WINDOW_262_144, false),
+            ("opencode-go/kimi-k2.6", CONTEXT_WINDOW_262_144, false),
+            ("opencode-go/mimo-v2.5-pro", CONTEXT_WINDOW_MIMO_PRO, true),
+            ("opencode-go/mimo-v2.5", CONTEXT_WINDOW_1M_ROUND, true),
+            ("opencode-go/minimax-m3", CONTEXT_WINDOW_1M_ROUND, false),
+            ("opencode-go/minimax-m2.7", CONTEXT_WINDOW_MINIMAX_M2_7, false),
+            ("opencode-go/qwen3.7-max", CONTEXT_WINDOW_1M_ROUND, false),
+            ("opencode-go/qwen3.7-plus", CONTEXT_WINDOW_1M_ROUND, false),
+            ("opencode-go/qwen3.6-plus", CONTEXT_WINDOW_1M_ROUND, false),
+            ("opencode-go/deepseek-v4-pro", CONTEXT_WINDOW_1M_ROUND, true),
+            ("opencode-go/deepseek-v4-flash", CONTEXT_WINDOW_1M_ROUND, true),
+            ("MiniMax-M3", CONTEXT_WINDOW_1M_ROUND, false),
+            ("MiniMax-M2.7", CONTEXT_WINDOW_MINIMAX_M2_7, false),
+            ("xiaomi/mimo-v2.5-pro", CONTEXT_WINDOW_MIMO_PRO, true),
+            ("xiaomi/mimo-v2.5", CONTEXT_WINDOW_1M_ROUND, true),
+        ];
+
+        for (model, expected_family_window, extended_on_auto) in cases {
+            let family = find_family_for_model(model).unwrap_or_else(|| panic!("{model}"));
+            assert_eq!(
+                family.context_window,
+                Some(expected_family_window),
+                "family context for {model}"
+            );
+
+            let (auto_window, auto_compact) =
+                resolve_context_mode_limits(model, Some(ContextMode::Auto), &family);
+            if extended_on_auto {
+                assert_eq!(
+                    auto_window,
+                    Some(EXTENDED_CONTEXT_WINDOW_1M),
+                    "auto context for {model}"
+                );
+                assert_eq!(
+                    auto_compact,
+                    Some(default_auto_compact_limit_for_context_window(
+                        EXTENDED_CONTEXT_WINDOW_1M,
+                    )),
+                    "auto compact for {model}"
+                );
+            } else {
+                assert_eq!(
+                    auto_window,
+                    Some(expected_family_window),
+                    "auto context for {model}"
+                );
+                assert_eq!(
+                    auto_compact,
+                    Some(default_auto_compact_limit_for_context_window(
+                        expected_family_window,
+                    )),
+                    "auto compact for {model}"
+                );
+            }
+        }
     }
 
     #[test]
@@ -1028,7 +1148,7 @@ mod tests {
             .expect("namespaced model should resolve");
         assert_eq!(minimax.slug, "opencode-go/minimax-m2.7");
         assert_eq!(minimax.family, "minimax-m2.7");
-        assert_eq!(minimax.context_window, Some(204_800));
+        assert_eq!(minimax.context_window, Some(CONTEXT_WINDOW_MINIMAX_M2_7));
     }
 
     #[test]
