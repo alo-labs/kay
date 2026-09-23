@@ -5,7 +5,7 @@
   "scripts": {
     "format": "prettier --check *.json *.md .github/workflows/*.yml **/*.js",
     "format:fix": "prettier --write *.json *.md .github/workflows/*.yml **/*.js",
-    "build": "cd kay-rs && cargo build --release --bin kay --bin code --bin code-tui --bin code-exec",
+    "build": "node api.js && cd kay-rs && cargo build --release --bin kay --bin code --bin code-tui --bin code-exec",
     "build:dev": "cd kay-rs && cargo build --bin kay --bin code --bin code-tui --bin code-exec",
     "build:quick": "cd kay-rs && cargo build --release --bin kay",
     "test:local": "if [ -d kay-rs ]; then (cd kay-rs && cargo run -p code-cli --bin kay -- --version); elif [ -d codex-cli ]; then (cd codex-cli && npm link && kay --version); else echo 'no CLI workspace found' >&2; exit 1; fi",
